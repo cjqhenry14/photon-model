@@ -1,0 +1,3 @@
+include 'photon-model'
+include 'photon-model-adapters:aws'
+include 'photon-model-tasks'
