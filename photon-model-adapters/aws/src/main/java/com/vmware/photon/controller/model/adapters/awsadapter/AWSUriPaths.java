@@ -13,20 +13,15 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import com.vmware.photon.controller.model.UriPaths;
+
 /**
- * AWS stages.
+ * URI definitions for AWS adapters.
  */
-public enum AWSStages {
+public class AWSUriPaths {
 
-    VMDESC,
-    PARENTDESC,
-    PARENTAUTH,
-    CLIENT,
-    DELETE,
-    CREATE,
-    VMDISKS,
-    FIREWALL,
-    DONE,
-    ERROR
-
+    public static final String PROVISIONING_AWS = UriPaths.PROVISIONING + "/aws";
+    public static final String AWS_INSTANCE_SERVICE = PROVISIONING_AWS + "/instance-service";
+    public static final String AWS_NETWORK_SERVICE = PROVISIONING_AWS + "/network-service";
+    public static final String AWS_FIREWALL_SERVICE = PROVISIONING_AWS + "/firewall-service";
 }
