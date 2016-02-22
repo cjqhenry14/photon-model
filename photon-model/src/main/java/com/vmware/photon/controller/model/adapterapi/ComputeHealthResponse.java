@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -18,52 +18,50 @@ package com.vmware.photon.controller.model.adapterapi;
  */
 public class ComputeHealthResponse {
 
-  /**
-   * Compute Health State.
-   */
-  public enum ComputeHealthState {
-    UNKNOWN,
-    HEALTHY,
-    UNHEALTHY
-  }
+    /**
+     * Compute Health State.
+     */
+    public enum ComputeHealthState {
+        UNKNOWN, HEALTHY, UNHEALTHY
+    }
 
-  /**
-   * Health state.
-   */
-  public ComputeHealthState healthState;
+    /**
+     * Health state.
+     */
+    public ComputeHealthState healthState;
 
-  /**
-   * CPU count.
-   */
-  public long cpuCount;
+    /**
+     * CPU count.
+     */
+    public long cpuCount;
 
-  /**
-   * CPU utilization percent.
-   */
-  public double cpuUtilizationPct;
+    /**
+     * CPU utilization percent.
+     */
+    public double cpuUtilizationPct;
 
-  /**
-   * CPU utilized Mhz.
-   */
-  public long cpuUtilizationMhz;
+    /**
+     * CPU utilized Mhz.
+     */
+    public long cpuUtilizationMhz;
 
-  /**
-   * CPU total Mhz.
-   */
-  public long cpuTotalMhz;
+    /**
+     * CPU total Mhz.
+     */
+    public long cpuTotalMhz;
 
-  /**
-   * Total memory.
-   */
-  public long totalMemoryBytes;
+    /**
+     * Total memory.
+     */
+    public long totalMemoryBytes;
 
-  /**
-   * Used memory.
-   */
-  public long usedMemoryBytes;
+    /**
+     * Used memory.
+     */
+    public long usedMemoryBytes;
 
-  /**
-   * Memory utilization percent.
-   */
-  public double memoryUtilizationPct;
+    /**
+     * Memory utilization percent.
+     */
+    public double memoryUtilizationPct;
 }

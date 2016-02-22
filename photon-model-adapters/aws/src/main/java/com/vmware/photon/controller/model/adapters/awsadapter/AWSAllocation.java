@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -11,9 +11,11 @@
  * specific language governing permissions and limitations under the License.
  */
 
-
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import java.util.Map;
+
+import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
@@ -22,10 +24,6 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.services.common.AuthCredentialsService;
-
-import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
-
-import java.util.Map;
 
 /**
  * AWS allocation.

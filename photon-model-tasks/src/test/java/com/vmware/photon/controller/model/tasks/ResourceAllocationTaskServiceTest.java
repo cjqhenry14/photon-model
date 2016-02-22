@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -12,6 +12,26 @@
  */
 
 package com.vmware.photon.controller.model.tasks;
+
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+import org.junit.runners.Suite.SuiteClasses;
+import org.junit.runners.model.InitializationError;
+import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.ModelServices;
 import com.vmware.photon.controller.model.TaskServices;
@@ -29,674 +49,717 @@ import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
 import com.vmware.photon.controller.model.tasks.ResourceAllocationTaskService.ResourceAllocationTaskState;
+
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceHost;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
 
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
 /**
- * This class implements tests for the {@link ResourceAllocationTaskService} class.
+ * This class implements tests for the {@link ResourceAllocationTaskService}
+ * class.
  */
-public class ResourceAllocationTaskServiceTest {
+@RunWith(ResourceAllocationTaskServiceTest.class)
+@SuiteClasses({
+        ResourceAllocationTaskServiceTest.ConstructorTest.class,
+        ResourceAllocationTaskServiceTest.HandleStartTest.class,
+        ResourceAllocationTaskServiceTest.QueryAvailableComputeResourcesTest.class,
+        ResourceAllocationTaskServiceTest.ComputeResourceProvisioningTest.class })
+public class ResourceAllocationTaskServiceTest extends Suite {
 
-  private static final String ZONE_ID = "provider-specific-zone";
+    private static final String ZONE_ID = "provider-specific-zone";
 
-  private static ComputeService.ComputeState createParentCompute(
-      TestHost host,
-      String resourcePool,
-      String zoneId) throws Throwable {
-    // Create parent ComputeDescription
-    ComputeDescriptionService.ComputeDescription cd = new ComputeDescriptionService.ComputeDescription();
-    cd.bootAdapterReference = new URI("http://bootAdapterReference");
-    cd.powerAdapterReference = new URI("http://powerAdapterReference");
-    cd.instanceAdapterReference = new URI("http://instanceAdapterReference");
-    cd.healthAdapterReference = null;
-    cd.enumerationAdapterReference = new URI("http://enumerationAdapterReference");
-    cd.supportedChildren = new ArrayList<>();
-    cd.supportedChildren.add(ComputeType.VM_GUEST.toString());
-    cd.environmentName = ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_ON_PREMISE;
-    cd.costPerMinute = 1;
-    cd.cpuMhzPerCore = 1000;
-    cd.cpuCount = 2;
-    cd.gpuCount = 1;
-    cd.currencyUnit = "USD";
-    cd.totalMemoryBytes = Integer.MAX_VALUE;
-    cd.id = UUID.randomUUID().toString();
-    cd.name = "friendly-name";
-    cd.regionId = "provider-specific-regions";
-    cd.zoneId = zoneId;
-    ComputeDescriptionService.ComputeDescription cd1 = host.postServiceSynchronously(
-        ComputeDescriptionFactoryService.SELF_LINK,
-        cd,
-        ComputeDescriptionService.ComputeDescription.class);
-
-    // Create parent Compute
-    ComputeService.ComputeState cs = new ComputeService.ComputeState();
-    cs.id = UUID.randomUUID().toString();
-    cs.descriptionLink = cd1.documentSelfLink;
-    cs.resourcePoolLink = resourcePool;
-    cs.adapterManagementReference = URI.create("https://esxhost-01:443/sdk");
-    ComputeService.ComputeState cs1 = host.postServiceSynchronously(
-        ComputeFactoryService.SELF_LINK,
-        cs,
-        ComputeService.ComputeState.class);
-
-    return cs1;
-  }
-
-  private static ComputeService.ComputeState createParentCompute(
-      TestHost host,
-      String resourcePool) throws Throwable {
-    return createParentCompute(host, resourcePool, ZONE_ID);
-  }
-
-  private static ComputeDescriptionService.ComputeDescription createComputeDescription(
-      TestHost host,
-      String instanceAdapterLink,
-      String bootAdapterLink) throws Throwable {
-    // Create ComputeDescription
-    ComputeDescriptionService.ComputeDescription cd = new ComputeDescriptionService.ComputeDescription();
-    cd.environmentName = ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_ON_PREMISE;
-    cd.costPerMinute = 1;
-    cd.cpuMhzPerCore = 1000;
-    cd.cpuCount = 2;
-    cd.gpuCount = 1;
-    cd.currencyUnit = "USD";
-    cd.totalMemoryBytes = Integer.MAX_VALUE;
-    cd.id = UUID.randomUUID().toString();
-    cd.name = "friendly-name";
-    cd.regionId = "provider-specific-regions";
-    cd.zoneId = "provider-specific-zone";
-    // disable periodic maintenance for tests by default.
-    cd.healthAdapterReference = null;
-    if (instanceAdapterLink != null) {
-      cd.instanceAdapterReference = UriUtils.buildUri(host, instanceAdapterLink);
-      cd.powerAdapterReference = URI.create("http://powerAdapter");
-    }
-    if (bootAdapterLink != null) {
-      cd.bootAdapterReference = UriUtils.buildUri(host, bootAdapterLink);
-    }
-    return host.postServiceSynchronously(
-        ComputeDescriptionFactoryService.SELF_LINK,
-        cd,
-        ComputeDescriptionService.ComputeDescription.class);
-  }
-
-  private static List<String> createDiskDescription(TestHost host) throws Throwable {
-    DiskService.DiskState d = new DiskService.DiskState();
-    d.id = UUID.randomUUID().toString();
-    d.type = DiskService.DiskType.HDD;
-    d.name = "friendly-name";
-    d.capacityMBytes = 100L;
-    DiskService.DiskState d1 = host.postServiceSynchronously(
-        DiskFactoryService.SELF_LINK,
-        d,
-        DiskService.DiskState.class);
-    List<String> links = new ArrayList<>();
-    links.add(d1.documentSelfLink);
-    return links;
-  }
-
-  private static List<String> createNetworkDescription(
-      TestHost host) throws Throwable {
-    NetworkInterfaceService.NetworkInterfaceState n = new NetworkInterfaceService.NetworkInterfaceState();
-    n.id = UUID.randomUUID().toString();
-    n.networkDescriptionLink = "http://network-description";
-    NetworkInterfaceService.NetworkInterfaceState n1 = host.postServiceSynchronously(
-        NetworkInterfaceFactoryService.SELF_LINK,
-        n,
-        NetworkInterfaceService.NetworkInterfaceState.class);
-    List<String> links = new ArrayList<>();
-    links.add(n1.documentSelfLink);
-
-    return links;
-  }
-
-  private static ResourceDescriptionService.ResourceDescription createResourceDescription(
-      TestHost host,
-      ComputeDescriptionService.ComputeDescription cd,
-      List<String> diskDescriptionLinks,
-      List<String> networkDescriptionLinks) throws Throwable {
-    ResourceDescriptionService.ResourceDescription rd = new ResourceDescriptionService.ResourceDescription();
-    rd.computeType = ComputeType.VM_GUEST.toString();
-    rd.computeDescriptionLink = cd.documentSelfLink;
-    rd.diskDescriptionLinks = diskDescriptionLinks;
-    rd.networkDescriptionLinks = networkDescriptionLinks;
-
-    return host.postServiceSynchronously(
-        ResourceDescriptionFactoryService.SELF_LINK,
-        rd,
-        ResourceDescriptionService.ResourceDescription.class);
-  }
-
-  private static ResourceAllocationTaskState createAllocationRequestWithResourceDescription(
-      String resourcePool,
-      ComputeDescriptionService.ComputeDescription cd,
-      ResourceDescriptionService.ResourceDescription rd) {
-    ResourceAllocationTaskState state = new ResourceAllocationTaskState();
-    state.taskSubStage = ResourceAllocationTaskService.SubStage.QUERYING_AVAILABLE_COMPUTE_RESOURCES;
-    state.resourceCount = 2;
-    state.resourcePoolLink = resourcePool;
-    state.resourceDescriptionLink = rd.documentSelfLink;
-
-    return state;
-  }
-
-  private static ResourceAllocationTaskState createAllocationRequest(
-      String resourcePool,
-      String computeDescriptionLink,
-      List<String> diskDescriptionLinks,
-      List<String> networkDescriptionLinks) {
-    ResourceAllocationTaskState state = new ResourceAllocationTaskState();
-    state.taskSubStage = ResourceAllocationTaskService.SubStage.QUERYING_AVAILABLE_COMPUTE_RESOURCES;
-    state.resourceCount = 2;
-    state.resourcePoolLink = resourcePool;
-    state.computeDescriptionLink = computeDescriptionLink;
-    state.computeType = ComputeType.VM_GUEST.toString();
-    state.customProperties = new HashMap<>();
-    state.customProperties.put("testProp", "testValue");
-
-    // For most tests, we override resourceDescription.
-    state.resourceDescriptionLink = null;
-
-    state.diskDescriptionLinks = diskDescriptionLinks;
-    state.networkDescriptionLinks = networkDescriptionLinks;
-
-    return state;
-  }
-
-  private static Class[] getFactoryServices() {
-    List<Class> services = new ArrayList<>();
-    Collections.addAll(services, ModelServices.FACTORIES);
-    Collections.addAll(services, TaskServices.FACTORIES);
-    Collections.addAll(services, MockAdapter.FACTORIES);
-    return services.toArray(new Class[services.size()]);
-  }
-
-  @Test
-  private void dummy() {
-  }
-
-  /**
-   * This class implements tests for the constructor.
-   */
-  public class ConstructorTest {
-
-    private ResourceAllocationTaskService provisionComputeTaskService;
-
-    @BeforeMethod
-    public void setUpTest() {
-      provisionComputeTaskService = new ResourceAllocationTaskService();
+    public ResourceAllocationTaskServiceTest(Class<?> klass,
+            RunnerBuilder builder) throws InitializationError {
+        super(klass, builder);
     }
 
-    @Test
-    public void testServiceOptions() {
+    private static ComputeService.ComputeState createParentCompute(
+            TestHost host, String resourcePool, String zoneId) throws Throwable {
+        // Create parent ComputeDescription
+        ComputeDescriptionService.ComputeDescription cd = new ComputeDescriptionService.ComputeDescription();
+        cd.bootAdapterReference = new URI("http://bootAdapterReference");
+        cd.powerAdapterReference = new URI("http://powerAdapterReference");
+        cd.instanceAdapterReference = new URI("http://instanceAdapterReference");
+        cd.healthAdapterReference = null;
+        cd.enumerationAdapterReference = new URI(
+                "http://enumerationAdapterReference");
+        cd.supportedChildren = new ArrayList<>();
+        cd.supportedChildren.add(ComputeType.VM_GUEST.toString());
+        cd.environmentName = ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_ON_PREMISE;
+        cd.costPerMinute = 1;
+        cd.cpuMhzPerCore = 1000;
+        cd.cpuCount = 2;
+        cd.gpuCount = 1;
+        cd.currencyUnit = "USD";
+        cd.totalMemoryBytes = Integer.MAX_VALUE;
+        cd.id = UUID.randomUUID().toString();
+        cd.name = "friendly-name";
+        cd.regionId = "provider-specific-regions";
+        cd.zoneId = zoneId;
+        ComputeDescriptionService.ComputeDescription cd1 = host
+                .postServiceSynchronously(
+                        ComputeDescriptionFactoryService.SELF_LINK, cd,
+                        ComputeDescriptionService.ComputeDescription.class);
 
-      EnumSet<Service.ServiceOption> expected = EnumSet.of(
-          Service.ServiceOption.CONCURRENT_GET_HANDLING,
-          Service.ServiceOption.PERSISTENCE,
-          Service.ServiceOption.REPLICATION,
-          Service.ServiceOption.OWNER_SELECTION,
-          Service.ServiceOption.INSTRUMENTATION);
+        // Create parent Compute
+        ComputeService.ComputeState cs = new ComputeService.ComputeState();
+        cs.id = UUID.randomUUID().toString();
+        cs.descriptionLink = cd1.documentSelfLink;
+        cs.resourcePoolLink = resourcePool;
+        cs.adapterManagementReference = URI
+                .create("https://esxhost-01:443/sdk");
+        ComputeService.ComputeState cs1 = host.postServiceSynchronously(
+                ComputeFactoryService.SELF_LINK, cs,
+                ComputeService.ComputeState.class);
 
-      assertThat(provisionComputeTaskService.getOptions(), is(expected));
+        return cs1;
     }
-  }
 
-  /**
-   * This class implements tests for the handleStart method.
-   */
-  public class HandleStartTest extends BaseModelTest {
-    @Override
-    protected Class[] getFactoryServices() {
-      return ResourceAllocationTaskServiceTest.getFactoryServices();
+    private static ComputeService.ComputeState createParentCompute(
+            TestHost host, String resourcePool) throws Throwable {
+        return createParentCompute(host, resourcePool, ZONE_ID);
     }
 
-    @Test
-    public void testSuccess() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
+    private static ComputeDescriptionService.ComputeDescription createComputeDescription(
+            TestHost host, String instanceAdapterLink, String bootAdapterLink)
+            throws Throwable {
+        // Create ComputeDescription
+        ComputeDescriptionService.ComputeDescription cd = new ComputeDescriptionService.ComputeDescription();
+        cd.environmentName = ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_ON_PREMISE;
+        cd.costPerMinute = 1;
+        cd.cpuMhzPerCore = 1000;
+        cd.cpuCount = 2;
+        cd.gpuCount = 1;
+        cd.currencyUnit = "USD";
+        cd.totalMemoryBytes = Integer.MAX_VALUE;
+        cd.id = UUID.randomUUID().toString();
+        cd.name = "friendly-name";
+        cd.regionId = "provider-specific-regions";
+        cd.zoneId = "provider-specific-zone";
+        // disable periodic maintenance for tests by default.
+        cd.healthAdapterReference = null;
+        if (instanceAdapterLink != null) {
+            cd.instanceAdapterReference = UriUtils.buildUri(host,
+                    instanceAdapterLink);
+            cd.powerAdapterReference = URI.create("http://powerAdapter");
+        }
+        if (bootAdapterLink != null) {
+            cd.bootAdapterReference = UriUtils.buildUri(host, bootAdapterLink);
+        }
+        return host.postServiceSynchronously(
+                ComputeDescriptionFactoryService.SELF_LINK, cd,
+                ComputeDescriptionService.ComputeDescription.class);
+    }
 
-      createParentCompute(host, resourcePool);
+    private static List<String> createDiskDescription(TestHost host)
+            throws Throwable {
+        DiskService.DiskState d = new DiskService.DiskState();
+        d.id = UUID.randomUUID().toString();
+        d.type = DiskService.DiskType.HDD;
+        d.name = "friendly-name";
+        d.capacityMBytes = 100L;
+        DiskService.DiskState d1 = host.postServiceSynchronously(
+                DiskFactoryService.SELF_LINK, d, DiskService.DiskState.class);
+        List<String> links = new ArrayList<>();
+        links.add(d1.documentSelfLink);
+        return links;
+    }
 
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+    private static List<String> createNetworkDescription(TestHost host)
+            throws Throwable {
+        NetworkInterfaceService.NetworkInterfaceState n = new NetworkInterfaceService.NetworkInterfaceState();
+        n.id = UUID.randomUUID().toString();
+        n.networkDescriptionLink = "http://network-description";
+        NetworkInterfaceService.NetworkInterfaceState n1 = host
+                .postServiceSynchronously(
+                        NetworkInterfaceFactoryService.SELF_LINK, n,
+                        NetworkInterfaceService.NetworkInterfaceState.class);
+        List<String> links = new ArrayList<>();
+        links.add(n1.documentSelfLink);
 
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, cd.documentSelfLink,
-          createDiskDescription(host),
-          createNetworkDescription(host));
+        return links;
+    }
 
-      ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class);
+    private static ResourceDescriptionService.ResourceDescription createResourceDescription(
+            TestHost host, ComputeDescriptionService.ComputeDescription cd,
+            List<String> diskDescriptionLinks,
+            List<String> networkDescriptionLinks) throws Throwable {
+        ResourceDescriptionService.ResourceDescription rd = new ResourceDescriptionService.ResourceDescription();
+        rd.computeType = ComputeType.VM_GUEST.toString();
+        rd.computeDescriptionLink = cd.documentSelfLink;
+        rd.diskDescriptionLinks = diskDescriptionLinks;
+        rd.networkDescriptionLinks = networkDescriptionLinks;
 
-      ResourceAllocationTaskState completeState = host.waitForServiceState(
-          ResourceAllocationTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
+        return host.postServiceSynchronously(
+                ResourceDescriptionFactoryService.SELF_LINK, rd,
+                ResourceDescriptionService.ResourceDescription.class);
+    }
 
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FINISHED));
+    private static ResourceAllocationTaskState createAllocationRequestWithResourceDescription(
+            String resourcePool,
+            ComputeDescriptionService.ComputeDescription cd,
+            ResourceDescriptionService.ResourceDescription rd) {
+        ResourceAllocationTaskState state = new ResourceAllocationTaskState();
+        state.taskSubStage = ResourceAllocationTaskService.SubStage.QUERYING_AVAILABLE_COMPUTE_RESOURCES;
+        state.resourceCount = 2;
+        state.resourcePoolLink = resourcePool;
+        state.resourceDescriptionLink = rd.documentSelfLink;
+
+        return state;
+    }
+
+    private static ResourceAllocationTaskState createAllocationRequest(
+            String resourcePool, String computeDescriptionLink,
+            List<String> diskDescriptionLinks,
+            List<String> networkDescriptionLinks) {
+        ResourceAllocationTaskState state = new ResourceAllocationTaskState();
+        state.taskSubStage = ResourceAllocationTaskService.SubStage.QUERYING_AVAILABLE_COMPUTE_RESOURCES;
+        state.resourceCount = 2;
+        state.resourcePoolLink = resourcePool;
+        state.computeDescriptionLink = computeDescriptionLink;
+        state.computeType = ComputeType.VM_GUEST.toString();
+        state.customProperties = new HashMap<>();
+        state.customProperties.put("testProp", "testValue");
+
+        // For most tests, we override resourceDescription.
+        state.resourceDescriptionLink = null;
+
+        state.diskDescriptionLinks = diskDescriptionLinks;
+        state.networkDescriptionLinks = networkDescriptionLinks;
+
+        return state;
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private static Class<? extends Service>[] getFactoryServices() {
+        List<Class<? extends Service>> services = new ArrayList<>();
+        Collections.addAll(services, ModelServices.getFactories());
+        Collections.addAll(services, TaskServices.getFactories());
+        Collections.addAll(services, MockAdapter.getFactories());
+        return services.toArray((Class<? extends Service>[]) new Class[services
+                .size()]);
     }
 
     /**
-     * Call task with a template resource description (ResourceAllocationTaskState.resourceDescriptionLink).
+     * This class implements tests for the constructor.
      */
-    @Test
-    public void testSuccessWithResourceDescription() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
+    public static class ConstructorTest {
 
-      createParentCompute(host, resourcePool);
+        private ResourceAllocationTaskService provisionComputeTaskService;
 
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+        @Before
+        public void setUpTest() {
+            this.provisionComputeTaskService = new ResourceAllocationTaskService();
+        }
 
-      ResourceDescriptionService.ResourceDescription rd = createResourceDescription(host, cd,
-          createDiskDescription(host),
-          createNetworkDescription(host));
+        @Test
+        public void testServiceOptions() {
 
-      ResourceAllocationTaskState startState = createAllocationRequestWithResourceDescription(resourcePool, cd, rd);
+            EnumSet<Service.ServiceOption> expected = EnumSet.of(
+                    Service.ServiceOption.CONCURRENT_GET_HANDLING,
+                    Service.ServiceOption.PERSISTENCE,
+                    Service.ServiceOption.REPLICATION,
+                    Service.ServiceOption.OWNER_SELECTION,
+                    Service.ServiceOption.INSTRUMENTATION);
 
-      ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class);
-
-      ResourceAllocationTaskState completeState = host.waitForServiceState(
-          ResourceAllocationTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
-
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FINISHED));
-    }
-
-    @Test
-    public void testMissingComputeDescription() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, null, null, null);
-
-      host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class,
-          IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testInvalidResourceCount() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
-      ResourceAllocationTaskState startState =
-          createAllocationRequest(resourcePool, "http://computeDescription", null, null);
-      startState.resourceCount = -1;
-
-      host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class,
-          IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testInvalidErrorThreshold() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
-      ResourceAllocationTaskState startState =
-          createAllocationRequest(resourcePool, "http://computeDescription", null, null);
-      startState.errorThreshold = -1;
-
-      host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class,
-          IllegalArgumentException.class);
-    }
-  }
-
-  /**
-   * This class implements tests for QUERYING_AVAILABLE_COMPUTE_RESOURCES substage.
-   */
-  public class QueryAvailableComputeResourcesTest extends BaseModelTest {
-    @Override
-    protected Class[] getFactoryServices() {
-      return ResourceAllocationTaskServiceTest.getFactoryServices();
+            assertThat(this.provisionComputeTaskService.getOptions(),
+                    is(expected));
+        }
     }
 
     /**
-     * Do not create parent compute, and resource allocation request will fail.
+     * This class implements tests for the handleStart method.
      */
-    @Test
-    public void testNoResourcesFound() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
+    public static class HandleStartTest extends BaseModelTest {
+        @Override
+        protected Class<? extends Service>[] getFactoryServices() {
+            return ResourceAllocationTaskServiceTest.getFactoryServices();
+        }
 
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+        @Before
+        public void setUpClass() throws Throwable {
+            super.setUpClass();
+        }
 
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, cd.documentSelfLink, null, null);
+        @Test
+        public void testSuccess() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
 
-      try {
-        // Lower timeout to 5 seconds
-        host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(5));
+            createParentCompute(host, resourcePool);
 
-        ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-            ResourceAllocationTaskFactoryService.SELF_LINK,
-            startState,
-            ResourceAllocationTaskState.class);
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
-        ResourceAllocationTaskState completeState = host.waitForServiceState(
-            ResourceAllocationTaskState.class,
-            returnState.documentSelfLink,
-            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-        );
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, cd.documentSelfLink,
+                    createDiskDescription(host), createNetworkDescription(host));
 
-        assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FAILED));
-        assertThat(completeState.taskInfo.failure.message,
-            is("No compute resources available with poolId:" + resourcePool));
-      } finally {
-        host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
-      }
+            ResourceAllocationTaskState returnState = host
+                    .postServiceSynchronously(
+                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            startState, ResourceAllocationTaskState.class);
+
+            ResourceAllocationTaskState completeState = host
+                    .waitForServiceState(
+                            ResourceAllocationTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FINISHED));
+        }
+
+        /**
+         * Call task with a template resource description
+         * (ResourceAllocationTaskState.resourceDescriptionLink).
+         */
+        @Test
+        public void testSuccessWithResourceDescription() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+
+            createParentCompute(host, resourcePool);
+
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+
+            ResourceDescriptionService.ResourceDescription rd = createResourceDescription(
+                    host, cd, createDiskDescription(host),
+                    createNetworkDescription(host));
+
+            ResourceAllocationTaskState startState = createAllocationRequestWithResourceDescription(
+                    resourcePool, cd, rd);
+
+            ResourceAllocationTaskState returnState = host
+                    .postServiceSynchronously(
+                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            startState, ResourceAllocationTaskState.class);
+
+            ResourceAllocationTaskState completeState = host
+                    .waitForServiceState(
+                            ResourceAllocationTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FINISHED));
+        }
+
+        @Test
+        public void testMissingComputeDescription() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, null, null, null);
+
+            host.postServiceSynchronously(
+                    ResourceAllocationTaskFactoryService.SELF_LINK, startState,
+                    ResourceAllocationTaskState.class,
+                    IllegalArgumentException.class);
+        }
+
+        @Test
+        public void testInvalidResourceCount() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, "http://computeDescription", null, null);
+            startState.resourceCount = -1;
+
+            host.postServiceSynchronously(
+                    ResourceAllocationTaskFactoryService.SELF_LINK, startState,
+                    ResourceAllocationTaskState.class,
+                    IllegalArgumentException.class);
+        }
+
+        @Test
+        public void testInvalidErrorThreshold() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, "http://computeDescription", null, null);
+            startState.errorThreshold = -1;
+
+            host.postServiceSynchronously(
+                    ResourceAllocationTaskFactoryService.SELF_LINK, startState,
+                    ResourceAllocationTaskState.class,
+                    IllegalArgumentException.class);
+        }
     }
 
     /**
-     * Create parent compute shortly after the ResourceAllocationTask is called, the task should be able
-     * to retry and complete successfully.
+     * This class implements tests for QUERYING_AVAILABLE_COMPUTE_RESOURCES
+     * substage.
      */
-    @Test
-    public void testParentResourceBecomeAvailable() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
+    public static class QueryAvailableComputeResourcesTest extends
+            BaseModelTest {
+        @Override
+        protected Class<? extends Service>[] getFactoryServices() {
+            return ResourceAllocationTaskServiceTest.getFactoryServices();
+        }
 
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+        @Before
+        public void setUpClass() throws Throwable {
+            super.setUpClass();
+        }
 
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, cd.documentSelfLink, null, null);
-      ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class);
+        /**
+         * Do not create parent compute, and resource allocation request will
+         * fail.
+         */
+        @Test
+        public void testNoResourcesFound() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
 
-      Thread.sleep(1500);
-      createParentCompute(host, resourcePool);
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
-      ResourceAllocationTaskState completeState = host.waitForServiceState(
-          ResourceAllocationTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, cd.documentSelfLink, null, null);
 
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FINISHED));
+            try {
+                // Lower timeout to 5 seconds
+                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(5));
+
+                ResourceAllocationTaskState returnState = host
+                        .postServiceSynchronously(
+                                ResourceAllocationTaskFactoryService.SELF_LINK,
+                                startState, ResourceAllocationTaskState.class);
+
+                ResourceAllocationTaskState completeState = host
+                        .waitForServiceState(
+                                ResourceAllocationTaskState.class,
+                                returnState.documentSelfLink,
+                                state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                        .ordinal());
+
+                assertThat(completeState.taskInfo.stage,
+                        is(TaskState.TaskStage.FAILED));
+                assertThat(completeState.taskInfo.failure.message,
+                        is("No compute resources available with poolId:"
+                                + resourcePool));
+            } finally {
+                host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
+            }
+        }
+
+        /**
+         * Create parent compute shortly after the ResourceAllocationTask is
+         * called, the task should be able to retry and complete successfully.
+         */
+        @Test
+        public void testParentResourceBecomeAvailable() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, cd.documentSelfLink, null, null);
+            ResourceAllocationTaskState returnState = host
+                    .postServiceSynchronously(
+                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            startState, ResourceAllocationTaskState.class);
+
+            Thread.sleep(1500);
+            createParentCompute(host, resourcePool);
+
+            ResourceAllocationTaskState completeState = host
+                    .waitForServiceState(
+                            ResourceAllocationTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FINISHED));
+        }
+
+        @Test
+        public void testWrongResourcePool() throws Throwable {
+            String resourcePool1 = UUID.randomUUID().toString();
+            String resourcePool2 = UUID.randomUUID().toString();
+
+            createParentCompute(host, resourcePool1, ZONE_ID);
+
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool2, cd.documentSelfLink, null, null);
+
+            try {
+                // Lower timeout to 5 seconds
+                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(5));
+
+                ResourceAllocationTaskState returnState = host
+                        .postServiceSynchronously(
+                                ResourceAllocationTaskFactoryService.SELF_LINK,
+                                startState, ResourceAllocationTaskState.class);
+
+                ResourceAllocationTaskState completeState = host
+                        .waitForServiceState(
+                                ResourceAllocationTaskState.class,
+                                returnState.documentSelfLink,
+                                state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                        .ordinal());
+
+                assertThat(completeState.taskInfo.stage,
+                        is(TaskState.TaskStage.FAILED));
+                assertThat(completeState.taskInfo.failure.message,
+                        is("No compute resources available with poolId:"
+                                + resourcePool2));
+            } finally {
+                host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
+            }
+        }
+
+        @Test
+        public void testWrongZone() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+
+            createParentCompute(host, resourcePool, "other-zone");
+
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, cd.documentSelfLink, null, null);
+
+            try {
+                // Lower timeout to 5 seconds
+                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(5));
+
+                ResourceAllocationTaskState returnState = host
+                        .postServiceSynchronously(
+                                ResourceAllocationTaskFactoryService.SELF_LINK,
+                                startState, ResourceAllocationTaskState.class);
+
+                ResourceAllocationTaskState completeState = host
+                        .waitForServiceState(
+                                ResourceAllocationTaskState.class,
+                                returnState.documentSelfLink,
+                                state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                        .ordinal());
+
+                assertThat(completeState.taskInfo.stage,
+                        is(TaskState.TaskStage.FAILED));
+                assertThat(completeState.taskInfo.failure.message,
+                        is("No compute resources available with poolId:"
+                                + resourcePool));
+            } finally {
+                host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
+            }
+        }
     }
 
-    @Test
-    public void testWrongResourcePool() throws Throwable {
-      String resourcePool1 = UUID.randomUUID().toString();
-      String resourcePool2 = UUID.randomUUID().toString();
+    /**
+     * This class implements tests for PROVISIONING_VM_GUESTS /
+     * PROVISIONING_CONTAINERS substage.
+     */
+    public static class ComputeResourceProvisioningTest extends BaseModelTest {
+        @Override
+        protected Class<? extends Service>[] getFactoryServices() {
+            return ResourceAllocationTaskServiceTest.getFactoryServices();
+        }
 
-      createParentCompute(host, resourcePool1, ZONE_ID);
+        @Before
+        public void setUpClass() throws Throwable {
+            super.setUpClass();
+        }
 
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+        @Test
+        public void testNoDisk() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
 
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool2, cd.documentSelfLink, null, null);
+            createParentCompute(host, resourcePool);
 
-      try {
-        // Lower timeout to 5 seconds
-        host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(5));
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
-        ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-            ResourceAllocationTaskFactoryService.SELF_LINK,
-            startState,
-            ResourceAllocationTaskState.class);
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, cd.documentSelfLink, null,
+                    createNetworkDescription(host));
 
-        ResourceAllocationTaskState completeState = host.waitForServiceState(
-            ResourceAllocationTaskState.class,
-            returnState.documentSelfLink,
-            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-        );
+            ResourceAllocationTaskState returnState = host
+                    .postServiceSynchronously(
+                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            startState, ResourceAllocationTaskState.class);
 
-        assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FAILED));
-        assertThat(completeState.taskInfo.failure.message,
-            is("No compute resources available with poolId:" + resourcePool2));
-      } finally {
-        host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
-      }
+            ResourceAllocationTaskState completeState = host
+                    .waitForServiceState(
+                            ResourceAllocationTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FINISHED));
+        }
+
+        @Test
+        public void testNoNetwork() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+
+            createParentCompute(host, resourcePool);
+
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, cd.documentSelfLink,
+                    createDiskDescription(host), null);
+
+            ResourceAllocationTaskState returnState = host
+                    .postServiceSynchronously(
+                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            startState, ResourceAllocationTaskState.class);
+
+            ResourceAllocationTaskState completeState = host
+                    .waitForServiceState(
+                            ResourceAllocationTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FINISHED));
+        }
+
+        @Test
+        public void testNoDiskOrNetwork() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+
+            createParentCompute(host, resourcePool);
+
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, cd.documentSelfLink, null, null);
+
+            ResourceAllocationTaskState returnState = host
+                    .postServiceSynchronously(
+                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            startState, ResourceAllocationTaskState.class);
+
+            ResourceAllocationTaskState completeState = host
+                    .waitForServiceState(
+                            ResourceAllocationTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FINISHED));
+        }
+
+        @Test
+        public void testProvisionDiskFailure() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+
+            createParentCompute(host, resourcePool);
+
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+
+            List<String> diskLinks = createDiskDescription(host);
+            diskLinks.add("http://bad-disk-link");
+
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, cd.documentSelfLink, diskLinks,
+                    createNetworkDescription(host));
+
+            ResourceAllocationTaskState returnState = host
+                    .postServiceSynchronously(
+                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            startState, ResourceAllocationTaskState.class);
+
+            ResourceAllocationTaskState completeState = host
+                    .waitForServiceState(
+                            ResourceAllocationTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FAILED));
+        }
+
+        @Test
+        public void testProvisionNetworkFailure() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+
+            createParentCompute(this.host, resourcePool);
+
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    this.host,
+                    MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockSuccessBootAdapter.SELF_LINK);
+
+            List<String> networkLinks = createNetworkDescription(this.host);
+            networkLinks.add("http://bad-network-link");
+
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, cd.documentSelfLink,
+                    createDiskDescription(this.host), networkLinks);
+
+            ResourceAllocationTaskState returnState = this.host
+                    .postServiceSynchronously(
+                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            startState, ResourceAllocationTaskState.class);
+
+            ResourceAllocationTaskState completeState = this.host
+                    .waitForServiceState(
+                            ResourceAllocationTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FAILED));
+        }
+
+        @Test
+        public void testProvisionCompulteFailure() throws Throwable {
+            String resourcePool = UUID.randomUUID().toString();
+
+            createParentCompute(this.host, resourcePool);
+
+            ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
+                    this.host,
+                    MockAdapter.MockFailureInstanceAdapter.SELF_LINK,
+                    MockAdapter.MockFailureBootAdapter.SELF_LINK);
+
+            ResourceAllocationTaskState startState = createAllocationRequest(
+                    resourcePool, cd.documentSelfLink,
+                    createDiskDescription(this.host),
+                    createNetworkDescription(this.host));
+
+            ResourceAllocationTaskState returnState = this.host
+                    .postServiceSynchronously(
+                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            startState, ResourceAllocationTaskState.class);
+
+            ResourceAllocationTaskState completeState = this.host
+                    .waitForServiceState(
+                            ResourceAllocationTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FAILED));
+        }
     }
-
-    @Test
-    public void testWrongZone() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
-
-      createParentCompute(host, resourcePool, "other-zone");
-
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
-
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, cd.documentSelfLink, null, null);
-
-      try {
-        // Lower timeout to 5 seconds
-        host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(5));
-
-        ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-            ResourceAllocationTaskFactoryService.SELF_LINK,
-            startState,
-            ResourceAllocationTaskState.class);
-
-        ResourceAllocationTaskState completeState = host.waitForServiceState(
-            ResourceAllocationTaskState.class,
-            returnState.documentSelfLink,
-            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-        );
-
-        assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FAILED));
-        assertThat(completeState.taskInfo.failure.message,
-            is("No compute resources available with poolId:" + resourcePool));
-      } finally {
-        host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
-      }
-    }
-  }
-
-  /**
-   * This class implements tests for PROVISIONING_VM_GUESTS / PROVISIONING_CONTAINERS substage.
-   */
-  public class ComputeResourceProvisioningTest extends BaseModelTest {
-    @Override
-    protected Class[] getFactoryServices() {
-      return ResourceAllocationTaskServiceTest.getFactoryServices();
-    }
-
-    @Test
-    public void testNoDisk() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
-
-      createParentCompute(host, resourcePool);
-
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
-
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, cd.documentSelfLink,
-          null,
-          createNetworkDescription(host));
-
-      ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class);
-
-      ResourceAllocationTaskState completeState = host.waitForServiceState(
-          ResourceAllocationTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
-
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FINISHED));
-    }
-
-    @Test
-    public void testNoNetwork() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
-
-      createParentCompute(host, resourcePool);
-
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
-
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, cd.documentSelfLink,
-          createDiskDescription(host),
-          null);
-
-      ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class);
-
-      ResourceAllocationTaskState completeState = host.waitForServiceState(
-          ResourceAllocationTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
-
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FINISHED));
-    }
-
-    @Test
-    public void testNoDiskOrNetwork() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
-
-      createParentCompute(host, resourcePool);
-
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
-
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, cd.documentSelfLink,
-          null,
-          null);
-
-      ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class);
-
-      ResourceAllocationTaskState completeState = host.waitForServiceState(
-          ResourceAllocationTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
-
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FINISHED));
-    }
-
-    @Test
-    public void testProvisionDiskFailure() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
-
-      createParentCompute(host, resourcePool);
-
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
-
-      List<String> diskLinks = createDiskDescription(host);
-      diskLinks.add("http://bad-disk-link");
-
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, cd.documentSelfLink,
-          diskLinks,
-          createNetworkDescription(host));
-
-      ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class);
-
-      ResourceAllocationTaskState completeState = host.waitForServiceState(
-          ResourceAllocationTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
-
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FAILED));
-    }
-
-    @Test
-    public void testProvisionNetworkFailure() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
-
-      createParentCompute(host, resourcePool);
-
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
-          MockAdapter.MockSuccessBootAdapter.SELF_LINK);
-
-      List<String> networkLinks = createNetworkDescription(host);
-      networkLinks.add("http://bad-network-link");
-
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, cd.documentSelfLink,
-          createDiskDescription(host),
-          networkLinks);
-
-      ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class);
-
-      ResourceAllocationTaskState completeState = host.waitForServiceState(
-          ResourceAllocationTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
-
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FAILED));
-    }
-
-    @Test
-    public void testProvisionCompulteFailure() throws Throwable {
-      String resourcePool = UUID.randomUUID().toString();
-
-      createParentCompute(host, resourcePool);
-
-      ComputeDescriptionService.ComputeDescription cd = createComputeDescription(host,
-          MockAdapter.MockFailureInstanceAdapter.SELF_LINK,
-          MockAdapter.MockFailureBootAdapter.SELF_LINK);
-
-      ResourceAllocationTaskState startState = createAllocationRequest(resourcePool, cd.documentSelfLink,
-          createDiskDescription(host),
-          createNetworkDescription(host));
-
-      ResourceAllocationTaskState returnState = host.postServiceSynchronously(
-          ResourceAllocationTaskFactoryService.SELF_LINK,
-          startState,
-          ResourceAllocationTaskState.class);
-
-      ResourceAllocationTaskState completeState = host.waitForServiceState(
-          ResourceAllocationTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
-
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FAILED));
-    }
-  }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -22,14 +22,15 @@ import com.vmware.xenon.common.Service;
  */
 public class ResourceDescriptionFactoryService extends FactoryService {
 
-  public static final String SELF_LINK = UriPaths.RESOURCES + "/resource-descriptions";
+    public static final String SELF_LINK = UriPaths.RESOURCES
+            + "/resource-descriptions";
 
-  public ResourceDescriptionFactoryService() {
-    super(ResourceDescriptionService.ResourceDescription.class);
-  }
+    public ResourceDescriptionFactoryService() {
+        super(ResourceDescriptionService.ResourceDescription.class);
+    }
 
-  @Override
-  public Service createServiceInstance() throws Throwable {
-    return new ResourceDescriptionService();
-  }
+    @Override
+    public Service createServiceInstance() throws Throwable {
+        return new ResourceDescriptionService();
+    }
 }

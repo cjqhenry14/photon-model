@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -13,34 +13,36 @@
 
 package com.vmware.photon.controller.model.adapterapi;
 
-import com.vmware.photon.controller.model.resources.ComputeService;
-
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.vmware.photon.controller.model.resources.ComputeService;
+
 /**
- * Request to the boot service, to configure the boot state of the host and initiate boot.
+ * Request to the boot service, to configure the boot state of the host and
+ * initiate boot.
  */
 public class ComputeBootRequest {
-  /**
-   * URI reference to compute.
-   */
-  public URI computeReference;
+    /**
+     * URI reference to compute.
+     */
+    public URI computeReference;
 
-  /**
-   * URI reference to provisioning task.
-   */
-  public URI provisioningTaskReference;
+    /**
+     * URI reference to provisioning task.
+     */
+    public URI provisioningTaskReference;
 
-  /**
-   * Boot device order.
-   */
-  public List<ComputeService.BootDevice> bootDeviceOrder = new ArrayList<>();
+    /**
+     * Boot device order.
+     */
+    public List<ComputeService.BootDevice> bootDeviceOrder = new ArrayList<>();
 
-  /**
-   * Value indicating whether the service should treat this as a mock request and complete the
-   * work flow without involving the underlying compute host infrastructure.
-   */
-  public boolean isMockRequest;
+    /**
+     * Value indicating whether the service should treat this as a mock request
+     * and complete the work flow without involving the underlying compute host
+     * infrastructure.
+     */
+    public boolean isMockRequest;
 }

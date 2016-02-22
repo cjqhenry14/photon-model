@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -13,44 +13,45 @@
 
 package com.vmware.photon.controller.model.resources;
 
+import java.util.UUID;
+
 import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
 
-import java.util.UUID;
-
 /**
  * Creates snapshot resource instances.
  */
 public class SnapshotFactoryService extends FactoryService {
-  public static final String SELF_LINK = UriPaths.RESOURCES + "/snapshots";
+    public static final String SELF_LINK = UriPaths.RESOURCES + "/snapshots";
 
-  public SnapshotFactoryService() {
-    super(SnapshotService.SnapshotState.class);
-  }
-
-  @Override
-  public void handlePost(Operation post) {
-    if (!post.hasBody()) {
-      post.fail(new IllegalArgumentException("body is required"));
-      return;
+    public SnapshotFactoryService() {
+        super(SnapshotService.SnapshotState.class);
     }
 
-    SnapshotService.SnapshotState initState = post.getBody(
-        SnapshotService.SnapshotState.class);
+    @Override
+    public void handlePost(Operation post) {
+        if (!post.hasBody()) {
+            post.fail(new IllegalArgumentException("body is required"));
+            return;
+        }
 
-    if (initState.id == null) {
-      initState.id = UUID.randomUUID().toString();
+        SnapshotService.SnapshotState initState = post
+                .getBody(SnapshotService.SnapshotState.class);
+
+        if (initState.id == null) {
+            initState.id = UUID.randomUUID().toString();
+        }
+
+        // the self link will be based on the id. We ignore it if its already
+        // set
+        initState.documentSelfLink = initState.id;
+        post.setBody(initState).complete();
     }
 
-    // the self link will be based on the id. We ignore it if its already set
-    initState.documentSelfLink = initState.id;
-    post.setBody(initState).complete();
-  }
-
-  @Override
-  public Service createServiceInstance() throws Throwable {
-    return new SnapshotService();
-  }
+    @Override
+    public Service createServiceInstance() throws Throwable {
+        return new SnapshotService();
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -13,56 +13,59 @@
 
 package com.vmware.photon.controller.model.helpers;
 
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.apache.commons.io.FileUtils;
+import org.junit.After;
+import org.junit.Before;
+
+import com.vmware.xenon.common.Service;
 
 /**
- * Abstract base class that creates a DCP ServiceHost
- * running all the model DCP services for unit-tests.
+ * Abstract base class that creates a DCP ServiceHost running all the model DCP
+ * services for unit-tests.
  */
 public abstract class BaseModelTest {
 
-  private static final int HOST_PORT = 0;
-  private static final Logger logger = LoggerFactory.getLogger(BaseModelTest.class);
+    private static final int HOST_PORT = 0;
+    private static final Logger logger = Logger.getLogger(BaseModelTest.class.getName());
 
-  protected TestHost host;
-  private Path sandboxDirectory;
+    protected TestHost host;
+    private Path sandboxDirectory;
 
-  protected abstract Class[] getFactoryServices();
+    protected abstract Class<? extends Service>[] getFactoryServices();
 
-  @BeforeClass
-  public void setUpClass() throws Throwable {
-    if (host == null) {
-      sandboxDirectory = Files.createTempDirectory(null);
-      host = new TestHost(HOST_PORT, sandboxDirectory, getFactoryServices());
-      host.start();
+    @Before
+    public void setUpClass() throws Throwable {
+        if (this.host == null) {
+            this.sandboxDirectory = Files.createTempDirectory(null);
+            this.host = new TestHost(HOST_PORT, this.sandboxDirectory,
+                    getFactoryServices());
+            this.host.start();
+        }
     }
-  }
 
-  @AfterClass
-  public void tearDownClass() throws Throwable {
-    if (host != null) {
-      host.stop();
-      host = null;
+    @After
+    public void tearDownClass() throws Throwable {
+        if (this.host != null) {
+            this.host.stop();
+            this.host = null;
+        }
+        File sandbox = new File(this.sandboxDirectory.toUri());
+        if (sandbox.exists()) {
+            try {
+                FileUtils.forceDelete(sandbox);
+            } catch (FileNotFoundException | IllegalArgumentException ex) {
+                logger.log(Level.FINE, "Sandbox file was not found");
+            } catch (IOException ex) {
+                FileUtils.forceDeleteOnExit(sandbox);
+            }
+        }
     }
-    File sandbox = new File(sandboxDirectory.toUri());
-    if (sandbox.exists()) {
-      try {
-        FileUtils.forceDelete(sandbox);
-      } catch (FileNotFoundException | IllegalArgumentException ex) {
-        logger.debug("Sandbox file was not found");
-      } catch (IOException ex) {
-        FileUtils.forceDeleteOnExit(sandbox);
-      }
-    }
-  }
 }

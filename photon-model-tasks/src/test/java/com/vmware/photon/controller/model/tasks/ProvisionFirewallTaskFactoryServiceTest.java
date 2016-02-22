@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -11,44 +11,46 @@
  * specific language governing permissions and limitations under the License.
  */
 
-
 package com.vmware.photon.controller.model.tasks;
 
-import com.vmware.xenon.common.Service;
-
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import java.util.EnumSet;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 
-import java.util.EnumSet;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.vmware.xenon.common.Service;
 
 /**
- * This class implements tests for the {@link ProvisionFirewallTaskFactoryService} class.
+ * This class implements tests for the
+ * {@link ProvisionFirewallTaskFactoryService} class.
  */
 public class ProvisionFirewallTaskFactoryServiceTest {
-  private ProvisionFirewallTaskFactoryService provisionFirewallTaskFactoryService;
+    private ProvisionFirewallTaskFactoryService provisionFirewallTaskFactoryService;
 
-  @BeforeMethod
-  public void setupTest() {
-    provisionFirewallTaskFactoryService = new ProvisionFirewallTaskFactoryService();
-  }
+    @Before
+    public void setupTest() {
+        this.provisionFirewallTaskFactoryService = new ProvisionFirewallTaskFactoryService();
+    }
 
-  @Test
-  public void testServiceOptions() {
-    EnumSet<Service.ServiceOption> expected = EnumSet.of(
-        Service.ServiceOption.REPLICATION,
-        Service.ServiceOption.CONCURRENT_GET_HANDLING,
-        Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
-        Service.ServiceOption.FACTORY);
-    assertThat(provisionFirewallTaskFactoryService.getOptions(), is(expected));
-  }
+    @Test
+    public void testServiceOptions() {
+        EnumSet<Service.ServiceOption> expected = EnumSet.of(
+                Service.ServiceOption.REPLICATION,
+                Service.ServiceOption.CONCURRENT_GET_HANDLING,
+                Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
+                Service.ServiceOption.FACTORY);
+        assertThat(this.provisionFirewallTaskFactoryService.getOptions(),
+                is(expected));
+    }
 
-  @Test
-  public void testCreateServiceInstance() throws Throwable {
-    Service service = provisionFirewallTaskFactoryService.createServiceInstance();
-    assertThat(service, instanceOf(ProvisionFirewallTaskService.class));
-  }
+    @Test
+    public void testCreateServiceInstance() throws Throwable {
+        Service service = this.provisionFirewallTaskFactoryService
+                .createServiceInstance();
+        assertThat(service, instanceOf(ProvisionFirewallTaskService.class));
+    }
 }

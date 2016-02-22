@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -13,43 +13,45 @@
 
 package com.vmware.photon.controller.model.resources;
 
-import com.vmware.xenon.common.Service;
+import java.util.EnumSet;
 
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 
-import java.util.EnumSet;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.vmware.xenon.common.Service;
 
 /**
  * This class implements tests for the {@link ResourcePoolFactoryService} class.
  */
 public class ResourcePoolFactoryServiceTest {
-  private ResourcePoolFactoryService resourcePoolFactoryService;
+    private ResourcePoolFactoryService resourcePoolFactoryService;
 
-  @BeforeMethod
-  public void setUpTest() {
-    resourcePoolFactoryService = new ResourcePoolFactoryService();
-  }
+    @Before
+    public void setUpTest() {
+        this.resourcePoolFactoryService = new ResourcePoolFactoryService();
+    }
 
-  @Test
-  public void testServiceOptions() {
+    @Test
+    public void testServiceOptions() {
 
-    EnumSet<Service.ServiceOption> expected = EnumSet.of(
-        Service.ServiceOption.CONCURRENT_GET_HANDLING,
-        Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
-        Service.ServiceOption.FACTORY,
-        Service.ServiceOption.REPLICATION,
-        Service.ServiceOption.HTML_USER_INTERFACE);
+        EnumSet<Service.ServiceOption> expected = EnumSet.of(
+                Service.ServiceOption.CONCURRENT_GET_HANDLING,
+                Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
+                Service.ServiceOption.FACTORY,
+                Service.ServiceOption.REPLICATION,
+                Service.ServiceOption.HTML_USER_INTERFACE);
 
-    assertThat(resourcePoolFactoryService.getOptions(), is(expected));
-  }
+        assertThat(this.resourcePoolFactoryService.getOptions(), is(expected));
+    }
 
-  @Test
-  public void testCreateServiceInstance() throws Throwable {
-    Service service = resourcePoolFactoryService.createServiceInstance();
-    assertThat(service, instanceOf(ResourcePoolService.class));
-  }
+    @Test
+    public void testCreateServiceInstance() throws Throwable {
+        Service service = this.resourcePoolFactoryService
+                .createServiceInstance();
+        assertThat(service, instanceOf(ResourcePoolService.class));
+    }
 }

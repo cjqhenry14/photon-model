@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -13,42 +13,44 @@
 
 package com.vmware.photon.controller.model.resources;
 
+import java.util.UUID;
+
 import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
 
-import java.util.UUID;
-
 /**
  * Creates compute host resource instances.
  */
 public class ComputeFactoryService extends FactoryService {
-  public static final String SELF_LINK = UriPaths.RESOURCES + "/compute";
+    public static final String SELF_LINK = UriPaths.RESOURCES + "/compute";
 
-  public ComputeFactoryService() {
-    super(ComputeService.ComputeState.class);
-  }
-
-  @Override
-  public void handlePost(Operation post) {
-    if (!post.hasBody()) {
-      post.fail(new IllegalArgumentException("body is required"));
-      return;
+    public ComputeFactoryService() {
+        super(ComputeService.ComputeState.class);
     }
 
-    ComputeService.ComputeState initState = post.getBody(ComputeService.ComputeState.class);
-    if (initState.id == null) {
-      initState.id = UUID.randomUUID().toString();
+    @Override
+    public void handlePost(Operation post) {
+        if (!post.hasBody()) {
+            post.fail(new IllegalArgumentException("body is required"));
+            return;
+        }
+
+        ComputeService.ComputeState initState = post
+                .getBody(ComputeService.ComputeState.class);
+        if (initState.id == null) {
+            initState.id = UUID.randomUUID().toString();
+        }
+
+        // the self link will be based on the id. We ignore it if its already
+        // set
+        initState.documentSelfLink = initState.id;
+        post.setBody(initState).complete();
     }
 
-    // the self link will be based on the id. We ignore it if its already set
-    initState.documentSelfLink = initState.id;
-    post.setBody(initState).complete();
-  }
-
-  @Override
-  public Service createServiceInstance() throws Throwable {
-    return new ComputeService();
-  }
+    @Override
+    public Service createServiceInstance() throws Throwable {
+        return new ComputeService();
+    }
 }

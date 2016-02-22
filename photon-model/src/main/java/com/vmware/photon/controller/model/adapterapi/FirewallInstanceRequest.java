@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -20,41 +20,42 @@ import java.net.URI;
  */
 public class FirewallInstanceRequest {
 
-  /**
-   * Instance Request type.
-   */
-  public enum InstanceRequestType {
-    CREATE, DELETE
-  }
+    /**
+     * Instance Request type.
+     */
+    public enum InstanceRequestType {
+        CREATE, DELETE
+    }
 
-  /**
-   * Destroy or create a network instance on the given compute.
-   */
-  public InstanceRequestType requestType;
+    /**
+     * Destroy or create a network instance on the given compute.
+     */
+    public InstanceRequestType requestType;
 
-  /**
-   * Link to secrets.
-   */
-  public String authCredentialsLink;
+    /**
+     * Link to secrets.
+     */
+    public String authCredentialsLink;
 
-  /**
-   * The resource pool the network exists in.
-   */
-  public String resourcePoolLink;
+    /**
+     * The resource pool the network exists in.
+     */
+    public String resourcePoolLink;
 
-  /**
-   * The firewall instance being realized.
-   */
-  public URI firewallReference;
+    /**
+     * The firewall instance being realized.
+     */
+    public URI firewallReference;
 
-  /**
-   * Task tracking the state of this request. Set by run-time.
-   */
-  public URI provisioningTaskReference;
+    /**
+     * Task tracking the state of this request. Set by run-time.
+     */
+    public URI provisioningTaskReference;
 
-  /**
-   * Value indicating whether the service should treat this as a mock request and complete the
-   * work flow without involving the underlying compute host infrastructure.
-   */
-  public boolean isMockRequest;
+    /**
+     * Value indicating whether the service should treat this as a mock request
+     * and complete the work flow without involving the underlying compute host
+     * infrastructure.
+     */
+    public boolean isMockRequest;
 }

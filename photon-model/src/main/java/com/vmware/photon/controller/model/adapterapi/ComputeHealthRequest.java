@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -19,8 +19,8 @@ import java.net.URI;
  * Defines the request body for getting health status of a Compute instance.
  */
 public class ComputeHealthRequest {
-  /**
-   * URI reference to compute instance.
-   */
-  public URI computeReference;
+    /**
+     * URI reference to compute instance.
+     */
+    public URI computeReference;
 }

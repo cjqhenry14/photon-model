@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -20,19 +20,20 @@ import java.net.URI;
  */
 public class SnapshotRequest {
 
-  /**
-   * URI reference to the snapshot service instance.
-   */
-  public URI snapshotReference;
+    /**
+     * URI reference to the snapshot service instance.
+     */
+    public URI snapshotReference;
 
-  /**
-   * URI reference to the snapshot task service instance.
-   */
-  public URI snapshotTaskReference;
+    /**
+     * URI reference to the snapshot task service instance.
+     */
+    public URI snapshotTaskReference;
 
-  /**
-   * Value indicating whether the service should treat this as a mock request and complete the
-   * work flow without involving the underlying compute host infrastructure.
-   */
-  public boolean isMockRequest;
+    /**
+     * Value indicating whether the service should treat this as a mock request
+     * and complete the work flow without involving the underlying compute host
+     * infrastructure.
+     */
+    public boolean isMockRequest;
 }

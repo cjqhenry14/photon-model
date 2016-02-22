@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-  package com.vmware.photon.controller.model;
+package com.vmware.photon.controller.model;
 
 /**
  * ServiceUriPaths
@@ -19,9 +19,9 @@
  * Service paths used by the photon model.
  */
 public class UriPaths {
-  public static final int GO_DCP_HOST_PORT = 8082;
-  public static final String GO_DCP_HOST_PROCESS_NAME = "go-dcp";
-  public static final String PROVISIONING = "/provisioning";
-  public static final String RESOURCES = "/resources";
-  public static final String RESOURCES_NETWORKS = RESOURCES + "/networks";
+    public static final int GO_DCP_HOST_PORT = 8082;
+    public static final String GO_DCP_HOST_PROCESS_NAME = "go-dcp";
+    public static final String PROVISIONING = "/provisioning";
+    public static final String RESOURCES = "/resources";
+    public static final String RESOURCES_NETWORKS = RESOURCES + "/networks";
 }

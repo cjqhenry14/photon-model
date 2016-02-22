@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -10,7 +10,9 @@
  * conditions of any kind, EITHER EXPRESS OR IMPLIED.  See the License for the
  * specific language governing permissions and limitations under the License.
  */
+
 package com.vmware.photon.controller.model.tasks;
+
 import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Service;
@@ -19,14 +21,15 @@ import com.vmware.xenon.common.Service;
  * Factory for snapshot provisioning tasks.
  */
 public class SnapshotTaskFactoryService extends FactoryService {
-  public static final String SELF_LINK = UriPaths.PROVISIONING + "/snapshot-tasks";
+    public static final String SELF_LINK = UriPaths.PROVISIONING
+            + "/snapshot-tasks";
 
-  public SnapshotTaskFactoryService() {
-    super(SnapshotTaskService.SnapshotTaskState.class);
-  }
+    public SnapshotTaskFactoryService() {
+        super(SnapshotTaskService.SnapshotTaskState.class);
+    }
 
-  @Override
-  public Service createServiceInstance() throws Throwable {
-    return new SnapshotTaskService();
-  }
+    @Override
+    public Service createServiceInstance() throws Throwable {
+        return new SnapshotTaskService();
+    }
 }

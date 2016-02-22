@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -20,8 +20,12 @@ import com.vmware.photon.controller.model.UriPaths;
  */
 public class AWSUriPaths {
 
-    public static final String PROVISIONING_AWS = UriPaths.PROVISIONING + "/aws";
-    public static final String AWS_INSTANCE_SERVICE = PROVISIONING_AWS + "/instance-service";
-    public static final String AWS_NETWORK_SERVICE = PROVISIONING_AWS + "/network-service";
-    public static final String AWS_FIREWALL_SERVICE = PROVISIONING_AWS + "/firewall-service";
+    public static final String PROVISIONING_AWS = UriPaths.PROVISIONING
+            + "/aws";
+    public static final String AWS_INSTANCE_SERVICE = PROVISIONING_AWS
+            + "/instance-service";
+    public static final String AWS_NETWORK_SERVICE = PROVISIONING_AWS
+            + "/network-service";
+    public static final String AWS_FIREWALL_SERVICE = PROVISIONING_AWS
+            + "/firewall-service";
 }

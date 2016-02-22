@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -23,19 +23,22 @@ import com.vmware.photon.controller.model.resources.ResourceDescriptionFactorySe
 import com.vmware.photon.controller.model.resources.ResourcePoolFactoryService;
 import com.vmware.photon.controller.model.resources.SnapshotFactoryService;
 
+import com.vmware.xenon.common.Service;
+
 /**
  * Service factories used in Photon Model package.
  */
 public class ModelServices {
-  public static final Class[] FACTORIES = {
-      ComputeFactoryService.class,
-      ComputeDescriptionFactoryService.class,
-      DiskFactoryService.class,
-      FirewallFactoryService.class,
-      NetworkFactoryService.class,
-      NetworkInterfaceFactoryService.class,
-      ResourceDescriptionFactoryService.class,
-      ResourcePoolFactoryService.class,
-      SnapshotFactoryService.class
-  };
+    @SuppressWarnings("rawtypes")
+    private static final Class[] FACTORIES = { ComputeFactoryService.class,
+            ComputeDescriptionFactoryService.class, DiskFactoryService.class,
+            FirewallFactoryService.class, NetworkFactoryService.class,
+            NetworkInterfaceFactoryService.class,
+            ResourceDescriptionFactoryService.class,
+            ResourcePoolFactoryService.class, SnapshotFactoryService.class };
+
+    @SuppressWarnings("unchecked")
+    public static Class<? extends Service>[] getFactories() {
+        return (Class<?extends Service>[])FACTORIES;
+    }
 }

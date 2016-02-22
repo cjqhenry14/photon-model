@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -22,18 +22,25 @@ import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskFactoryServic
 import com.vmware.photon.controller.model.tasks.SnapshotTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.SshCommandTaskFactoryService;
 
+import com.vmware.xenon.common.Service;
+
 /**
  * Service factories used in Photon Model Task package.
  */
 public class TaskServices {
-  public static final Class[] FACTORIES = {
-      ProvisionComputeTaskFactoryService.class,
-      ProvisionFirewallTaskFactoryService.class,
-      ProvisionNetworkTaskFactoryService.class,
-      ResourceAllocationTaskFactoryService.class,
-      ResourceEnumerationTaskFactoryService.class,
-      ResourceRemovalTaskFactoryService.class,
-      SnapshotTaskFactoryService.class,
-      SshCommandTaskFactoryService.class
-  };
+    @SuppressWarnings("rawtypes")
+    private static final Class[] FACTORIES = {
+            ProvisionComputeTaskFactoryService.class,
+            ProvisionFirewallTaskFactoryService.class,
+            ProvisionNetworkTaskFactoryService.class,
+            ResourceAllocationTaskFactoryService.class,
+            ResourceEnumerationTaskFactoryService.class,
+            ResourceRemovalTaskFactoryService.class,
+            SnapshotTaskFactoryService.class,
+            SshCommandTaskFactoryService.class };
+
+    @SuppressWarnings("unchecked")
+    public static Class<? extends Service>[] getFactories() {
+        return (Class<?extends Service>[])FACTORIES;
+    }
 }

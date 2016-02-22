@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -16,48 +16,47 @@ package com.vmware.photon.controller.model.adapterapi;
 import java.net.URI;
 
 /**
- * Request to create a compute host. The host reference provides detailed information on the host
- * type and required services to complete the request.
+ * Request to create a compute host. The host reference provides detailed
+ * information on the host type and required services to complete the request.
  */
 public class ComputeInstanceRequest {
 
-  /**
-   * Instance request type.
-   */
-  public enum InstanceRequestType {
-    CREATE,
-    DELETE,
-    VALIDATE_CREDENTIALS
-  }
+    /**
+     * Instance request type.
+     */
+    public enum InstanceRequestType {
+        CREATE, DELETE, VALIDATE_CREDENTIALS
+    }
 
-  /**
-   * URI reference to compute.
-   */
-  public URI computeReference;
+    /**
+     * URI reference to compute.
+     */
+    public URI computeReference;
 
-  /**
-   * URI reference to provisioning task.
-   */
-  public URI provisioningTaskReference;
+    /**
+     * URI reference to provisioning task.
+     */
+    public URI provisioningTaskReference;
 
-  /**
-   * Request type.
-   */
-  public InstanceRequestType requestType;
+    /**
+     * Request type.
+     */
+    public InstanceRequestType requestType;
 
-  /**
-   * Auth credentials. Used for validation of a host.
-   */
-  public String authCredentialsLink;
+    /**
+     * Auth credentials. Used for validation of a host.
+     */
+    public String authCredentialsLink;
 
-  /**
-   * Region Id.
-   */
-  public String regionId;
+    /**
+     * Region Id.
+     */
+    public String regionId;
 
-  /**
-   * Value indicating whether the service should treat this as a mock request and complete the
-   * work flow without involving the underlying compute host infrastructure.
-   */
-  public boolean isMockRequest;
+    /**
+     * Value indicating whether the service should treat this as a mock request
+     * and complete the work flow without involving the underlying compute host
+     * infrastructure.
+     */
+    public boolean isMockRequest;
 }

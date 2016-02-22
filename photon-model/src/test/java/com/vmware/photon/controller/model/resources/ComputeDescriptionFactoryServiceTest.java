@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -13,42 +13,46 @@
 
 package com.vmware.photon.controller.model.resources;
 
-import com.vmware.xenon.common.Service;
+import java.util.EnumSet;
 
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 
-import java.util.EnumSet;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.vmware.xenon.common.Service;
 
 /**
- * This class implements tests for the {@link ComputeDescriptionFactoryService} class.
+ * This class implements tests for the {@link ComputeDescriptionFactoryService}
+ * class.
  */
 public class ComputeDescriptionFactoryServiceTest {
-  private ComputeDescriptionFactoryService computeDescriptionFactoryService;
+    private ComputeDescriptionFactoryService computeDescriptionFactoryService;
 
-  @BeforeMethod
-  public void setUpTest() {
-    computeDescriptionFactoryService = new ComputeDescriptionFactoryService();
-  }
+    @Before
+    public void setUpTest() {
+        this.computeDescriptionFactoryService = new ComputeDescriptionFactoryService();
+    }
 
-  @Test
-  public void testServiceOptions() {
+    @Test
+    public void testServiceOptions() {
 
-    EnumSet<Service.ServiceOption> expected = EnumSet.of(
-        Service.ServiceOption.CONCURRENT_GET_HANDLING,
-        Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
-        Service.ServiceOption.FACTORY,
-        Service.ServiceOption.REPLICATION);
+        EnumSet<Service.ServiceOption> expected = EnumSet.of(
+                Service.ServiceOption.CONCURRENT_GET_HANDLING,
+                Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
+                Service.ServiceOption.FACTORY,
+                Service.ServiceOption.REPLICATION);
 
-    assertThat(computeDescriptionFactoryService.getOptions(), is(expected));
-  }
+        assertThat(this.computeDescriptionFactoryService.getOptions(),
+                is(expected));
+    }
 
-  @Test
-  public void testCreateServiceInstance() throws Throwable {
-    Service service = computeDescriptionFactoryService.createServiceInstance();
-    assertThat(service, instanceOf(ComputeDescriptionService.class));
-  }
+    @Test
+    public void testCreateServiceInstance() throws Throwable {
+        Service service = this.computeDescriptionFactoryService
+                .createServiceInstance();
+        assertThat(service, instanceOf(ComputeDescriptionService.class));
+    }
 }

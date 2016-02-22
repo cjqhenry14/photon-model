@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -10,44 +10,47 @@
  * conditions of any kind, EITHER EXPRESS OR IMPLIED.  See the License for the
  * specific language governing permissions and limitations under the License.
  */
+
 package com.vmware.photon.controller.model.tasks;
 
-import com.vmware.xenon.common.Service;
+import java.util.EnumSet;
 
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 
-import java.util.EnumSet;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.vmware.xenon.common.Service;
 
 /**
  * This class implements tests for the {@link SnapshotTaskFactoryService} class.
  */
 public class SnapshotTaskFactoryServiceTest {
-  private SnapshotTaskFactoryService snapshotTaskFactoryService;
+    private SnapshotTaskFactoryService snapshotTaskFactoryService;
 
-  @BeforeMethod
-  public void setUpTest() {
-    snapshotTaskFactoryService = new SnapshotTaskFactoryService();
-  }
+    @Before
+    public void setUpTest() {
+        this.snapshotTaskFactoryService = new SnapshotTaskFactoryService();
+    }
 
-  @Test
-  public void testServiceOptions() {
+    @Test
+    public void testServiceOptions() {
 
-    EnumSet<Service.ServiceOption> expected = EnumSet.of(
-        Service.ServiceOption.REPLICATION,
-        Service.ServiceOption.CONCURRENT_GET_HANDLING,
-        Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
-        Service.ServiceOption.FACTORY);
+        EnumSet<Service.ServiceOption> expected = EnumSet.of(
+                Service.ServiceOption.REPLICATION,
+                Service.ServiceOption.CONCURRENT_GET_HANDLING,
+                Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
+                Service.ServiceOption.FACTORY);
 
-    assertThat(snapshotTaskFactoryService.getOptions(), is(expected));
-  }
+        assertThat(this.snapshotTaskFactoryService.getOptions(), is(expected));
+    }
 
-  @Test
-  public void testCreateServiceInstance() throws Throwable {
-    Service service = snapshotTaskFactoryService.createServiceInstance();
-    assertThat(service, instanceOf(SnapshotTaskService.class));
-  }
+    @Test
+    public void testCreateServiceInstance() throws Throwable {
+        Service service = this.snapshotTaskFactoryService
+                .createServiceInstance();
+        assertThat(service, instanceOf(SnapshotTaskService.class));
+    }
 }

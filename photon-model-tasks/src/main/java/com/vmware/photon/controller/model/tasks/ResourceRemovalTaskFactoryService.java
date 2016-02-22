@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -21,14 +21,15 @@ import com.vmware.xenon.common.Service;
  * Factory for resource removal tasks.
  */
 public class ResourceRemovalTaskFactoryService extends FactoryService {
-  public static final String SELF_LINK = UriPaths.PROVISIONING + "/resource-removal-tasks";
+    public static final String SELF_LINK = UriPaths.PROVISIONING
+            + "/resource-removal-tasks";
 
-  public ResourceRemovalTaskFactoryService() {
-    super(ResourceRemovalTaskService.ResourceRemovalTaskState.class);
-  }
+    public ResourceRemovalTaskFactoryService() {
+        super(ResourceRemovalTaskService.ResourceRemovalTaskState.class);
+    }
 
-  @Override
-  public Service createServiceInstance() throws Throwable {
-    return new ResourceRemovalTaskService();
-  }
+    @Override
+    public Service createServiceInstance() throws Throwable {
+        return new ResourceRemovalTaskService();
+    }
 }

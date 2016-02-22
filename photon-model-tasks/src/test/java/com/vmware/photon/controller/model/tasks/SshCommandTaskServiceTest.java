@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -13,288 +13,321 @@
 
 package com.vmware.photon.controller.model.tasks;
 
-import com.vmware.photon.controller.model.ModelServices;
-import com.vmware.photon.controller.model.TaskServices;
-import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.helpers.TestHost;
-import com.vmware.xenon.common.Service;
-import com.vmware.xenon.common.TaskState;
-import com.vmware.xenon.services.common.AuthCredentialsFactoryService;
-import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
-
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+import org.junit.runners.Suite.SuiteClasses;
+import org.junit.runners.model.InitializationError;
+import org.junit.runners.model.RunnerBuilder;
+
+import com.vmware.photon.controller.model.ModelServices;
+import com.vmware.photon.controller.model.TaskServices;
+import com.vmware.photon.controller.model.helpers.BaseModelTest;
+import com.vmware.photon.controller.model.helpers.TestHost;
+
+import com.vmware.xenon.common.Service;
+import com.vmware.xenon.common.TaskState;
+import com.vmware.xenon.services.common.AuthCredentialsFactoryService;
+import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
+
 /**
  * This class implements tests for the {@link SshCommandTaskService} class.
  */
-public class SshCommandTaskServiceTest {
+@RunWith(SshCommandTaskServiceTest.class)
+@SuiteClasses({ SshCommandTaskServiceTest.ConstructorTest.class,
+        SshCommandTaskServiceTest.HandleStartTest.class,
+        SshCommandTaskServiceTest.EndToEndTest.class,
+        SshCommandTaskServiceTest.ManualTest.class })
+public class SshCommandTaskServiceTest extends Suite {
 
-  private static Class[] getFactoryServices() {
-    List<Class> services = new ArrayList<>();
-    Collections.addAll(services, ModelServices.FACTORIES);
-    Collections.addAll(services, TaskServices.FACTORIES);
-    return services.toArray(new Class[services.size()]);
-  }
-
-  private String createAuth(TestHost host, String username, String privateKey) throws Throwable {
-    AuthCredentialsServiceState startState = new AuthCredentialsServiceState();
-    startState.userEmail = username;
-    startState.privateKey = privateKey;
-    AuthCredentialsServiceState returnState = host.postServiceSynchronously(
-        AuthCredentialsFactoryService.SELF_LINK,
-        startState,
-        AuthCredentialsServiceState.class);
-
-    return returnState.documentSelfLink;
-  }
-
-  @Test
-  private void dummy() {
-  }
-
-  /**
-   * This class implements tests for the constructor.
-   */
-  public class ConstructorTest {
-
-    private SshCommandTaskService provisionComputeTaskService;
-
-    @BeforeMethod
-    public void setUpTest() {
-      provisionComputeTaskService = new SshCommandTaskService(null);
+    public SshCommandTaskServiceTest(Class<?> klass, RunnerBuilder builder)
+            throws InitializationError {
+        super(klass, builder);
     }
 
-    @Test
-    public void testServiceOptions() {
-
-      EnumSet<Service.ServiceOption> expected = EnumSet.of(
-          Service.ServiceOption.INSTRUMENTATION);
-
-      assertThat(provisionComputeTaskService.getOptions(), is(expected));
-    }
-  }
-
-  /**
-   * This class implements tests for the handleStart method.
-   */
-  public class HandleStartTest extends BaseModelTest {
-    @Override
-    protected Class[] getFactoryServices() {
-      return SshCommandTaskServiceTest.getFactoryServices();
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private static Class<? extends Service>[] getFactoryServices() {
+        List<Class<? extends Service>> services = new ArrayList<>();
+        Collections.addAll(services, ModelServices.getFactories());
+        Collections.addAll(services, TaskServices.getFactories());
+        return services.toArray((Class<? extends Service>[]) new Class[services
+                .size()]);
     }
 
-    @Test
-    public void testNoHost() throws Throwable {
-      SshCommandTaskService.SshCommandTaskState startState =
-          new SshCommandTaskService.SshCommandTaskState();
-      startState.isMockRequest = true;
-      startState.host = null;
-      startState.authCredentialLink = "authLink";
-      startState.commands = new ArrayList<>();
-      startState.commands.add("ls");
+    private static String createAuth(TestHost host, String username,
+            String privateKey) throws Throwable {
+        AuthCredentialsServiceState startState = new AuthCredentialsServiceState();
+        startState.userEmail = username;
+        startState.privateKey = privateKey;
+        AuthCredentialsServiceState returnState = host
+                .postServiceSynchronously(
+                        AuthCredentialsFactoryService.SELF_LINK, startState,
+                        AuthCredentialsServiceState.class);
 
-      host.postServiceSynchronously(
-          SshCommandTaskFactoryService.SELF_LINK,
-          startState,
-          SshCommandTaskService.SshCommandTaskState.class,
-          IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testNoAuthLink() throws Throwable {
-      SshCommandTaskService.SshCommandTaskState startState =
-          new SshCommandTaskService.SshCommandTaskState();
-      startState.isMockRequest = true;
-      startState.host = "localhost";
-      startState.authCredentialLink = null;
-      startState.commands = new ArrayList<>();
-      startState.commands.add("ls");
-
-      host.postServiceSynchronously(
-          SshCommandTaskFactoryService.SELF_LINK,
-          startState,
-          SshCommandTaskService.SshCommandTaskState.class,
-          IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testNoCommands() throws Throwable {
-      SshCommandTaskService.SshCommandTaskState startState =
-          new SshCommandTaskService.SshCommandTaskState();
-      startState.isMockRequest = true;
-      startState.host = "localhost";
-      startState.authCredentialLink = "authLink";
-      startState.commands = null;
-
-      host.postServiceSynchronously(
-          SshCommandTaskFactoryService.SELF_LINK,
-          startState,
-          SshCommandTaskService.SshCommandTaskState.class,
-          IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testBadStage() throws Throwable {
-      SshCommandTaskService.SshCommandTaskState startState =
-          new SshCommandTaskService.SshCommandTaskState();
-      startState.isMockRequest = true;
-      startState.host = "localhost";
-      startState.authCredentialLink = "authLink";
-      startState.commands = new ArrayList<>();
-      startState.commands.add("ls");
-      startState.taskInfo = new TaskState();
-      startState.taskInfo.stage = TaskState.TaskStage.STARTED;
-
-      host.postServiceSynchronously(
-          SshCommandTaskFactoryService.SELF_LINK,
-          startState,
-          SshCommandTaskService.SshCommandTaskState.class,
-          IllegalStateException.class);
-    }
-  }
-
-  /**
-   * This class implements end-to-end tests.
-   */
-  public class EndToEndTest extends BaseModelTest {
-    @Override
-    protected Class[] getFactoryServices() {
-      return SshCommandTaskServiceTest.getFactoryServices();
-    }
-
-    @Test
-    public void testSuccess() throws Throwable {
-      String authLink = createAuth(host, "username", "privatekey");
-
-      SshCommandTaskService.SshCommandTaskState startState =
-          new SshCommandTaskService.SshCommandTaskState();
-      startState.isMockRequest = true;
-      startState.host = "localhost";
-      startState.authCredentialLink = authLink;
-      startState.commands = new ArrayList<>();
-      startState.commands.add("ls");
-      startState.commands.add("pwd");
-
-      SshCommandTaskService.SshCommandTaskState returnState = host.postServiceSynchronously(
-          SshCommandTaskFactoryService.SELF_LINK,
-          startState,
-          SshCommandTaskService.SshCommandTaskState.class);
-
-      SshCommandTaskService.SshCommandTaskState completeState = host.waitForServiceState(
-          SshCommandTaskService.SshCommandTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
-
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FINISHED));
-      for (String cmd : startState.commands) {
-        assertThat(completeState.commandResponse.get(cmd), is(cmd));
-      }
-    }
-
-    @Test
-    public void testBadAuthLink() throws Throwable {
-      SshCommandTaskService.SshCommandTaskState startState =
-          new SshCommandTaskService.SshCommandTaskState();
-      startState.isMockRequest = true;
-      startState.host = "localhost";
-      startState.authCredentialLink = "http://localhost/badAuthLink";
-      startState.commands = new ArrayList<>();
-      startState.commands.add("ls");
-      startState.commands.add("pwd");
-
-      SshCommandTaskService.SshCommandTaskState returnState = host.postServiceSynchronously(
-          SshCommandTaskFactoryService.SELF_LINK,
-          startState,
-          SshCommandTaskService.SshCommandTaskState.class);
-
-      SshCommandTaskService.SshCommandTaskState completeState = host.waitForServiceState(
-          SshCommandTaskService.SshCommandTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
-
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FAILED));
-    }
-  }
-
-  /**
-   * This class implements example tests against real ssh server.
-   */
-  public class ManualTest extends BaseModelTest {
-    private final String hostname = "0.0.0.0";
-    private final String username = "ec2-user";
-    private final String privateKey = "-----BEGIN RSA PRIVATE KEY-----\n" +
-        "\n-----END RSA PRIVATE KEY-----";
-
-    @Override
-    protected Class[] getFactoryServices() {
-      return SshCommandTaskServiceTest.getFactoryServices();
+        return returnState.documentSelfLink;
     }
 
     /**
-     * An example for testing against a real ssh server.
+     * This class implements tests for the constructor.
      */
-    @Test (enabled = false)
-    public void testSuccess() throws Throwable {
+    public static class ConstructorTest {
 
-      String authLink = createAuth(host, username, privateKey);
+        private SshCommandTaskService provisionComputeTaskService;
 
-      SshCommandTaskService.SshCommandTaskState startState =
-          new SshCommandTaskService.SshCommandTaskState();
-      startState.host = hostname;
-      startState.authCredentialLink = authLink;
-      startState.commands = new ArrayList<>();
-      startState.commands.add("ls");
-      startState.commands.add("pwd");
+        @Before
+        public void setUpTest() {
+            this.provisionComputeTaskService = new SshCommandTaskService(null);
+        }
 
-      SshCommandTaskService.SshCommandTaskState returnState = host.postServiceSynchronously(
-          SshCommandTaskFactoryService.SELF_LINK,
-          startState,
-          SshCommandTaskService.SshCommandTaskState.class);
+        @Test
+        public void testServiceOptions() {
 
-      SshCommandTaskService.SshCommandTaskState completeState = host.waitForServiceState(
-          SshCommandTaskService.SshCommandTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
+            EnumSet<Service.ServiceOption> expected = EnumSet
+                    .of(Service.ServiceOption.INSTRUMENTATION);
 
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FINISHED));
+            assertThat(this.provisionComputeTaskService.getOptions(),
+                    is(expected));
+        }
     }
 
-    @Test (enabled = false)
-    public void testFailedCommand() throws Throwable {
+    /**
+     * This class implements tests for the handleStart method.
+     */
+    public static class HandleStartTest extends BaseModelTest {
+        @Override
+        protected Class<? extends Service>[] getFactoryServices() {
+            return SshCommandTaskServiceTest.getFactoryServices();
+        }
 
-      String authLink = createAuth(host, username, privateKey);
+        @Before
+        public void setUpTest() throws Throwable {
+            super.setUpClass();
+        }
 
-      SshCommandTaskService.SshCommandTaskState startState =
-          new SshCommandTaskService.SshCommandTaskState();
-      startState.host = hostname;
-      startState.authCredentialLink = authLink;
-      startState.commands = new ArrayList<>();
-      startState.commands.add("test"); // this command fails (return non-zero)
-      startState.commands.add("pwd");
+        @Test
+        public void testNoHost() throws Throwable {
+            SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
+            startState.isMockRequest = true;
+            startState.host = null;
+            startState.authCredentialLink = "authLink";
+            startState.commands = new ArrayList<>();
+            startState.commands.add("ls");
 
-      SshCommandTaskService.SshCommandTaskState returnState = host.postServiceSynchronously(
-          SshCommandTaskFactoryService.SELF_LINK,
-          startState,
-          SshCommandTaskService.SshCommandTaskState.class);
+            this.host.postServiceSynchronously(
+                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.SshCommandTaskState.class,
+                    IllegalArgumentException.class);
+        }
 
-      SshCommandTaskService.SshCommandTaskState completeState = host.waitForServiceState(
-          SshCommandTaskService.SshCommandTaskState.class,
-          returnState.documentSelfLink,
-          state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage.ordinal()
-      );
+        @Test
+        public void testNoAuthLink() throws Throwable {
+            SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
+            startState.isMockRequest = true;
+            startState.host = "localhost";
+            startState.authCredentialLink = null;
+            startState.commands = new ArrayList<>();
+            startState.commands.add("ls");
 
-      assertThat(completeState.taskInfo.stage, is(TaskState.TaskStage.FAILED));
+            this.host.postServiceSynchronously(
+                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.SshCommandTaskState.class,
+                    IllegalArgumentException.class);
+        }
+
+        @Test
+        public void testNoCommands() throws Throwable {
+            SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
+            startState.isMockRequest = true;
+            startState.host = "localhost";
+            startState.authCredentialLink = "authLink";
+            startState.commands = null;
+
+            this.host.postServiceSynchronously(
+                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.SshCommandTaskState.class,
+                    IllegalArgumentException.class);
+        }
+
+        @Test
+        public void testBadStage() throws Throwable {
+            SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
+            startState.isMockRequest = true;
+            startState.host = "localhost";
+            startState.authCredentialLink = "authLink";
+            startState.commands = new ArrayList<>();
+            startState.commands.add("ls");
+            startState.taskInfo = new TaskState();
+            startState.taskInfo.stage = TaskState.TaskStage.STARTED;
+
+            this.host.postServiceSynchronously(
+                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.SshCommandTaskState.class,
+                    IllegalStateException.class);
+        }
     }
-  }
+
+    /**
+     * This class implements end-to-end tests.
+     */
+    public static class EndToEndTest extends BaseModelTest {
+        @Override
+        protected Class<? extends Service>[] getFactoryServices() {
+            return SshCommandTaskServiceTest.getFactoryServices();
+        }
+
+        @Before
+        public void setUpTest() throws Throwable {
+            super.setUpClass();
+        }
+
+        @Test
+        public void testSuccess() throws Throwable {
+            String authLink = createAuth(host, "username", "privatekey");
+
+            SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
+            startState.isMockRequest = true;
+            startState.host = "localhost";
+            startState.authCredentialLink = authLink;
+            startState.commands = new ArrayList<>();
+            startState.commands.add("ls");
+            startState.commands.add("pwd");
+
+            SshCommandTaskService.SshCommandTaskState returnState = host
+                    .postServiceSynchronously(
+                            SshCommandTaskFactoryService.SELF_LINK, startState,
+                            SshCommandTaskService.SshCommandTaskState.class);
+
+            SshCommandTaskService.SshCommandTaskState completeState = host
+                    .waitForServiceState(
+                            SshCommandTaskService.SshCommandTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FINISHED));
+            for (String cmd : startState.commands) {
+                assertThat(completeState.commandResponse.get(cmd), is(cmd));
+            }
+        }
+
+        @Test
+        public void testBadAuthLink() throws Throwable {
+            SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
+            startState.isMockRequest = true;
+            startState.host = "localhost";
+            startState.authCredentialLink = "http://localhost/badAuthLink";
+            startState.commands = new ArrayList<>();
+            startState.commands.add("ls");
+            startState.commands.add("pwd");
+
+            SshCommandTaskService.SshCommandTaskState returnState = host
+                    .postServiceSynchronously(
+                            SshCommandTaskFactoryService.SELF_LINK, startState,
+                            SshCommandTaskService.SshCommandTaskState.class);
+
+            SshCommandTaskService.SshCommandTaskState completeState = host
+                    .waitForServiceState(
+                            SshCommandTaskService.SshCommandTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FAILED));
+        }
+    }
+
+    /**
+     * This class implements example tests against real ssh server.
+     */
+    @Ignore
+    public static class ManualTest extends BaseModelTest {
+        private final String hostname = "0.0.0.0";
+        private final String username = "ec2-user";
+        private final String privateKey = "-----BEGIN RSA PRIVATE KEY-----\n"
+                + "\n-----END RSA PRIVATE KEY-----";
+
+        @Override
+        protected Class<? extends Service>[] getFactoryServices() {
+            return SshCommandTaskServiceTest.getFactoryServices();
+        }
+
+        @Before
+        public void setUpTest() throws Throwable {
+            super.setUpClass();
+        }
+
+        /**
+         * An example for testing against a real ssh server.
+         */
+        @Test
+        public void testSuccess() throws Throwable {
+
+            String authLink = createAuth(this.host, this.username,
+                    this.privateKey);
+
+            SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
+            startState.host = this.hostname;
+            startState.authCredentialLink = authLink;
+            startState.commands = new ArrayList<>();
+            startState.commands.add("ls");
+            startState.commands.add("pwd");
+
+            SshCommandTaskService.SshCommandTaskState returnState = this.host
+                    .postServiceSynchronously(
+                            SshCommandTaskFactoryService.SELF_LINK, startState,
+                            SshCommandTaskService.SshCommandTaskState.class);
+
+            SshCommandTaskService.SshCommandTaskState completeState = this.host
+                    .waitForServiceState(
+                            SshCommandTaskService.SshCommandTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FINISHED));
+        }
+
+        @Test
+        public void testFailedCommand() throws Throwable {
+
+            String authLink = createAuth(this.host, this.username,
+                    this.privateKey);
+
+            SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
+            startState.host = this.hostname;
+            startState.authCredentialLink = authLink;
+            startState.commands = new ArrayList<>();
+            startState.commands.add("test"); // this command fails (return
+                                             // non-zero)
+            startState.commands.add("pwd");
+
+            SshCommandTaskService.SshCommandTaskState returnState = this.host
+                    .postServiceSynchronously(
+                            SshCommandTaskFactoryService.SELF_LINK, startState,
+                            SshCommandTaskService.SshCommandTaskState.class);
+
+            SshCommandTaskService.SshCommandTaskState completeState = this.host
+                    .waitForServiceState(
+                            SshCommandTaskService.SshCommandTaskState.class,
+                            returnState.documentSelfLink,
+                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                                    .ordinal());
+
+            assertThat(completeState.taskInfo.stage,
+                    is(TaskState.TaskStage.FAILED));
+        }
+    }
 }

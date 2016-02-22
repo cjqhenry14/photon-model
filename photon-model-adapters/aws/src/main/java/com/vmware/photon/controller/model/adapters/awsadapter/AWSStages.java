@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -18,15 +18,6 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
  */
 public enum AWSStages {
 
-    VMDESC,
-    PARENTDESC,
-    PARENTAUTH,
-    CLIENT,
-    DELETE,
-    CREATE,
-    VMDISKS,
-    FIREWALL,
-    DONE,
-    ERROR
+    VMDESC, PARENTDESC, PARENTAUTH, CLIENT, DELETE, CREATE, VMDISKS, FIREWALL, DONE, ERROR
 
 }

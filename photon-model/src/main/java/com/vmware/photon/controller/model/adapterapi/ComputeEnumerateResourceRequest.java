@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -20,35 +20,34 @@ import java.net.URI;
  */
 public class ComputeEnumerateResourceRequest {
 
-  /**
-   * Uri reference of the resource pool.
-   */
-  public String resourcePoolLink;
+    /**
+     * Uri reference of the resource pool.
+     */
+    public String resourcePoolLink;
 
-  /**
-   * Reference URI to the Compute Description that will be used
-   * for the compute instances created by the adapter.
-   */
-  public String computeDescriptionLink;
+    /**
+     * Reference URI to the Compute Description that will be used for the
+     * compute instances created by the adapter.
+     */
+    public String computeDescriptionLink;
 
-  /**
-   * URI reference to the parent compute host.
-   */
-  public String parentComputeLink;
+    /**
+     * URI reference to the parent compute host.
+     */
+    public String parentComputeLink;
 
-  /**
-   * Enumeration Action Start, stop, refresh.
-   */
-  public EnumerationAction enumerationAction;
+    /**
+     * Enumeration Action Start, stop, refresh.
+     */
+    public EnumerationAction enumerationAction;
 
-  /**
-   * URI reference to resource pool management site.
-   */
-  public URI adapterManagementReference;
+    /**
+     * URI reference to resource pool management site.
+     */
+    public URI adapterManagementReference;
 
-  /**
-   * URI reference to the enumeration task,
-   * making the enumeration request.
-   */
-  public URI enumerationTaskReference;
+    /**
+     * URI reference to the enumeration task, making the enumeration request.
+     */
+    public URI enumerationTaskReference;
 }

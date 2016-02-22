@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -13,39 +13,43 @@
 
 package com.vmware.photon.controller.model.tasks;
 
-import com.vmware.xenon.common.Service;
+import java.util.EnumSet;
 
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 
-import java.util.EnumSet;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.vmware.xenon.common.Service;
 
 /**
- * This class implements tests for the {@link ProvisionComputeTaskFactoryService} class.
+ * This class implements tests for the
+ * {@link ProvisionComputeTaskFactoryService} class.
  */
 public class ProvisionComputeTaskFactoryServiceTest {
-  private ProvisionComputeTaskFactoryService provisionComputeTaskFactoryService;
+    private ProvisionComputeTaskFactoryService provisionComputeTaskFactoryService;
 
-  @BeforeMethod
-  public void setUpTest() {
-    provisionComputeTaskFactoryService = new ProvisionComputeTaskFactoryService();
-  }
+    @Before
+    public void setUpTest() {
+        this.provisionComputeTaskFactoryService = new ProvisionComputeTaskFactoryService();
+    }
 
-  @Test
-  public void testServiceOptions() {
-    EnumSet<Service.ServiceOption> expected = EnumSet.of(
-        Service.ServiceOption.CONCURRENT_GET_HANDLING,
-        Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
-        Service.ServiceOption.FACTORY);
-    assertThat(provisionComputeTaskFactoryService.getOptions(), is(expected));
-  }
+    @Test
+    public void testServiceOptions() {
+        EnumSet<Service.ServiceOption> expected = EnumSet.of(
+                Service.ServiceOption.CONCURRENT_GET_HANDLING,
+                Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
+                Service.ServiceOption.FACTORY);
+        assertThat(this.provisionComputeTaskFactoryService.getOptions(),
+                is(expected));
+    }
 
-  @Test
-  public void testCreateServiceInstance() throws Throwable {
-    Service service = provisionComputeTaskFactoryService.createServiceInstance();
-    assertThat(service, instanceOf(ProvisionComputeTaskService.class));
-  }
+    @Test
+    public void testCreateServiceInstance() throws Throwable {
+        Service service = this.provisionComputeTaskFactoryService
+                .createServiceInstance();
+        assertThat(service, instanceOf(ProvisionComputeTaskService.class));
+    }
 }

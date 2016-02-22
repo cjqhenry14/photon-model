@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -21,15 +21,15 @@ import com.vmware.xenon.common.Service;
  * Factory for firewall provisioning tasks.
  */
 public class ProvisionFirewallTaskFactoryService extends FactoryService {
-  public static final String SELF_LINK = UriPaths.PROVISIONING
-      + "/firewall-allocation-tasks";
+    public static final String SELF_LINK = UriPaths.PROVISIONING
+            + "/firewall-allocation-tasks";
 
-  public ProvisionFirewallTaskFactoryService() {
-    super(ProvisionFirewallTaskService.ProvisionFirewallTaskState.class);
-  }
+    public ProvisionFirewallTaskFactoryService() {
+        super(ProvisionFirewallTaskService.ProvisionFirewallTaskState.class);
+    }
 
-  @Override
-  public Service createServiceInstance() throws Throwable {
-    return new ProvisionFirewallTaskService();
-  }
+    @Override
+    public Service createServiceInstance() throws Throwable {
+        return new ProvisionFirewallTaskService();
+    }
 }

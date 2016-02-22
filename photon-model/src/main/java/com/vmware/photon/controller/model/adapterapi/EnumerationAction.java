@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -14,23 +14,22 @@
 package com.vmware.photon.controller.model.adapterapi;
 
 /**
- * Enumeration action that will be used by the
- * enumeration adapter.
+ * Enumeration action that will be used by the enumeration adapter.
  */
 public enum EnumerationAction {
-  /**
-   * Starts unsolicited notification mode, allowing
-   * the adapter to send updates to resources at any time.
-   */
-  START,
+    /**
+     * Starts unsolicited notification mode, allowing the adapter to send
+     * updates to resources at any time.
+     */
+    START,
 
-  /**
-   * Stops notification mode.
-   */
-  STOP,
+    /**
+     * Stops notification mode.
+     */
+    STOP,
 
-  /**
-   * Just refresh the resources once.
-   */
-  RERESH
+    /**
+     * Just refresh the resources once.
+     */
+    RERESH
 }

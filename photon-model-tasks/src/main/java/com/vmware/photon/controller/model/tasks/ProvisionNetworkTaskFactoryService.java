@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 VMware, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy of
@@ -21,15 +21,15 @@ import com.vmware.xenon.common.Service;
  * Factory for {@link ProvisionNetworkTaskService}.
  */
 public class ProvisionNetworkTaskFactoryService extends FactoryService {
-  public static final String SELF_LINK = UriPaths.PROVISIONING
-      + "/network-allocation-tasks";
+    public static final String SELF_LINK = UriPaths.PROVISIONING
+            + "/network-allocation-tasks";
 
-  public ProvisionNetworkTaskFactoryService() {
-    super(ProvisionNetworkTaskService.ProvisionNetworkTaskState.class);
-  }
+    public ProvisionNetworkTaskFactoryService() {
+        super(ProvisionNetworkTaskService.ProvisionNetworkTaskState.class);
+    }
 
-  @Override
-  public Service createServiceInstance() throws Throwable {
-    return new ProvisionNetworkTaskService();
-  }
+    @Override
+    public Service createServiceInstance() throws Throwable {
+        return new ProvisionNetworkTaskService();
+    }
 }
