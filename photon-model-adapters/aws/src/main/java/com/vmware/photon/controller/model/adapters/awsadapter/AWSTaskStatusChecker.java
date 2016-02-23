@@ -65,7 +65,7 @@ public class AWSTaskStatusChecker {
     public void start() {
         DescribeInstancesRequest descRequest = new DescribeInstancesRequest();
         List<String> instanceIdList = new ArrayList<String>();
-        instanceIdList.add(instanceId);
+        instanceIdList.add(this.instanceId);
         descRequest.setInstanceIds(instanceIdList);
         AsyncHandler<DescribeInstancesRequest, DescribeInstancesResult> describeHandler = new AsyncHandler<DescribeInstancesRequest, DescribeInstancesResult>() {
 

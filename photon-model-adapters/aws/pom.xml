@@ -40,6 +40,13 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>com.vmware.photon.controller</groupId>
+      <artifactId>photon-model-tasks</artifactId>
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>com.vmware.xenon</groupId>
       <artifactId>xenon-common</artifactId>
       <version>${xenon.common.version}</version>
