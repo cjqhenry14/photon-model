@@ -3,12 +3,59 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.vmware.photon.controller</groupId>
-  <artifactId>photon-controller-parent</artifactId>
+  <artifactId>photon-model-parent</artifactId>
   <version>0.3.0-SNAPSHOT</version>
   <packaging>pom</packaging>
+
+  <name>photon-model-parent</name>
   <description>
-    Project Enatai
+    Photon model is a design and set of libraries for provisioning VMs and containers across different infrastructures
   </description>
+  <url>https://github.com/vmware/photon-model</url>
+
+  <licenses>
+    <license>
+      <name>License</name>
+      <url>https://github.com/vmware/photon-model/blob/master/LICENSE</url>
+    </license>
+    <license>
+      <name>Notice</name>
+      <url>https://github.com/vmware/photon-model/blob/master/NOTICE</url>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>George Chrysanthakopoulos</name>
+      <email>georgec@vmware.com</email>
+      <organization>VMware</organization>
+      <organizationUrl>https://www.vmware.com/</organizationUrl>
+    </developer>
+    <developer>
+      <name>Sufian Dar</name>
+      <email>dars@vmware.com</email>
+      <organization>VMware</organization>
+      <organizationUrl>https://www.vmware.com/</organizationUrl>
+    </developer>
+    <developer>
+      <name>Igor Stoyanov</name>
+      <email>istoyanov@vmware.com</email>
+      <organization>VMware</organization>
+      <organizationUrl>https://www.vmware.com/</organizationUrl>
+    </developer>
+    <developer>
+      <name>Gurudutt Belur</name>
+      <email>gbelur@vmware.com</email>
+      <organization>VMware</organization>
+      <organizationUrl>https://www.vmware.com/</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git@github.com:vmware/photon-model.git</connection>
+    <developerConnection>scm:git:git@github.com:vmware/photon-model.git</developerConnection>
+    <url>git@github.com:vmware/photon-model.git</url>
+  </scm>
 
   <modules>
     <module>photon-model</module>
@@ -19,15 +66,15 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <xenon.version>0.6.0-SNAPSHOT</xenon.version>
+    <xenon.version>0.6.0</xenon.version>
     <xenon.common.version>${xenon.version}</xenon.common.version>
     <xenon.ui.version>${xenon.version}</xenon.ui.version>
   </properties>
 
   <repositories>
     <repository>
-      <id>enatai-snapshots</id>
-      <url>https://enatai-repo.eng.vmware.com/nexus/content/repositories/snapshots</url>
+      <id>maven-central</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
       <releases>
         <enabled>false</enabled>
       </releases>
@@ -39,9 +86,13 @@
 
   <distributionManagement>
     <snapshotRepository>
-      <id>enatai-snapshots</id>
-      <url>https://enatai-repo.eng.vmware.com/nexus/content/repositories/snapshots</url>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
     </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
   </distributionManagement>
 
   <dependencies>
@@ -108,6 +159,80 @@
         </plugins>
       </build>
     </profile>
+
+    <profile>
+      <id>release</id>
+      <properties>
+        <additionalparam>-Xdoclint:none</additionalparam>
+      </properties>
+      <build>
+        <resources>
+          <resource>
+            <directory>src/main/resources</directory>
+          </resource>
+          <resource>
+            <directory>target/extra-resources</directory>
+          </resource>
+        </resources>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>2.9.1</version>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.6</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-resources-plugin</artifactId>
+            <version>2.7</version>
+            <executions>
+              <execution>
+                <id>copy-license</id>
+                <!-- Bind to initialize phase so that the default resources target
+                     picks these files up from target/extra-resources. //-->
+                <phase>initialize</phase>
+                <goals>
+                  <goal>copy-resources</goal>
+                </goals>
+                <configuration>
+                  <outputDirectory>${basedir}/target/extra-resources</outputDirectory>
+                  <resources>
+                    <resource>
+                      <directory>${basedir}/..</directory>
+                      <includes>
+                        <include>LICENSE</include>
+                        <include>NOTICE</include>
+                      </includes>
+                    </resource>
+                  </resources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 
   <build>
@@ -124,6 +249,15 @@
       <plugin>
         <artifactId>maven-jar-plugin</artifactId>
         <version>2.2</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5.2</version>
+        <configuration>
+          <pushChanges>false</pushChanges>
+          <localCheckout>true</localCheckout>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -150,6 +284,20 @@
           </compilerArgs>
           <showWarnings>true</showWarnings>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>2.4</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+              <goal>test-jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -210,7 +358,7 @@
         </executions>
         <configuration>
           <generateGitPropertiesFile>true</generateGitPropertiesFile>
-          <generateGitPropertiesFilename>src/main/resources/enatai.git.properties</generateGitPropertiesFilename>
+          <generateGitPropertiesFilename>src/main/resources/photon-model.git.properties</generateGitPropertiesFilename>
           <excludeProperties>
             <excludeProperty>git.branch.*</excludeProperty>
             <excludeProperty>git.build.*</excludeProperty>
@@ -219,6 +367,29 @@
             <excludeProperty>git.remote.*</excludeProperty>
           </excludeProperties>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-project-info-reports-plugin</artifactId>
+        <version>2.8</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.maven.shared</groupId>
+            <artifactId>maven-shared-jar</artifactId>
+            <version>1.1</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.apache.bcel</groupId>
+                <artifactId>bcel</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+          <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>bcel-findbugs</artifactId>
+            <version>6.0</version>
+          </dependency>
+        </dependencies>
       </plugin>
     </plugins>
   </build>
