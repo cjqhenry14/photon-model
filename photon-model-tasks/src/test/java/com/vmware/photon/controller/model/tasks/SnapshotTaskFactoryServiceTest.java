@@ -42,6 +42,7 @@ public class SnapshotTaskFactoryServiceTest {
                 Service.ServiceOption.REPLICATION,
                 Service.ServiceOption.CONCURRENT_GET_HANDLING,
                 Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
+                Service.ServiceOption.INSTRUMENTATION,
                 Service.ServiceOption.FACTORY);
 
         assertThat(this.snapshotTaskFactoryService.getOptions(), is(expected));

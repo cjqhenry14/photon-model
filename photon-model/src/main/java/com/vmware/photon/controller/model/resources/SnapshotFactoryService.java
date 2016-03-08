@@ -16,6 +16,7 @@ package com.vmware.photon.controller.model.resources;
 import java.util.UUID;
 
 import com.vmware.photon.controller.model.UriPaths;
+
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
@@ -28,6 +29,7 @@ public class SnapshotFactoryService extends FactoryService {
 
     public SnapshotFactoryService() {
         super(SnapshotService.SnapshotState.class);
+        super.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
     }
 
     @Override

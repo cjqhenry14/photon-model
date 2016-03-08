@@ -75,14 +75,31 @@ public class NetworkInterfaceService extends StatefulService {
     @Override
     public void handleStart(Operation start) {
         try {
-            if (!start.hasBody()) {
-                throw new IllegalArgumentException("body is required");
-            }
-            validateState(start.getBody(NetworkInterfaceState.class));
+            processInput(start);
             start.complete();
         } catch (Throwable t) {
             start.fail(t);
         }
+    }
+
+    @Override
+    public void handlePut(Operation put) {
+        try {
+            NetworkInterfaceState returnState = processInput(put);
+            setState(put, returnState);
+            put.complete();
+        } catch (Throwable t) {
+            put.fail(t);
+        }
+    }
+
+    private NetworkInterfaceState processInput(Operation op) {
+        if (!op.hasBody()) {
+            throw (new IllegalArgumentException("body is required"));
+        }
+        NetworkInterfaceState state = op.getBody(NetworkInterfaceState.class);
+        validateState(state);
+        return state;
     }
 
     @Override

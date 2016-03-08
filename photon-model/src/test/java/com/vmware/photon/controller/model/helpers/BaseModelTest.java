@@ -13,59 +13,286 @@
 
 package com.vmware.photon.controller.model.helpers;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
 
-import org.apache.commons.io.FileUtils;
-import org.junit.After;
 import org.junit.Before;
 
+import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
+import com.vmware.photon.controller.model.resources.ComputeFactoryService;
+import com.vmware.photon.controller.model.resources.DiskFactoryService;
+import com.vmware.photon.controller.model.resources.FirewallFactoryService;
+import com.vmware.photon.controller.model.resources.NetworkFactoryService;
+import com.vmware.photon.controller.model.resources.NetworkInterfaceFactoryService;
+import com.vmware.photon.controller.model.resources.ResourceDescriptionFactoryService;
+import com.vmware.photon.controller.model.resources.ResourcePoolFactoryService;
+import com.vmware.photon.controller.model.resources.SnapshotFactoryService;
+import com.vmware.xenon.common.BasicReusableHostTestCase;
+import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.Service;
+import com.vmware.xenon.common.ServiceDocument;
+import com.vmware.xenon.common.ServiceHost;
+import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.services.common.QueryTask;
+import com.vmware.xenon.services.common.ServiceUriPaths;
 
 /**
  * Abstract base class that creates a DCP ServiceHost running all the model DCP
  * services for unit-tests.
  */
-public abstract class BaseModelTest {
+public abstract class BaseModelTest extends BasicReusableHostTestCase {
+    @SuppressWarnings("unchecked")
+    public static void startFactories(BaseModelTest test) throws Throwable {
+        test.startFactoryService(ComputeFactoryService.class,
+                ComputeDescriptionFactoryService.class, DiskFactoryService.class,
+                FirewallFactoryService.class, NetworkFactoryService.class,
+                NetworkInterfaceFactoryService.class,
+                ResourceDescriptionFactoryService.class,
+                ResourcePoolFactoryService.class, SnapshotFactoryService.class);
+    }
 
-    private static final int HOST_PORT = 0;
-    private static final Logger logger = Logger.getLogger(BaseModelTest.class.getName());
-
-    protected TestHost host;
-    private Path sandboxDirectory;
-
-    protected abstract Class<? extends Service>[] getFactoryServices();
+    protected void startRequiredServices() throws Throwable {
+        startFactories(this);
+    }
 
     @Before
-    public void setUpClass() throws Throwable {
-        if (this.host == null) {
-            this.sandboxDirectory = Files.createTempDirectory(null);
-            this.host = new TestHost(HOST_PORT, this.sandboxDirectory,
-                    getFactoryServices());
-            this.host.start();
+    public void setUp() throws Throwable {
+        this.host.setMaintenanceIntervalMicros(TimeUnit.MILLISECONDS.toMicros(250));
+        startRequiredServices();
+    }
+
+    @SuppressWarnings("unchecked")
+    public void startFactoryService(Class<? extends Service>... types) throws Throwable {
+        for (Class<? extends Service> type : types) {
+            URI u = UriUtils.buildUri(this.host, type);
+            if (this.host.getServiceStage(u.getPath()) != null) {
+                // service already started, skip
+                return;
+            }
+            // we can make this start the classes in parallel, but since factories
+            // are stateless services that start instantly, this is acceptable
+            this.host.startServiceAndWait(type, u.getPath());
         }
     }
 
-    @After
-    public void tearDownClass() throws Throwable {
-        if (this.host != null) {
-            this.host.stop();
-            this.host = null;
+    public <T extends ServiceDocument> T postServiceSynchronously(
+            String serviceUri, T body, Class<T> type) throws Throwable {
+        return postServiceSynchronously(serviceUri, body, type, null);
+    }
+
+    public <T extends ServiceDocument> T postServiceSynchronously(
+            String serviceUri, T body, Class<T> type, Class<? extends Throwable> expectedException)
+                    throws Throwable {
+
+        List<T> responseBody = new ArrayList<T>();
+        this.host.testStart(1);
+        Operation postOperation = Operation
+                .createPost(UriUtils.buildUri(this.host, serviceUri))
+                .setBody(body)
+                .setCompletion(
+                        (operation, throwable) -> {
+
+                            boolean failureExpected = (expectedException != null);
+                            boolean failureReturned = (throwable != null);
+
+                            if (failureExpected ^ failureReturned) {
+                                Throwable t = throwable == null ? new IllegalArgumentException(
+                                        "Call did not fail as expected")
+                                        : throwable;
+
+                                this.host.failIteration(t);
+                                return;
+                            }
+
+                            if (failureExpected
+                                    && expectedException != throwable
+                                            .getClass()) {
+                                this.host.failIteration(throwable);
+                                return;
+                            }
+
+                            if (!failureExpected) {
+                                responseBody.add(operation.getBody(type));
+                            }
+                            this.host.completeIteration();
+                        });
+
+        this.host.send(postOperation);
+        this.host.testWait();
+
+        if (!responseBody.isEmpty()) {
+            return responseBody.get(0);
+        } else {
+            return null;
         }
-        File sandbox = new File(this.sandboxDirectory.toUri());
-        if (sandbox.exists()) {
-            try {
-                FileUtils.forceDelete(sandbox);
-            } catch (FileNotFoundException | IllegalArgumentException ex) {
-                logger.log(Level.FINE, "Sandbox file was not found");
-            } catch (IOException ex) {
-                FileUtils.forceDeleteOnExit(sandbox);
+    }
+
+    public <T extends ServiceDocument> void patchServiceSynchronously(
+            String serviceUri, T patchBody) throws Throwable {
+
+        this.host.testStart(1);
+        Operation patchOperation = Operation
+                .createPatch(UriUtils.buildUri(host, serviceUri))
+                .setBody(patchBody)
+                .setCompletion(this.host.getCompletion());
+
+        this.host.send(patchOperation);
+        this.host.testWait();
+    }
+
+    public void testStart(int count) {
+        this.host.testStart(count);
+    }
+
+    public void completeIteration() {
+        this.host.completeIteration();
+    }
+
+    public void failIteration(Throwable e) {
+        this.host.failIteration(e);
+    }
+
+    public void testWait() throws Throwable {
+        this.host.testWait();
+    }
+
+    public void send(Operation op) {
+        this.host.send(op);
+    }
+
+    public void sendAndWait(Operation op) throws Throwable {
+        this.host.sendAndWait(op);
+    }
+
+    public CompletionHandler getCompletion() {
+        return this.host.getCompletion();
+    }
+
+    public CompletionHandler getExpectedFailureCompletion() {
+        return this.host.getExpectedFailureCompletion();
+    }
+
+    public <T extends ServiceDocument> int patchServiceSynchronously(
+            String serviceUri, ComputeInstanceRequest patchBody)
+                    throws Throwable {
+
+        this.testStart(1);
+        Operation patchOperation = Operation
+                .createPatch(UriUtils.buildUri(this.host, serviceUri))
+                .setBody(patchBody)
+                .setCompletion(getCompletion());
+
+        this.host.send(patchOperation);
+        this.testWait();
+        return patchOperation.getStatusCode();
+    }
+
+    public <T extends ServiceDocument> T getServiceSynchronously(
+            String serviceUri, Class<T> type) throws Throwable {
+
+        List<T> responseBody = new ArrayList<T>();
+
+        this.testStart(1);
+        Operation getOperation = Operation
+                .createGet(UriUtils.buildUri(this.host, serviceUri))
+                .setCompletion((operation, throwable) -> {
+                    if (throwable != null) {
+                        this.failIteration(throwable);
+                    }
+
+                    responseBody.add(operation.getBody(type));
+                    this.completeIteration();
+                });
+
+        this.send(getOperation);
+        this.testWait();
+
+        if (!responseBody.isEmpty()) {
+            return responseBody.get(0);
+        } else {
+            return null;
+        }
+    }
+
+    private <T extends ServiceDocument> void deleteServiceSynchronously(
+            String serviceUri, boolean stopOnly) throws Throwable {
+        this.testStart(1);
+        Operation deleteOperation = Operation
+                .createDelete(UriUtils.buildUri(this.host, serviceUri))
+                .setCompletion((operation, throwable) -> {
+                    if (throwable != null) {
+                        this.failIteration(throwable);
+                    }
+
+                    this.completeIteration();
+                });
+
+        if (stopOnly) {
+            deleteOperation
+                    .addPragmaDirective(Operation.PRAGMA_DIRECTIVE_NO_INDEX_UPDATE);
+        }
+
+        this.send(deleteOperation);
+        this.testWait();
+    }
+
+    public <T extends ServiceDocument> void stopServiceSynchronously(
+            String serviceUri) throws Throwable {
+        deleteServiceSynchronously(serviceUri, true);
+    }
+
+    public <T extends ServiceDocument> void deleteServiceSynchronously(
+            String serviceUri) throws Throwable {
+        deleteServiceSynchronously(serviceUri, false);
+    }
+
+    public <T extends ServiceDocument> T waitForServiceState(Class<T> type,
+            String serviceUri, Predicate<T> test) throws Throwable {
+        Date exp = this.host.getTestExpiration();
+        while (new Date().before(exp)) {
+            T t = getServiceSynchronously(serviceUri, type);
+            if (test.test(t)) {
+                return t;
             }
+            Thread.sleep(this.host.getMaintenanceIntervalMicros() / 1000);
         }
+
+        throw new TimeoutException("timeout waiting for state transition for " + serviceUri);
+    }
+
+    public QueryTask createDirectQueryTask(String kind, String propertyName,
+            String propertyValue) {
+        QueryTask q = new QueryTask();
+        q.querySpec = new QueryTask.QuerySpecification();
+        q.taskInfo.isDirect = true;
+
+        QueryTask.Query kindClause = new QueryTask.Query().setTermPropertyName(
+                ServiceDocument.FIELD_NAME_KIND).setTermMatchValue(kind);
+        kindClause.occurance = QueryTask.Query.Occurance.MUST_OCCUR;
+        q.querySpec.query.addBooleanClause(kindClause);
+
+        QueryTask.Query customPropClause = new QueryTask.Query()
+                .setTermPropertyName(propertyName).setTermMatchValue(
+                        propertyValue);
+        customPropClause.occurance = QueryTask.Query.Occurance.MUST_OCCUR;
+        q.querySpec.query.addBooleanClause(customPropClause);
+
+        return q;
+    }
+
+    public QueryTask querySynchronously(QueryTask queryTask) throws Throwable {
+        return postServiceSynchronously(ServiceUriPaths.CORE_QUERY_TASKS,
+                queryTask, QueryTask.class);
+    }
+
+    public ServiceHost getHost() {
+        return this.host;
     }
 }

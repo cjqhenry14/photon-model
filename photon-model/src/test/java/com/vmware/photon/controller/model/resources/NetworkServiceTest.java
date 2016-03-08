@@ -31,7 +31,6 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
 
 import com.vmware.xenon.common.Service;
@@ -102,21 +101,11 @@ public class NetworkServiceTest extends Suite {
      * This class implements tests for the handleStart method.
      */
     public static class HandleStartTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testValidStartState() throws Throwable {
             NetworkService.NetworkState startState = buildValidStartState();
-            NetworkService.NetworkState returnState = host
-                    .postServiceSynchronously(NetworkFactoryService.SELF_LINK,
+            NetworkService.NetworkState returnState = postServiceSynchronously(
+                    NetworkFactoryService.SELF_LINK,
                             startState, NetworkService.NetworkState.class);
 
             assertNotNull(returnState);
@@ -133,6 +122,21 @@ public class NetworkServiceTest extends Suite {
             assertThat(returnState.instanceAdapterReference,
                     is(startState.instanceAdapterReference));
 
+        }
+
+        @Test
+        public void testDuplicatePost() throws Throwable {
+            NetworkService.NetworkState startState = buildValidStartState();
+            NetworkService.NetworkState returnState = postServiceSynchronously(
+                    NetworkFactoryService.SELF_LINK,
+                            startState, NetworkService.NetworkState.class);
+
+            assertNotNull(returnState);
+            assertThat(returnState.name, is(startState.name));
+            startState.name = "new-name";
+            returnState = postServiceSynchronously(NetworkFactoryService.SELF_LINK,
+                            startState, NetworkService.NetworkState.class);
+            assertThat(returnState.name, is(startState.name));
         }
 
         @Test
@@ -160,7 +164,7 @@ public class NetworkServiceTest extends Suite {
                     missingSubnet, invalidSubnet1, invalidSubnet2, invalidSubnet3,
                     invalidSubnet4, invalidSubnet5 };
             for (NetworkService.NetworkState state : states) {
-                host.postServiceSynchronously(NetworkFactoryService.SELF_LINK,
+                postServiceSynchronously(NetworkFactoryService.SELF_LINK,
                         state, NetworkService.NetworkState.class,
                         IllegalArgumentException.class);
             }
@@ -171,22 +175,12 @@ public class NetworkServiceTest extends Suite {
      * This class implements tests for the handlePatch method.
      */
     public static class HandlePatchTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testPatch() throws Throwable {
             NetworkService.NetworkState startState = buildValidStartState();
 
-            NetworkService.NetworkState returnState = host
-                    .postServiceSynchronously(NetworkFactoryService.SELF_LINK,
+            NetworkService.NetworkState returnState = postServiceSynchronously(
+                    NetworkFactoryService.SELF_LINK,
                             startState, NetworkService.NetworkState.class);
 
             NetworkService.NetworkState patchState = new NetworkService.NetworkState();
@@ -204,10 +198,10 @@ public class NetworkServiceTest extends Suite {
                 patchState.instanceAdapterReference = null;
             }
 
-            host.patchServiceSynchronously(returnState.documentSelfLink,
+            patchServiceSynchronously(returnState.documentSelfLink,
                     patchState);
 
-            returnState = host.getServiceSynchronously(
+            returnState = getServiceSynchronously(
                     returnState.documentSelfLink,
                     NetworkService.NetworkState.class);
 
@@ -230,16 +224,6 @@ public class NetworkServiceTest extends Suite {
      * This class implements tests for query.
      */
     public static class QueryTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testTenantLinksQuery() throws Throwable {
             NetworkService.NetworkState networkState = buildValidStartState();
@@ -247,17 +231,17 @@ public class NetworkServiceTest extends Suite {
             networkState.tenantLinks = new ArrayList<>();
             networkState.tenantLinks.add(UriUtils.buildUriPath(
                     tenantUri.getPath(), "tenantA"));
-            NetworkService.NetworkState startState = host
-                    .postServiceSynchronously(NetworkFactoryService.SELF_LINK,
+            NetworkService.NetworkState startState = postServiceSynchronously(
+                    NetworkFactoryService.SELF_LINK,
                             networkState, NetworkService.NetworkState.class);
 
             String kind = Utils.buildKind(NetworkService.NetworkState.class);
             String propertyName = QueryTask.QuerySpecification
                     .buildCollectionItemName(ServiceDocumentDescription.FIELD_NAME_TENANT_LINKS);
 
-            QueryTask q = host.createDirectQueryTask(kind, propertyName,
+            QueryTask q = createDirectQueryTask(kind, propertyName,
                     networkState.tenantLinks.get(0));
-            q = host.querySynchronously(q);
+            q = querySynchronously(q);
             assertNotNull(q.results.documentLinks);
             assertThat(q.results.documentCount, is(1L));
             assertThat(q.results.documentLinks.get(0),

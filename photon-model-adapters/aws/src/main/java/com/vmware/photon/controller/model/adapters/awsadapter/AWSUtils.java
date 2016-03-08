@@ -18,10 +18,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
+import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsyncClient;
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
 import com.amazonaws.services.ec2.model.CreateTagsRequest;
 import com.amazonaws.services.ec2.model.DescribeTagsRequest;
@@ -34,6 +36,7 @@ import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.Prov
 import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskService;
 
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.Utils;
@@ -100,6 +103,16 @@ public class AWSUtils {
         return client;
     }
 
+    public static AmazonCloudWatchAsyncClient getStatsAsyncClient(
+            AuthCredentialsServiceState credentials, String region) {
+        AmazonCloudWatchAsyncClient client = new AmazonCloudWatchAsyncClient(
+                new BasicAWSCredentials(credentials.privateKeyId,
+                        credentials.privateKey));
+
+        client.setRegion(Region.getRegion(Regions.fromName(region)));
+        return client;
+    }
+
     /*
      * Synchronous call to AWS to create tags for the specified resources The
      * list of tags will be applied to all provided resources
@@ -159,6 +172,21 @@ public class AWSUtils {
 
     public static Filter getFilter(String name, String value) {
         return new Filter().withName(name).withValues(value);
+    }
+
+    /*
+     * method will be responsible for getting the service state for the
+     * requested resource and invoke Consumer callback for success and
+     * failure
+     */
+    public static void getServiceState(Service service, URI computeUri, Consumer<Operation> success, Consumer<Throwable> failure) {
+        service.sendRequest(Operation.createGet(computeUri).setCompletion((o, e) -> {
+            if (e != null) {
+                failure.accept(e);
+                return;
+            }
+            success.accept(o);
+        }));
     }
 
 }

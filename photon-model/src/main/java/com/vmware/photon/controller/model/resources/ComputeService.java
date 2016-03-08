@@ -22,30 +22,19 @@ import java.util.UUID;
 
 import org.apache.commons.validator.routines.InetAddressValidator;
 
-import com.vmware.photon.controller.model.adapterapi.ComputeHealthRequest;
-import com.vmware.photon.controller.model.adapterapi.ComputeHealthResponse;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
+
 import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.UriUtils;
-import com.vmware.xenon.common.Utils;
 
 /**
  * Represents a compute resource.
  */
 public class ComputeService extends StatefulService {
-
-    public static final String STAT_NAME_CPU_UTIL_MHZ = "cpuUtilizationMhz";
-    public static final String STAT_NAME_MEMORY_USED_BYTES = "memoryUsedBytes";
-    public static final String STAT_NAME_CPU_TOTAL_MHZ = "cpuTotalMhz";
-    public static final String STAT_NAME_MEMORY_TOTAL_BYTES = "memoryTotalBytes";
-    public static final String STAT_NAME_CPU_UTIL_PCT = "cpuUtilizationPct";
-    public static final String STAT_NAME_MEMORY_UTIL_PCT = "memoryUtilizationPct";
-    public static final String STAT_NAME_HEALTH = "isHealthy";
 
     /**
      * Power State.
@@ -184,7 +173,6 @@ public class ComputeService extends StatefulService {
         super.toggleOption(ServiceOption.PERSISTENCE, true);
         super.toggleOption(ServiceOption.REPLICATION, true);
         super.toggleOption(ServiceOption.OWNER_SELECTION, true);
-        super.toggleOption(ServiceOption.INSTRUMENTATION, true);
     }
 
     @Override
@@ -220,13 +208,35 @@ public class ComputeService extends StatefulService {
 
     @Override
     public void handleStart(Operation start) {
-        if (!start.hasBody()) {
-            throw new IllegalArgumentException("body is required");
+        try {
+            processInput(start);
+            getHost().registerForServiceAvailability((o, e) -> {
+                completeStart(start);
+            }, ComputeDescriptionFactoryService.SELF_LINK);
+        } catch (Throwable t) {
+            start.fail(t);
         }
+    }
 
-        getHost().registerForServiceAvailability((o, e) -> {
-            completeStart(start);
-        }, ComputeDescriptionFactoryService.SELF_LINK);
+    @Override
+    public void handlePut(Operation put) {
+        try {
+            ComputeState returnState = processInput(put);
+            setState(put, returnState);
+            getHost().registerForServiceAvailability((o, e) -> {
+                completeStart(put);
+            }, ComputeDescriptionFactoryService.SELF_LINK);
+        } catch (Throwable t) {
+            put.fail(t);
+        }
+    }
+
+    private ComputeState processInput(Operation op) {
+        if (!op.hasBody()) {
+            throw (new IllegalArgumentException("body is required"));
+        }
+        ComputeState state = op.getBody(ComputeState.class);
+        return state;
     }
 
     private void completeStart(Operation start) {
@@ -250,41 +260,13 @@ public class ComputeService extends StatefulService {
                                     start.fail(ex);
                                     return;
                                 }
-
-                                setUpMaintenance(s, start);
+                                start.complete();
                             });
 
             sendRequest(getDesc);
         } catch (Throwable e) {
             start.fail(e);
         }
-    }
-
-    private void setUpMaintenance(ComputeState s, Operation start) {
-
-        CompletionHandler c = (o, e) -> {
-            if (e != null) {
-                logWarning("failure retrieving description: %s",
-                        Utils.toString(e));
-                start.complete();
-                return;
-            }
-            ComputeDescription desc = o.getBody(ComputeDescription.class);
-
-            if (desc.healthAdapterReference == null) {
-                start.complete();
-                return;
-            }
-
-            // enable maintenance on self, so we poll for health stats.
-            logInfo("Enabling periodic health and stats retrieval for %s",
-                    s.documentSelfLink);
-            toggleOption(ServiceOption.PERIODIC_MAINTENANCE, true);
-            start.complete();
-        };
-
-        sendRequest(Operation.createGet(this, s.descriptionLink).setCompletion(
-                c));
     }
 
     private static void validateSupportedChildren(ComputeState state,
@@ -433,65 +415,6 @@ public class ComputeService extends StatefulService {
             patch.setStatusCode(Operation.STATUS_CODE_NOT_MODIFIED);
         }
         patch.complete();
-    }
-
-    @Override
-    public void handleMaintenance(Operation maintOp) {
-        // acquire health information from compute resource and translate into
-        // stat entries for this service instance
-        CompletionHandler c = (o, e) -> {
-            if (e != null) {
-                logWarning("failure retrieving description: %s",
-                        Utils.toString(e));
-                maintOp.fail(e);
-                return;
-            }
-
-            ComputeStateWithDescription state = o
-                    .getBody(ComputeStateWithDescription.class);
-            ComputeHealthRequest req = new ComputeHealthRequest();
-            req.computeReference = getUri();
-
-            if (state.description.healthAdapterReference == null) {
-                maintOp.complete();
-                return;
-            }
-
-            CompletionHandler ci = (healthOp, ex) -> {
-                if (ex != null) {
-                    maintOp.fail(ex);
-                    return;
-                }
-                maintOp.complete();
-                updateHealthStats(healthOp.getBody(ComputeHealthResponse.class));
-            };
-
-            Operation patch = Operation
-                    .createPatch(state.description.healthAdapterReference)
-                    .setBody(req).setCompletion(ci);
-            sendRequest(patch);
-        };
-
-        // send GET to self to get description and state.
-        sendRequest(Operation.createGet(
-                ComputeStateWithDescription.buildUri(getUri()))
-                .setCompletion(c));
-    }
-
-    private void updateHealthStats(ComputeHealthResponse body) {
-        if (body == null) {
-            return;
-        }
-
-        if (body.healthState != null) {
-            setStat(STAT_NAME_HEALTH, body.healthState.ordinal());
-        }
-        setStat(STAT_NAME_CPU_UTIL_PCT, body.cpuUtilizationPct);
-        setStat(STAT_NAME_CPU_TOTAL_MHZ, body.cpuTotalMhz);
-        setStat(STAT_NAME_CPU_UTIL_MHZ, body.cpuUtilizationMhz);
-        setStat(STAT_NAME_MEMORY_UTIL_PCT, body.memoryUtilizationPct);
-        setStat(STAT_NAME_MEMORY_TOTAL_BYTES, body.totalMemoryBytes);
-        setStat(STAT_NAME_MEMORY_USED_BYTES, body.usedMemoryBytes);
     }
 
     @Override

@@ -147,15 +147,33 @@ public class ResourcePoolService extends StatefulService {
 
     @Override
     public void handleStart(Operation start) {
-        if (!start.hasBody()) {
-            start.fail(new IllegalArgumentException("body is required"));
-            return;
+        try {
+            processInput(start);
+            start.complete();
+        } catch (Throwable t) {
+            start.fail(t);
         }
+    }
 
-        ResourcePoolState initState = start.getBody(ResourcePoolState.class);
-        validateState(initState);
-        createResourceQuerySpec(initState);
-        start.complete();
+    @Override
+    public void handlePut(Operation put) {
+        try {
+            ResourcePoolState returnState = processInput(put);
+            setState(put, returnState);
+            put.complete();
+        } catch (Throwable t) {
+            put.fail(t);
+        }
+    }
+
+    private ResourcePoolState processInput(Operation op) {
+        if (!op.hasBody()) {
+            throw (new IllegalArgumentException("body is required"));
+        }
+        ResourcePoolState state = op.getBody(ResourcePoolState.class);
+        validateState(state);
+        createResourceQuerySpec(state);
+        return state;
     }
 
     @Override

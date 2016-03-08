@@ -13,10 +13,7 @@
 
 package com.vmware.photon.controller.model.tasks;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -30,11 +27,8 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
-import com.vmware.photon.controller.model.TaskServices;
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.helpers.TestHost;
 import com.vmware.photon.controller.model.resources.NetworkFactoryService;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 
@@ -58,7 +52,7 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
     }
 
     private static ProvisionNetworkTaskService.ProvisionNetworkTaskState buildValidStartState(
-            TestHost host,
+            BaseModelTest test,
             NetworkInstanceRequest.InstanceRequestType requestType,
             boolean success) throws Throwable {
 
@@ -69,15 +63,15 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
         nState.resourcePoolLink = "http://resourcePoolLink";
         nState.subnetCIDR = "152.151.150.222/22";
         if (success) {
-            nState.instanceAdapterReference = UriUtils.buildUri(host,
+            nState.instanceAdapterReference = UriUtils.buildUri(test.getHost(),
                     MockAdapter.MockNetworkInstanceSuccessAdapter.SELF_LINK);
         } else {
-            nState.instanceAdapterReference = UriUtils.buildUri(host,
+            nState.instanceAdapterReference = UriUtils.buildUri(test.getHost(),
                     MockAdapter.MockNetworkInstanceFailureAdapter.SELF_LINK);
         }
         nState.id = UUID.randomUUID().toString();
 
-        NetworkState returnState = host.postServiceSynchronously(
+        NetworkState returnState = test.postServiceSynchronously(
                 NetworkFactoryService.SELF_LINK, nState, NetworkState.class);
         ProvisionNetworkTaskService.ProvisionNetworkTaskState startState = new ProvisionNetworkTaskService.ProvisionNetworkTaskState();
 
@@ -88,16 +82,16 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
     }
 
     private static ProvisionNetworkTaskService.ProvisionNetworkTaskState postAndWaitForService(
-            TestHost host,
+            BaseModelTest test,
             ProvisionNetworkTaskService.ProvisionNetworkTaskState startState)
             throws Throwable {
-        ProvisionNetworkTaskService.ProvisionNetworkTaskState returnState = host
+        ProvisionNetworkTaskService.ProvisionNetworkTaskState returnState = test
                 .postServiceSynchronously(
                         ProvisionNetworkTaskFactoryService.SELF_LINK,
                         startState,
                         ProvisionNetworkTaskService.ProvisionNetworkTaskState.class);
 
-        ProvisionNetworkTaskService.ProvisionNetworkTaskState completeState = host
+        ProvisionNetworkTaskService.ProvisionNetworkTaskState completeState = test
                 .waitForServiceState(
                         ProvisionNetworkTaskService.ProvisionNetworkTaskState.class,
                         returnState.documentSelfLink,
@@ -107,14 +101,9 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
         return completeState;
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    private static Class<? extends Service>[] getFactoryServices() {
-        List<Class<? extends Service>> services = new ArrayList<>();
-        Collections.addAll(services, ModelServices.getFactories());
-        Collections.addAll(services, TaskServices.getFactories());
-        Collections.addAll(services, MockAdapter.getFactories());
-        return services.toArray((Class<? extends Service>[]) new Class[services
-                .size()]);
+    private static void startFactoryServices(BaseModelTest test) throws Throwable {
+        TaskServices.startFactories(test);
+        MockAdapter.startFactories(test);
     }
 
     /**
@@ -151,22 +140,18 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
      */
     public static class HandleStartTest extends BaseModelTest {
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ProvisionNetworkTaskServiceTest.getFactoryServices();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
+        protected void startRequiredServices() throws Throwable {
+            ProvisionNetworkTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
         public void testValidateNetworkService() throws Throwable {
             ProvisionNetworkTaskService.ProvisionNetworkTaskState startState = buildValidStartState(
-                    host, NetworkInstanceRequest.InstanceRequestType.CREATE,
+                    this, NetworkInstanceRequest.InstanceRequestType.CREATE,
                     true);
             ProvisionNetworkTaskService.ProvisionNetworkTaskState completeState = postAndWaitForService(
-                    host, startState);
+                    this, startState);
             assertThat(completeState.taskInfo.stage,
                     is(TaskState.TaskStage.FINISHED));
         }
@@ -174,23 +159,21 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
         @Test
         public void testMissingValue() throws Throwable {
             ProvisionNetworkTaskService.ProvisionNetworkTaskState invalidRequestType = buildValidStartState(
-                    this.host,
+                    this,
                     NetworkInstanceRequest.InstanceRequestType.CREATE, true);
             ProvisionNetworkTaskService.ProvisionNetworkTaskState invalidNetworkDescriptionLink = buildValidStartState(
-                    this.host,
+                    this,
                     NetworkInstanceRequest.InstanceRequestType.CREATE, true);
 
             invalidRequestType.requestType = null;
             invalidNetworkDescriptionLink.networkDescriptionLink = null;
 
-            this.host
-                    .postServiceSynchronously(
+            postServiceSynchronously(
                             ProvisionNetworkTaskFactoryService.SELF_LINK,
                             invalidRequestType,
                             ProvisionNetworkTaskService.ProvisionNetworkTaskState.class,
                             IllegalArgumentException.class);
-            this.host
-                    .postServiceSynchronously(
+            postServiceSynchronously(
                             ProvisionNetworkTaskFactoryService.SELF_LINK,
                             invalidNetworkDescriptionLink,
                             ProvisionNetworkTaskService.ProvisionNetworkTaskState.class,
@@ -204,25 +187,22 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
      * {@link ProvisionNetworkTaskService#handlePatch} method.
      */
     public static class HandlePatchTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ProvisionNetworkTaskServiceTest.getFactoryServices();
-        }
 
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
+        @Override
+        protected void startRequiredServices() throws Throwable {
+            ProvisionNetworkTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
         public void testCreateNetworkSuccess() throws Throwable {
 
             ProvisionNetworkTaskService.ProvisionNetworkTaskState startState = buildValidStartState(
-                    host, NetworkInstanceRequest.InstanceRequestType.CREATE,
+                    this, NetworkInstanceRequest.InstanceRequestType.CREATE,
                     true);
 
             ProvisionNetworkTaskService.ProvisionNetworkTaskState completeState = postAndWaitForService(
-                    host, startState);
+                    this, startState);
 
             assertThat(completeState.taskInfo.stage,
                     is(TaskState.TaskStage.FINISHED));
@@ -231,11 +211,11 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
         @Test
         public void testDeleteNetworkSuccess() throws Throwable {
             ProvisionNetworkTaskService.ProvisionNetworkTaskState startState = buildValidStartState(
-                    host, NetworkInstanceRequest.InstanceRequestType.DELETE,
+                    this, NetworkInstanceRequest.InstanceRequestType.DELETE,
                     true);
 
             ProvisionNetworkTaskService.ProvisionNetworkTaskState completeState = postAndWaitForService(
-                    host, startState);
+                    this, startState);
 
             assertThat(completeState.taskInfo.stage,
                     is(TaskState.TaskStage.FINISHED));
@@ -244,11 +224,11 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
         @Test
         public void testCreateNetworkServiceAdapterFailure() throws Throwable {
             ProvisionNetworkTaskService.ProvisionNetworkTaskState startState = buildValidStartState(
-                    host, NetworkInstanceRequest.InstanceRequestType.CREATE,
+                    this, NetworkInstanceRequest.InstanceRequestType.CREATE,
                     false);
 
             ProvisionNetworkTaskService.ProvisionNetworkTaskState completeState = postAndWaitForService(
-                    host, startState);
+                    this, startState);
 
             assertThat(completeState.taskInfo.stage,
                     is(TaskState.TaskStage.FAILED));

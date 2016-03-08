@@ -32,7 +32,6 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
 
 import com.vmware.xenon.common.Service;
@@ -89,8 +88,7 @@ public class SnapshotServiceTest extends Suite {
                     Service.ServiceOption.CONCURRENT_GET_HANDLING,
                     Service.ServiceOption.PERSISTENCE,
                     Service.ServiceOption.REPLICATION,
-                    Service.ServiceOption.OWNER_SELECTION,
-                    Service.ServiceOption.INSTRUMENTATION);
+                    Service.ServiceOption.OWNER_SELECTION);
 
             assertThat(this.snapshotService.getOptions(), is(expected));
         }
@@ -100,23 +98,13 @@ public class SnapshotServiceTest extends Suite {
      * This class implements tests for the handleStart method.
      */
     public static class HandleStartTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testValidStartState() throws Throwable {
             SnapshotService.SnapshotState startState = buildValidStartState();
             assertNotNull(host);
 
-            SnapshotService.SnapshotState returnState = host
-                    .postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
+            SnapshotService.SnapshotState returnState = postServiceSynchronously(
+                    SnapshotFactoryService.SELF_LINK,
                             startState, SnapshotService.SnapshotState.class);
 
             assertNotNull(returnState);
@@ -126,13 +114,30 @@ public class SnapshotServiceTest extends Suite {
         }
 
         @Test
+        public void testDuplicatePost() throws Throwable {
+            SnapshotService.SnapshotState startState = buildValidStartState();
+            assertNotNull(host);
+
+            SnapshotService.SnapshotState returnState = postServiceSynchronously(
+                    SnapshotFactoryService.SELF_LINK,
+                            startState, SnapshotService.SnapshotState.class);
+
+            assertNotNull(returnState);
+            assertThat(returnState.name, is(startState.name));
+            startState.name = "new name";
+            returnState = postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
+                            startState, SnapshotService.SnapshotState.class);
+            assertThat(returnState.name, is(startState.name));
+        }
+
+        @Test
         public void testMissingId() throws Throwable {
 
             SnapshotService.SnapshotState startState = buildValidStartState();
             startState.id = null;
 
-            SnapshotService.SnapshotState returnState = host
-                    .postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
+            SnapshotService.SnapshotState returnState = postServiceSynchronously(
+                    SnapshotFactoryService.SELF_LINK,
                             startState, SnapshotService.SnapshotState.class);
 
             assertNotNull(returnState);
@@ -144,7 +149,7 @@ public class SnapshotServiceTest extends Suite {
             SnapshotService.SnapshotState startState = buildValidStartState();
             startState.name = null;
 
-            host.postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
+            postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
                     startState, SnapshotService.SnapshotState.class,
                     IllegalArgumentException.class);
         }
@@ -154,7 +159,7 @@ public class SnapshotServiceTest extends Suite {
             SnapshotService.SnapshotState startState = buildValidStartState();
             startState.computeLink = null;
 
-            host.postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
+            postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
                     startState, SnapshotService.SnapshotState.class,
                     IllegalArgumentException.class);
         }
@@ -164,27 +169,17 @@ public class SnapshotServiceTest extends Suite {
      * This class implements tests for the handlePatch method.
      */
     public static class HandlePatchTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testPatchSnapshotName() throws Throwable {
             SnapshotService.SnapshotState startState = createSnapshotService();
 
             SnapshotService.SnapshotState patchState = new SnapshotService.SnapshotState();
             patchState.name = UUID.randomUUID().toString();
-            host.patchServiceSynchronously(startState.documentSelfLink,
+            patchServiceSynchronously(startState.documentSelfLink,
                     patchState);
 
-            SnapshotService.SnapshotState newState = host
-                    .getServiceSynchronously(startState.documentSelfLink,
+            SnapshotService.SnapshotState newState = getServiceSynchronously(
+                    startState.documentSelfLink,
                             SnapshotService.SnapshotState.class);
             assertThat(newState.name, is(patchState.name));
         }
@@ -195,11 +190,11 @@ public class SnapshotServiceTest extends Suite {
 
             SnapshotService.SnapshotState patchState = new SnapshotService.SnapshotState();
             patchState.description = "test-description";
-            host.patchServiceSynchronously(startState.documentSelfLink,
+            patchServiceSynchronously(startState.documentSelfLink,
                     patchState);
 
-            SnapshotService.SnapshotState newState = host
-                    .getServiceSynchronously(startState.documentSelfLink,
+            SnapshotService.SnapshotState newState = getServiceSynchronously(
+                    startState.documentSelfLink,
                             SnapshotService.SnapshotState.class);
 
             assertThat(newState.description, is(patchState.description));
@@ -211,11 +206,11 @@ public class SnapshotServiceTest extends Suite {
 
             SnapshotService.SnapshotState patchState = new SnapshotService.SnapshotState();
             patchState.computeLink = "test-compute-link";
-            host.patchServiceSynchronously(startState.documentSelfLink,
+            patchServiceSynchronously(startState.documentSelfLink,
                     patchState);
 
-            SnapshotService.SnapshotState newState = host
-                    .getServiceSynchronously(startState.documentSelfLink,
+            SnapshotService.SnapshotState newState = getServiceSynchronously(
+                    startState.documentSelfLink,
                             SnapshotService.SnapshotState.class);
 
             assertThat(newState.computeLink, is(patchState.computeLink));
@@ -231,11 +226,11 @@ public class SnapshotServiceTest extends Suite {
             patchState.customProperties.put("key2", "val2");
             patchState.customProperties.put("key3", "val3");
 
-            host.patchServiceSynchronously(startState.documentSelfLink,
+            patchServiceSynchronously(startState.documentSelfLink,
                     patchState);
 
-            SnapshotService.SnapshotState newState = host
-                    .getServiceSynchronously(startState.documentSelfLink,
+            SnapshotService.SnapshotState newState = getServiceSynchronously(
+                    startState.documentSelfLink,
                             SnapshotService.SnapshotState.class);
 
             for (Map.Entry<String, String> entry : patchState.customProperties
@@ -252,7 +247,7 @@ public class SnapshotServiceTest extends Suite {
         private SnapshotService.SnapshotState createSnapshotService()
                 throws Throwable {
             SnapshotService.SnapshotState startState = buildValidStartState();
-            return host.postServiceSynchronously(
+            return postServiceSynchronously(
                     SnapshotFactoryService.SELF_LINK, startState,
                     SnapshotService.SnapshotState.class);
         }
@@ -262,17 +257,6 @@ public class SnapshotServiceTest extends Suite {
      * This class implements tests for query.
      */
     public static class QueryTest extends BaseModelTest {
-
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testTenantLinksQuery() throws Throwable {
             SnapshotService.SnapshotState st = buildValidStartState();
@@ -282,17 +266,17 @@ public class SnapshotServiceTest extends Suite {
             st.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));
 
-            SnapshotService.SnapshotState startState = host
-                    .postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
+            SnapshotService.SnapshotState startState = postServiceSynchronously(
+                    SnapshotFactoryService.SELF_LINK,
                             st, SnapshotService.SnapshotState.class);
 
             String kind = Utils.buildKind(SnapshotService.SnapshotState.class);
             String propertyName = QueryTask.QuerySpecification
                     .buildCollectionItemName(ServiceDocumentDescription.FIELD_NAME_TENANT_LINKS);
 
-            QueryTask q = host.createDirectQueryTask(kind, propertyName,
+            QueryTask q = createDirectQueryTask(kind, propertyName,
                     st.tenantLinks.get(0));
-            q = host.querySynchronously(q);
+            q = querySynchronously(q);
             assertNotNull(q.results.documentLinks);
             assertThat(q.results.documentCount, is(1L));
             assertThat(q.results.documentLinks.get(0),

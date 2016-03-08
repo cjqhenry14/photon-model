@@ -14,6 +14,7 @@
 package com.vmware.photon.controller.model.resources;
 
 import com.vmware.photon.controller.model.UriPaths;
+
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Service;
 
@@ -27,6 +28,7 @@ public class ResourceDescriptionFactoryService extends FactoryService {
 
     public ResourceDescriptionFactoryService() {
         super(ResourceDescriptionService.ResourceDescription.class);
+        super.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
     }
 
     @Override

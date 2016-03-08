@@ -25,9 +25,7 @@ import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.helpers.TestHost;
 
-import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.services.common.AuthCredentialsFactoryService;
 import com.vmware.xenon.services.common.AuthCredentialsService;
@@ -43,15 +41,6 @@ public class AWSInstanceServiceTest extends Suite{
         super(klass, builder);
     }
 
-    private static ServiceDocument createAuthCredentialsDocument(TestHost host,
-            String privateKey, String privateKeyId) throws Throwable {
-        AuthCredentialsService.AuthCredentialsServiceState creds = new AuthCredentialsService.AuthCredentialsServiceState();
-        creds.privateKey = privateKey;
-        creds.privateKeyId = privateKeyId;
-        return host.postServiceSynchronously(
-                AuthCredentialsFactoryService.SELF_LINK, creds,
-                AuthCredentialsService.AuthCredentialsServiceState.class);
-    }
 
 
     /**
@@ -61,21 +50,30 @@ public class AWSInstanceServiceTest extends Suite{
 
         private String authCredentialsLink;
 
-        @SuppressWarnings({ "rawtypes", "unchecked" })
+        private ServiceDocument createAuthCredentialsDocument(String privateKey,
+                String privateKeyId) throws Throwable {
+            AuthCredentialsService.AuthCredentialsServiceState creds = new AuthCredentialsService.AuthCredentialsServiceState();
+            creds.privateKey = privateKey;
+            creds.privateKeyId = privateKeyId;
+            return postServiceSynchronously(
+                    AuthCredentialsFactoryService.SELF_LINK, creds,
+                    AuthCredentialsService.AuthCredentialsServiceState.class);
+        }
+
+        @SuppressWarnings("unchecked")
         @Override
-        protected Class<?extends Service>[] getFactoryServices() {
-            return new Class[] { AWSInstanceService.class, };
+        protected void startRequiredServices() throws Throwable {
+            super.startFactoryService(AWSInstanceService.class);
         }
 
         @Before
         public void setUpClass() throws Throwable {
-            super.setUpClass();
             String privateKey = "privateKey";
             String privateKeyId = "privateKeyID";
 
             // create credentials
             ServiceDocument awsCredentials = createAuthCredentialsDocument(
-                    host, privateKey, privateKeyId);
+                    privateKey, privateKeyId);
             this.authCredentialsLink = awsCredentials.documentSelfLink;
         }
 
@@ -86,7 +84,7 @@ public class AWSInstanceServiceTest extends Suite{
             req.authCredentialsLink = this.authCredentialsLink;
             req.regionId = "us-east-1";
             req.isMockRequest = true;
-            int statusCode = host.patchServiceSynchronously(
+            int statusCode = patchServiceSynchronously(
                     AWSInstanceService.SELF_LINK, req);
             assertEquals(statusCode, 200);
         }

@@ -15,7 +15,6 @@ package com.vmware.photon.controller.model.tasks;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -33,10 +32,7 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
-import com.vmware.photon.controller.model.TaskServices;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.helpers.TestHost;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
@@ -75,7 +71,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
     }
 
     private static ComputeService.ComputeState createParentCompute(
-            TestHost host, String resourcePool, String zoneId) throws Throwable {
+            BaseModelTest test, String resourcePool, String zoneId) throws Throwable {
         // Create parent ComputeDescription
         ComputeDescriptionService.ComputeDescription cd = new ComputeDescriptionService.ComputeDescription();
         cd.bootAdapterReference = new URI("http://bootAdapterReference");
@@ -97,7 +93,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         cd.name = "friendly-name";
         cd.regionId = "provider-specific-regions";
         cd.zoneId = zoneId;
-        ComputeDescriptionService.ComputeDescription cd1 = host
+        ComputeDescriptionService.ComputeDescription cd1 = test
                 .postServiceSynchronously(
                         ComputeDescriptionFactoryService.SELF_LINK, cd,
                         ComputeDescriptionService.ComputeDescription.class);
@@ -109,7 +105,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         cs.resourcePoolLink = resourcePool;
         cs.adapterManagementReference = URI
                 .create("https://esxhost-01:443/sdk");
-        ComputeService.ComputeState cs1 = host.postServiceSynchronously(
+        ComputeService.ComputeState cs1 = test.postServiceSynchronously(
                 ComputeFactoryService.SELF_LINK, cs,
                 ComputeService.ComputeState.class);
 
@@ -117,12 +113,12 @@ public class ResourceAllocationTaskServiceTest extends Suite {
     }
 
     private static ComputeService.ComputeState createParentCompute(
-            TestHost host, String resourcePool) throws Throwable {
-        return createParentCompute(host, resourcePool, ZONE_ID);
+            BaseModelTest test, String resourcePool) throws Throwable {
+        return createParentCompute(test, resourcePool, ZONE_ID);
     }
 
     private static ComputeDescriptionService.ComputeDescription createComputeDescription(
-            TestHost host, String instanceAdapterLink, String bootAdapterLink)
+            BaseModelTest test, String instanceAdapterLink, String bootAdapterLink)
             throws Throwable {
         // Create ComputeDescription
         ComputeDescriptionService.ComputeDescription cd = new ComputeDescriptionService.ComputeDescription();
@@ -140,38 +136,38 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         // disable periodic maintenance for tests by default.
         cd.healthAdapterReference = null;
         if (instanceAdapterLink != null) {
-            cd.instanceAdapterReference = UriUtils.buildUri(host,
+            cd.instanceAdapterReference = UriUtils.buildUri(test.getHost(),
                     instanceAdapterLink);
             cd.powerAdapterReference = URI.create("http://powerAdapter");
         }
         if (bootAdapterLink != null) {
-            cd.bootAdapterReference = UriUtils.buildUri(host, bootAdapterLink);
+            cd.bootAdapterReference = UriUtils.buildUri(test.getHost(), bootAdapterLink);
         }
-        return host.postServiceSynchronously(
+        return test.postServiceSynchronously(
                 ComputeDescriptionFactoryService.SELF_LINK, cd,
                 ComputeDescriptionService.ComputeDescription.class);
     }
 
-    private static List<String> createDiskDescription(TestHost host)
+    private static List<String> createDiskDescription(BaseModelTest test)
             throws Throwable {
         DiskService.DiskState d = new DiskService.DiskState();
         d.id = UUID.randomUUID().toString();
         d.type = DiskService.DiskType.HDD;
         d.name = "friendly-name";
         d.capacityMBytes = 100L;
-        DiskService.DiskState d1 = host.postServiceSynchronously(
+        DiskService.DiskState d1 = test.postServiceSynchronously(
                 DiskFactoryService.SELF_LINK, d, DiskService.DiskState.class);
         List<String> links = new ArrayList<>();
         links.add(d1.documentSelfLink);
         return links;
     }
 
-    private static List<String> createNetworkDescription(TestHost host)
+    private static List<String> createNetworkDescription(BaseModelTest test)
             throws Throwable {
         NetworkInterfaceService.NetworkInterfaceState n = new NetworkInterfaceService.NetworkInterfaceState();
         n.id = UUID.randomUUID().toString();
         n.networkDescriptionLink = "http://network-description";
-        NetworkInterfaceService.NetworkInterfaceState n1 = host
+        NetworkInterfaceService.NetworkInterfaceState n1 = test
                 .postServiceSynchronously(
                         NetworkInterfaceFactoryService.SELF_LINK, n,
                         NetworkInterfaceService.NetworkInterfaceState.class);
@@ -182,7 +178,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
     }
 
     private static ResourceDescriptionService.ResourceDescription createResourceDescription(
-            TestHost host, ComputeDescriptionService.ComputeDescription cd,
+            BaseModelTest test, ComputeDescriptionService.ComputeDescription cd,
             List<String> diskDescriptionLinks,
             List<String> networkDescriptionLinks) throws Throwable {
         ResourceDescriptionService.ResourceDescription rd = new ResourceDescriptionService.ResourceDescription();
@@ -191,7 +187,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         rd.diskDescriptionLinks = diskDescriptionLinks;
         rd.networkDescriptionLinks = networkDescriptionLinks;
 
-        return host.postServiceSynchronously(
+        return test.postServiceSynchronously(
                 ResourceDescriptionFactoryService.SELF_LINK, rd,
                 ResourceDescriptionService.ResourceDescription.class);
     }
@@ -231,14 +227,9 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         return state;
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    private static Class<? extends Service>[] getFactoryServices() {
-        List<Class<? extends Service>> services = new ArrayList<>();
-        Collections.addAll(services, ModelServices.getFactories());
-        Collections.addAll(services, TaskServices.getFactories());
-        Collections.addAll(services, MockAdapter.getFactories());
-        return services.toArray((Class<? extends Service>[]) new Class[services
-                .size()]);
+    private static void startFactoryServices(BaseModelTest test) throws Throwable {
+        TaskServices.startFactories(test);
+        MockAdapter.startFactories(test);
     }
 
     /**
@@ -272,36 +263,33 @@ public class ResourceAllocationTaskServiceTest extends Suite {
      * This class implements tests for the handleStart method.
      */
     public static class HandleStartTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ResourceAllocationTaskServiceTest.getFactoryServices();
-        }
 
-        @Before
-        public void setUpClass() throws Throwable {
-            super.setUpClass();
+        @Override
+        protected void startRequiredServices() throws Throwable {
+            ResourceAllocationTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
         public void testSuccess() throws Throwable {
             String resourcePool = UUID.randomUUID().toString();
 
-            createParentCompute(host, resourcePool);
+            createParentCompute(this, resourcePool);
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    this, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
             ResourceAllocationTaskState startState = createAllocationRequest(
                     resourcePool, cd.documentSelfLink,
-                    createDiskDescription(host), createNetworkDescription(host));
+                    createDiskDescription(this), createNetworkDescription(this));
 
-            ResourceAllocationTaskState returnState = host
+            ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
                             ResourceAllocationTaskFactoryService.SELF_LINK,
                             startState, ResourceAllocationTaskState.class);
 
-            ResourceAllocationTaskState completeState = host
+            ResourceAllocationTaskState completeState = this
                     .waitForServiceState(
                             ResourceAllocationTaskState.class,
                             returnState.documentSelfLink,
@@ -320,25 +308,25 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         public void testSuccessWithResourceDescription() throws Throwable {
             String resourcePool = UUID.randomUUID().toString();
 
-            createParentCompute(host, resourcePool);
+            createParentCompute(this, resourcePool);
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    this, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
             ResourceDescriptionService.ResourceDescription rd = createResourceDescription(
-                    host, cd, createDiskDescription(host),
-                    createNetworkDescription(host));
+                    this, cd, createDiskDescription(this),
+                    createNetworkDescription(this));
 
             ResourceAllocationTaskState startState = createAllocationRequestWithResourceDescription(
                     resourcePool, cd, rd);
 
-            ResourceAllocationTaskState returnState = host
+            ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
                             ResourceAllocationTaskFactoryService.SELF_LINK,
                             startState, ResourceAllocationTaskState.class);
 
-            ResourceAllocationTaskState completeState = host
+            ResourceAllocationTaskState completeState = this
                     .waitForServiceState(
                             ResourceAllocationTaskState.class,
                             returnState.documentSelfLink,
@@ -355,7 +343,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
             ResourceAllocationTaskState startState = createAllocationRequest(
                     resourcePool, null, null, null);
 
-            host.postServiceSynchronously(
+            this.postServiceSynchronously(
                     ResourceAllocationTaskFactoryService.SELF_LINK, startState,
                     ResourceAllocationTaskState.class,
                     IllegalArgumentException.class);
@@ -368,7 +356,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
                     resourcePool, "http://computeDescription", null, null);
             startState.resourceCount = -1;
 
-            host.postServiceSynchronously(
+            this.postServiceSynchronously(
                     ResourceAllocationTaskFactoryService.SELF_LINK, startState,
                     ResourceAllocationTaskState.class,
                     IllegalArgumentException.class);
@@ -381,7 +369,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
                     resourcePool, "http://computeDescription", null, null);
             startState.errorThreshold = -1;
 
-            host.postServiceSynchronously(
+            this.postServiceSynchronously(
                     ResourceAllocationTaskFactoryService.SELF_LINK, startState,
                     ResourceAllocationTaskState.class,
                     IllegalArgumentException.class);
@@ -395,13 +383,9 @@ public class ResourceAllocationTaskServiceTest extends Suite {
     public static class QueryAvailableComputeResourcesTest extends
             BaseModelTest {
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ResourceAllocationTaskServiceTest.getFactoryServices();
-        }
-
-        @Before
-        public void setUpClass() throws Throwable {
-            super.setUpClass();
+        protected void startRequiredServices() throws Throwable {
+            ResourceAllocationTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         /**
@@ -413,22 +397,22 @@ public class ResourceAllocationTaskServiceTest extends Suite {
             String resourcePool = UUID.randomUUID().toString();
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    this, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
             ResourceAllocationTaskState startState = createAllocationRequest(
                     resourcePool, cd.documentSelfLink, null, null);
 
             try {
-                // Lower timeout to 5 seconds
-                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(5));
+                // Lower timeout
+                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(2));
 
-                ResourceAllocationTaskState returnState = host
+                ResourceAllocationTaskState returnState = this
                         .postServiceSynchronously(
                                 ResourceAllocationTaskFactoryService.SELF_LINK,
                                 startState, ResourceAllocationTaskState.class);
 
-                ResourceAllocationTaskState completeState = host
+                ResourceAllocationTaskState completeState = this
                         .waitForServiceState(
                                 ResourceAllocationTaskState.class,
                                 returnState.documentSelfLink,
@@ -454,20 +438,20 @@ public class ResourceAllocationTaskServiceTest extends Suite {
             String resourcePool = UUID.randomUUID().toString();
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    this, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
             ResourceAllocationTaskState startState = createAllocationRequest(
                     resourcePool, cd.documentSelfLink, null, null);
-            ResourceAllocationTaskState returnState = host
+            ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
                             ResourceAllocationTaskFactoryService.SELF_LINK,
                             startState, ResourceAllocationTaskState.class);
 
             Thread.sleep(1500);
-            createParentCompute(host, resourcePool);
+            createParentCompute(this, resourcePool);
 
-            ResourceAllocationTaskState completeState = host
+            ResourceAllocationTaskState completeState = this
                     .waitForServiceState(
                             ResourceAllocationTaskState.class,
                             returnState.documentSelfLink,
@@ -483,10 +467,10 @@ public class ResourceAllocationTaskServiceTest extends Suite {
             String resourcePool1 = UUID.randomUUID().toString();
             String resourcePool2 = UUID.randomUUID().toString();
 
-            createParentCompute(host, resourcePool1, ZONE_ID);
+            createParentCompute(this, resourcePool1, ZONE_ID);
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    this, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
             ResourceAllocationTaskState startState = createAllocationRequest(
@@ -494,14 +478,14 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             try {
                 // Lower timeout to 5 seconds
-                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(5));
+                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(2));
 
-                ResourceAllocationTaskState returnState = host
+                ResourceAllocationTaskState returnState = this
                         .postServiceSynchronously(
                                 ResourceAllocationTaskFactoryService.SELF_LINK,
                                 startState, ResourceAllocationTaskState.class);
 
-                ResourceAllocationTaskState completeState = host
+                ResourceAllocationTaskState completeState = this
                         .waitForServiceState(
                                 ResourceAllocationTaskState.class,
                                 returnState.documentSelfLink,
@@ -522,10 +506,10 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         public void testWrongZone() throws Throwable {
             String resourcePool = UUID.randomUUID().toString();
 
-            createParentCompute(host, resourcePool, "other-zone");
+            createParentCompute(this, resourcePool, "other-zone");
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    this, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
             ResourceAllocationTaskState startState = createAllocationRequest(
@@ -533,14 +517,14 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             try {
                 // Lower timeout to 5 seconds
-                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(5));
+                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(2));
 
-                ResourceAllocationTaskState returnState = host
+                ResourceAllocationTaskState returnState = this
                         .postServiceSynchronously(
                                 ResourceAllocationTaskFactoryService.SELF_LINK,
                                 startState, ResourceAllocationTaskState.class);
 
-                ResourceAllocationTaskState completeState = host
+                ResourceAllocationTaskState completeState = this
                         .waitForServiceState(
                                 ResourceAllocationTaskState.class,
                                 returnState.documentSelfLink,
@@ -564,35 +548,31 @@ public class ResourceAllocationTaskServiceTest extends Suite {
      */
     public static class ComputeResourceProvisioningTest extends BaseModelTest {
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ResourceAllocationTaskServiceTest.getFactoryServices();
-        }
-
-        @Before
-        public void setUpClass() throws Throwable {
-            super.setUpClass();
+        protected void startRequiredServices() throws Throwable {
+            ResourceAllocationTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
         public void testNoDisk() throws Throwable {
             String resourcePool = UUID.randomUUID().toString();
 
-            createParentCompute(host, resourcePool);
+            createParentCompute(this, resourcePool);
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    this, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
             ResourceAllocationTaskState startState = createAllocationRequest(
                     resourcePool, cd.documentSelfLink, null,
-                    createNetworkDescription(host));
+                    createNetworkDescription(this));
 
-            ResourceAllocationTaskState returnState = host
+            ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
                             ResourceAllocationTaskFactoryService.SELF_LINK,
                             startState, ResourceAllocationTaskState.class);
 
-            ResourceAllocationTaskState completeState = host
+            ResourceAllocationTaskState completeState = this
                     .waitForServiceState(
                             ResourceAllocationTaskState.class,
                             returnState.documentSelfLink,
@@ -607,22 +587,22 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         public void testNoNetwork() throws Throwable {
             String resourcePool = UUID.randomUUID().toString();
 
-            createParentCompute(host, resourcePool);
+            createParentCompute(this, resourcePool);
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    this, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
             ResourceAllocationTaskState startState = createAllocationRequest(
                     resourcePool, cd.documentSelfLink,
-                    createDiskDescription(host), null);
+                    createDiskDescription(this), null);
 
-            ResourceAllocationTaskState returnState = host
+            ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
                             ResourceAllocationTaskFactoryService.SELF_LINK,
                             startState, ResourceAllocationTaskState.class);
 
-            ResourceAllocationTaskState completeState = host
+            ResourceAllocationTaskState completeState = this
                     .waitForServiceState(
                             ResourceAllocationTaskState.class,
                             returnState.documentSelfLink,
@@ -637,21 +617,21 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         public void testNoDiskOrNetwork() throws Throwable {
             String resourcePool = UUID.randomUUID().toString();
 
-            createParentCompute(host, resourcePool);
+            createParentCompute(this, resourcePool);
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    this, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
             ResourceAllocationTaskState startState = createAllocationRequest(
                     resourcePool, cd.documentSelfLink, null, null);
 
-            ResourceAllocationTaskState returnState = host
+            ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
                             ResourceAllocationTaskFactoryService.SELF_LINK,
                             startState, ResourceAllocationTaskState.class);
 
-            ResourceAllocationTaskState completeState = host
+            ResourceAllocationTaskState completeState = this
                     .waitForServiceState(
                             ResourceAllocationTaskState.class,
                             returnState.documentSelfLink,
@@ -666,25 +646,25 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         public void testProvisionDiskFailure() throws Throwable {
             String resourcePool = UUID.randomUUID().toString();
 
-            createParentCompute(host, resourcePool);
+            createParentCompute(this, resourcePool);
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    host, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
+                    this, MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
-            List<String> diskLinks = createDiskDescription(host);
+            List<String> diskLinks = createDiskDescription(this);
             diskLinks.add("http://bad-disk-link");
 
             ResourceAllocationTaskState startState = createAllocationRequest(
                     resourcePool, cd.documentSelfLink, diskLinks,
-                    createNetworkDescription(host));
+                    createNetworkDescription(this));
 
-            ResourceAllocationTaskState returnState = host
+            ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
                             ResourceAllocationTaskFactoryService.SELF_LINK,
                             startState, ResourceAllocationTaskState.class);
 
-            ResourceAllocationTaskState completeState = host
+            ResourceAllocationTaskState completeState = this
                     .waitForServiceState(
                             ResourceAllocationTaskState.class,
                             returnState.documentSelfLink,
@@ -699,26 +679,26 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         public void testProvisionNetworkFailure() throws Throwable {
             String resourcePool = UUID.randomUUID().toString();
 
-            createParentCompute(this.host, resourcePool);
+            createParentCompute(this, resourcePool);
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    this.host,
+                    this,
                     MockAdapter.MockSuccessInstanceAdapter.SELF_LINK,
                     MockAdapter.MockSuccessBootAdapter.SELF_LINK);
 
-            List<String> networkLinks = createNetworkDescription(this.host);
+            List<String> networkLinks = createNetworkDescription(this);
             networkLinks.add("http://bad-network-link");
 
             ResourceAllocationTaskState startState = createAllocationRequest(
                     resourcePool, cd.documentSelfLink,
-                    createDiskDescription(this.host), networkLinks);
+                    createDiskDescription(this), networkLinks);
 
-            ResourceAllocationTaskState returnState = this.host
+            ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
                             ResourceAllocationTaskFactoryService.SELF_LINK,
                             startState, ResourceAllocationTaskState.class);
 
-            ResourceAllocationTaskState completeState = this.host
+            ResourceAllocationTaskState completeState = this
                     .waitForServiceState(
                             ResourceAllocationTaskState.class,
                             returnState.documentSelfLink,
@@ -733,24 +713,24 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         public void testProvisionCompulteFailure() throws Throwable {
             String resourcePool = UUID.randomUUID().toString();
 
-            createParentCompute(this.host, resourcePool);
+            createParentCompute(this, resourcePool);
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    this.host,
+                    this,
                     MockAdapter.MockFailureInstanceAdapter.SELF_LINK,
                     MockAdapter.MockFailureBootAdapter.SELF_LINK);
 
             ResourceAllocationTaskState startState = createAllocationRequest(
                     resourcePool, cd.documentSelfLink,
-                    createDiskDescription(this.host),
-                    createNetworkDescription(this.host));
+                    createDiskDescription(this),
+                    createNetworkDescription(this));
 
-            ResourceAllocationTaskState returnState = this.host
+            ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
                             ResourceAllocationTaskFactoryService.SELF_LINK,
                             startState, ResourceAllocationTaskState.class);
 
-            ResourceAllocationTaskState completeState = this.host
+            ResourceAllocationTaskState completeState = this
                     .waitForServiceState(
                             ResourceAllocationTaskState.class,
                             returnState.documentSelfLink,

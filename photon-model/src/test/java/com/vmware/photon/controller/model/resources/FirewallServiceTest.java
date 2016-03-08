@@ -31,7 +31,6 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
 
 import com.vmware.xenon.common.Service;
@@ -127,21 +126,11 @@ public class FirewallServiceTest extends Suite {
      * This class implements tests for the handleStart method.
      */
     public static class HandleStartTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testValidStartState() throws Throwable {
             FirewallService.FirewallState startState = buildValidStartState();
-            FirewallService.FirewallState returnState = host
-                    .postServiceSynchronously(FirewallFactoryService.SELF_LINK,
+            FirewallService.FirewallState returnState = postServiceSynchronously(
+                    FirewallFactoryService.SELF_LINK,
                             startState, FirewallService.FirewallState.class);
 
             assertNotNull(returnState);
@@ -159,6 +148,22 @@ public class FirewallServiceTest extends Suite {
                     is(getAllowIngressRules().get(0).name));
             assertThat(returnState.egress.get(0).name, is(getAllowEgressRules()
                     .get(0).name));
+        }
+
+        @Test
+        public void testDuplicatePost() throws Throwable {
+            FirewallService.FirewallState startState = buildValidStartState();
+            FirewallService.FirewallState returnState = postServiceSynchronously(
+                    FirewallFactoryService.SELF_LINK,
+                            startState, FirewallService.FirewallState.class);
+
+            assertNotNull(returnState);
+            assertThat(returnState.regionID, is(startState.regionID));
+            startState.regionID = "new-regionID";
+            returnState = postServiceSynchronously(FirewallFactoryService.SELF_LINK,
+                    startState, FirewallService.FirewallState.class);
+            assertThat(returnState.regionID, is(startState.regionID));
+
         }
 
         @Test
@@ -246,7 +251,7 @@ public class FirewallServiceTest extends Suite {
                     invalidEgressPorts2, invalidEgressPorts3,
                     invalidEgressPorts4 };
             for (FirewallService.FirewallState state : stateArray) {
-                host.postServiceSynchronously(FirewallFactoryService.SELF_LINK,
+                postServiceSynchronously(FirewallFactoryService.SELF_LINK,
                         state, FirewallService.FirewallState.class,
                         IllegalArgumentException.class);
             }
@@ -258,22 +263,12 @@ public class FirewallServiceTest extends Suite {
      * This class implements tests for the handlePatch method.
      */
     public static class HandlePatchTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testPatch() throws Throwable {
             FirewallService.FirewallState startState = buildValidStartState();
 
-            FirewallService.FirewallState returnState = host
-                    .postServiceSynchronously(FirewallFactoryService.SELF_LINK,
+            FirewallService.FirewallState returnState = postServiceSynchronously(
+                    FirewallFactoryService.SELF_LINK,
                             startState, FirewallService.FirewallState.class);
 
             FirewallService.FirewallState.Allow newIngressrule = new FirewallService.FirewallState.Allow();
@@ -309,10 +304,10 @@ public class FirewallServiceTest extends Suite {
                 patchState.instanceAdapterReference = null;
             }
 
-            host.patchServiceSynchronously(returnState.documentSelfLink,
+            patchServiceSynchronously(returnState.documentSelfLink,
                     patchState);
 
-            returnState = host.getServiceSynchronously(
+            returnState = getServiceSynchronously(
                     returnState.documentSelfLink,
                     FirewallService.FirewallState.class);
 
@@ -346,16 +341,6 @@ public class FirewallServiceTest extends Suite {
      * This class implements tests for query.
      */
     public static class QueryTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testTenantLinksQuery() throws Throwable {
             FirewallService.FirewallState firewallState = buildValidStartState();
@@ -363,17 +348,17 @@ public class FirewallServiceTest extends Suite {
             firewallState.tenantLinks = new ArrayList<>();
             firewallState.tenantLinks.add(UriUtils.buildUriPath(
                     tenantUri.getPath(), "tenantA"));
-            FirewallService.FirewallState startState = host
-                    .postServiceSynchronously(FirewallFactoryService.SELF_LINK,
+            FirewallService.FirewallState startState = postServiceSynchronously(
+                    FirewallFactoryService.SELF_LINK,
                             firewallState, FirewallService.FirewallState.class);
 
             String kind = Utils.buildKind(FirewallService.FirewallState.class);
             String propertyName = QueryTask.QuerySpecification
                     .buildCollectionItemName(ServiceDocumentDescription.FIELD_NAME_TENANT_LINKS);
 
-            QueryTask q = host.createDirectQueryTask(kind, propertyName,
+            QueryTask q = createDirectQueryTask(kind, propertyName,
                     firewallState.tenantLinks.get(0));
-            q = host.querySynchronously(q);
+            q = querySynchronously(q);
             assertNotNull(q.results.documentLinks);
             assertThat(q.results.documentCount, is(1L));
             assertThat(q.results.documentLinks.get(0),

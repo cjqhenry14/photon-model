@@ -41,6 +41,7 @@ public class ProvisionComputeTaskFactoryServiceTest {
         EnumSet<Service.ServiceOption> expected = EnumSet.of(
                 Service.ServiceOption.CONCURRENT_GET_HANDLING,
                 Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
+                Service.ServiceOption.INSTRUMENTATION,
                 Service.ServiceOption.FACTORY);
         assertThat(this.provisionComputeTaskFactoryService.getOptions(),
                 is(expected));

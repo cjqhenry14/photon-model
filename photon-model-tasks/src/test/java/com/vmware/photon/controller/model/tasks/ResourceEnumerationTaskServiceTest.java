@@ -15,10 +15,8 @@ package com.vmware.photon.controller.model.tasks;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -32,11 +30,8 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
-import com.vmware.photon.controller.model.TaskServices;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.helpers.TestHost;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionServiceTest;
@@ -81,20 +76,20 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
     }
 
     private static ComputeDescriptionService.ComputeDescription createComputeDescription(
-            TestHost host, String enumerationAdapterReference) throws Throwable {
+            BaseModelTest test, String enumerationAdapterReference) throws Throwable {
         ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
                 .buildValidStartState();
         cd.healthAdapterReference = null;
-        cd.enumerationAdapterReference = UriUtils.buildUri(host,
+        cd.enumerationAdapterReference = UriUtils.buildUri(test.getHost(),
                 enumerationAdapterReference);
 
-        return host.postServiceSynchronously(
+        return test.postServiceSynchronously(
                 ComputeDescriptionFactoryService.SELF_LINK, cd,
                 ComputeDescriptionService.ComputeDescription.class);
     }
 
     private static ComputeService.ComputeStateWithDescription createCompute(
-            TestHost host, ComputeDescriptionService.ComputeDescription cd)
+            BaseModelTest test, ComputeDescriptionService.ComputeDescription cd)
             throws Throwable {
         ComputeService.ComputeState cs = new ComputeService.ComputeStateWithDescription();
         cs.id = UUID.randomUUID().toString();
@@ -115,7 +110,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
         cs.tenantLinks = new ArrayList<>();
         cs.tenantLinks.add("http://tenant");
 
-        ComputeService.ComputeState returnState = host
+        ComputeService.ComputeState returnState = test
                 .postServiceSynchronously(ComputeFactoryService.SELF_LINK, cs,
                         ComputeService.ComputeState.class);
 
@@ -123,14 +118,9 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
                 returnState);
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    private static Class<? extends Service>[] getFactoryServices() {
-        List<Class<? extends Service>> services = new ArrayList<>();
-        Collections.addAll(services, ModelServices.getFactories());
-        Collections.addAll(services, TaskServices.getFactories());
-        Collections.addAll(services, MockAdapter.getFactories());
-        return services.toArray((Class<? extends Service>[]) new Class[services
-                .size()]);
+    private static void startFactoryServices(BaseModelTest test) throws Throwable {
+        TaskServices.startFactories(test);
+        MockAdapter.startFactories(test);
     }
 
     /**
@@ -168,24 +158,20 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
         private ComputeService.ComputeStateWithDescription computeHost;
 
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ResourceEnumerationTaskServiceTest.getFactoryServices();
-        }
-
-        @Before
-        public void setUpClass() throws Throwable {
-            super.setUpClass();
+        protected void startRequiredServices() throws Throwable {
+            ResourceEnumerationTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
 
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    this.host, "http://enumerationAdapter");
-            this.computeHost = createCompute(this.host, cd);
+                    this, "http://enumerationAdapter");
+            this.computeHost = createCompute(this, cd);
         }
+
 
         @Test
         public void testMissingComputeDescription() throws Throwable {
             ResourceEnumerationTaskService.ResourceEnumerationTaskState state = buildValidStartState(null);
-            this.host
-                    .postServiceSynchronously(
+            this.postServiceSynchronously(
                             ResourceEnumerationTaskFactoryService.SELF_LINK,
                             state,
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class,
@@ -197,8 +183,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
             ResourceEnumerationTaskService.ResourceEnumerationTaskState state = buildValidStartState(this.computeHost);
             state.adapterManagementReference = null;
 
-            this.host
-                    .postServiceSynchronously(
+            this.postServiceSynchronously(
                             ResourceEnumerationTaskFactoryService.SELF_LINK,
                             state,
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class,
@@ -210,8 +195,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
             ResourceEnumerationTaskService.ResourceEnumerationTaskState state = buildValidStartState(this.computeHost);
             state.resourcePoolLink = null;
 
-            this.host
-                    .postServiceSynchronously(
+            this.postServiceSynchronously(
                             ResourceEnumerationTaskFactoryService.SELF_LINK,
                             state,
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class,
@@ -225,31 +209,27 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
      */
     public static class EndToEndTest extends BaseModelTest {
 
-        @Before
-        public void setUpClass() throws Throwable {
-            super.setUpClass();
-        }
-
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ResourceEnumerationTaskServiceTest.getFactoryServices();
+        protected void startRequiredServices() throws Throwable {
+            ResourceEnumerationTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
         public void testSuccess() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    this.host,
+                    this,
                     MockAdapter.MockSuccessEnumerationAdapter.SELF_LINK);
             ComputeService.ComputeStateWithDescription computeHost = createCompute(
-                    this.host, cd);
+                    this, cd);
 
-            ResourceEnumerationTaskService.ResourceEnumerationTaskState startState = this.host
+            ResourceEnumerationTaskService.ResourceEnumerationTaskState startState = this
                     .postServiceSynchronously(
                             ResourceEnumerationTaskFactoryService.SELF_LINK,
                             buildValidStartState(computeHost),
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class);
 
-            ResourceEnumerationTaskService.ResourceEnumerationTaskState newState = this.host
+            ResourceEnumerationTaskService.ResourceEnumerationTaskState newState = this
                     .waitForServiceState(
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class,
                             startState.documentSelfLink,
@@ -263,18 +243,18 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
         @Test
         public void testFailure() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = createComputeDescription(
-                    this.host,
+                    this,
                     MockAdapter.MockFailureEnumerationAdapter.SELF_LINK);
             ComputeService.ComputeStateWithDescription computeHost = createCompute(
-                    this.host, cd);
+                    this, cd);
 
-            ResourceEnumerationTaskService.ResourceEnumerationTaskState startState = this.host
+            ResourceEnumerationTaskService.ResourceEnumerationTaskState startState = this
                     .postServiceSynchronously(
                             ResourceEnumerationTaskFactoryService.SELF_LINK,
                             buildValidStartState(computeHost),
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class);
 
-            ResourceEnumerationTaskService.ResourceEnumerationTaskState newState = this.host
+            ResourceEnumerationTaskService.ResourceEnumerationTaskState newState = this
                     .waitForServiceState(
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class,
                             startState.documentSelfLink,

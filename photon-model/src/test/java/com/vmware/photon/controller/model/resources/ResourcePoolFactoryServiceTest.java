@@ -43,6 +43,7 @@ public class ResourcePoolFactoryServiceTest {
                 Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
                 Service.ServiceOption.FACTORY,
                 Service.ServiceOption.REPLICATION,
+                Service.ServiceOption.IDEMPOTENT_POST,
                 Service.ServiceOption.HTML_USER_INTERFACE);
 
         assertThat(this.resourcePoolFactoryService.getOptions(), is(expected));

@@ -14,9 +14,7 @@
 package com.vmware.photon.controller.model.tasks;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumSet;
-import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -30,10 +28,7 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
-import com.vmware.photon.controller.model.TaskServices;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.helpers.TestHost;
 
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.TaskState;
@@ -55,21 +50,17 @@ public class SshCommandTaskServiceTest extends Suite {
         super(klass, builder);
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    private static Class<? extends Service>[] getFactoryServices() {
-        List<Class<? extends Service>> services = new ArrayList<>();
-        Collections.addAll(services, ModelServices.getFactories());
-        Collections.addAll(services, TaskServices.getFactories());
-        return services.toArray((Class<? extends Service>[]) new Class[services
-                .size()]);
+    private static void startFactoryServices(BaseModelTest test) throws Throwable {
+        TaskServices.startFactories(test);
+        MockAdapter.startFactories(test);
     }
 
-    private static String createAuth(TestHost host, String username,
+    private static String createAuth(BaseModelTest test, String username,
             String privateKey) throws Throwable {
         AuthCredentialsServiceState startState = new AuthCredentialsServiceState();
         startState.userEmail = username;
         startState.privateKey = privateKey;
-        AuthCredentialsServiceState returnState = host
+        AuthCredentialsServiceState returnState = test
                 .postServiceSynchronously(
                         AuthCredentialsFactoryService.SELF_LINK, startState,
                         AuthCredentialsServiceState.class);
@@ -104,14 +95,11 @@ public class SshCommandTaskServiceTest extends Suite {
      * This class implements tests for the handleStart method.
      */
     public static class HandleStartTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return SshCommandTaskServiceTest.getFactoryServices();
-        }
 
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
+        @Override
+        protected void startRequiredServices() throws Throwable {
+            SshCommandTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
@@ -123,7 +111,7 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.commands = new ArrayList<>();
             startState.commands.add("ls");
 
-            this.host.postServiceSynchronously(
+            this.postServiceSynchronously(
                     SshCommandTaskFactoryService.SELF_LINK, startState,
                     SshCommandTaskService.SshCommandTaskState.class,
                     IllegalArgumentException.class);
@@ -138,7 +126,7 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.commands = new ArrayList<>();
             startState.commands.add("ls");
 
-            this.host.postServiceSynchronously(
+            this.postServiceSynchronously(
                     SshCommandTaskFactoryService.SELF_LINK, startState,
                     SshCommandTaskService.SshCommandTaskState.class,
                     IllegalArgumentException.class);
@@ -152,7 +140,7 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.authCredentialLink = "authLink";
             startState.commands = null;
 
-            this.host.postServiceSynchronously(
+            this.postServiceSynchronously(
                     SshCommandTaskFactoryService.SELF_LINK, startState,
                     SshCommandTaskService.SshCommandTaskState.class,
                     IllegalArgumentException.class);
@@ -169,7 +157,7 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.taskInfo = new TaskState();
             startState.taskInfo.stage = TaskState.TaskStage.STARTED;
 
-            this.host.postServiceSynchronously(
+            this.postServiceSynchronously(
                     SshCommandTaskFactoryService.SELF_LINK, startState,
                     SshCommandTaskService.SshCommandTaskState.class,
                     IllegalStateException.class);
@@ -181,18 +169,14 @@ public class SshCommandTaskServiceTest extends Suite {
      */
     public static class EndToEndTest extends BaseModelTest {
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return SshCommandTaskServiceTest.getFactoryServices();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
+        protected void startRequiredServices() throws Throwable {
+            SshCommandTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
         public void testSuccess() throws Throwable {
-            String authLink = createAuth(host, "username", "privatekey");
+            String authLink = createAuth(this, "username", "privatekey");
 
             SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
             startState.isMockRequest = true;
@@ -202,17 +186,15 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.commands.add("ls");
             startState.commands.add("pwd");
 
-            SshCommandTaskService.SshCommandTaskState returnState = host
-                    .postServiceSynchronously(
-                            SshCommandTaskFactoryService.SELF_LINK, startState,
-                            SshCommandTaskService.SshCommandTaskState.class);
+            SshCommandTaskService.SshCommandTaskState returnState = postServiceSynchronously(
+                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.SshCommandTaskState.class);
 
-            SshCommandTaskService.SshCommandTaskState completeState = host
-                    .waitForServiceState(
-                            SshCommandTaskService.SshCommandTaskState.class,
-                            returnState.documentSelfLink,
-                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
-                                    .ordinal());
+            SshCommandTaskService.SshCommandTaskState completeState = waitForServiceState(
+                    SshCommandTaskService.SshCommandTaskState.class,
+                    returnState.documentSelfLink,
+                    state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                            .ordinal());
 
             assertThat(completeState.taskInfo.stage,
                     is(TaskState.TaskStage.FINISHED));
@@ -231,17 +213,15 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.commands.add("ls");
             startState.commands.add("pwd");
 
-            SshCommandTaskService.SshCommandTaskState returnState = host
-                    .postServiceSynchronously(
-                            SshCommandTaskFactoryService.SELF_LINK, startState,
-                            SshCommandTaskService.SshCommandTaskState.class);
+            SshCommandTaskService.SshCommandTaskState returnState = postServiceSynchronously(
+                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.SshCommandTaskState.class);
 
-            SshCommandTaskService.SshCommandTaskState completeState = host
-                    .waitForServiceState(
-                            SshCommandTaskService.SshCommandTaskState.class,
-                            returnState.documentSelfLink,
-                            state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
-                                    .ordinal());
+            SshCommandTaskService.SshCommandTaskState completeState = waitForServiceState(
+                    SshCommandTaskService.SshCommandTaskState.class,
+                    returnState.documentSelfLink,
+                    state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
+                            .ordinal());
 
             assertThat(completeState.taskInfo.stage,
                     is(TaskState.TaskStage.FAILED));
@@ -259,13 +239,9 @@ public class SshCommandTaskServiceTest extends Suite {
                 + "\n-----END RSA PRIVATE KEY-----";
 
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return SshCommandTaskServiceTest.getFactoryServices();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
+        protected void startRequiredServices() throws Throwable {
+            SshCommandTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         /**
@@ -274,7 +250,7 @@ public class SshCommandTaskServiceTest extends Suite {
         @Test
         public void testSuccess() throws Throwable {
 
-            String authLink = createAuth(this.host, this.username,
+            String authLink = createAuth(this, this.username,
                     this.privateKey);
 
             SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
@@ -284,12 +260,12 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.commands.add("ls");
             startState.commands.add("pwd");
 
-            SshCommandTaskService.SshCommandTaskState returnState = this.host
+            SshCommandTaskService.SshCommandTaskState returnState = this
                     .postServiceSynchronously(
                             SshCommandTaskFactoryService.SELF_LINK, startState,
                             SshCommandTaskService.SshCommandTaskState.class);
 
-            SshCommandTaskService.SshCommandTaskState completeState = this.host
+            SshCommandTaskService.SshCommandTaskState completeState = this
                     .waitForServiceState(
                             SshCommandTaskService.SshCommandTaskState.class,
                             returnState.documentSelfLink,
@@ -303,7 +279,7 @@ public class SshCommandTaskServiceTest extends Suite {
         @Test
         public void testFailedCommand() throws Throwable {
 
-            String authLink = createAuth(this.host, this.username,
+            String authLink = createAuth(this, this.username,
                     this.privateKey);
 
             SshCommandTaskService.SshCommandTaskState startState = new SshCommandTaskService.SshCommandTaskState();
@@ -314,12 +290,12 @@ public class SshCommandTaskServiceTest extends Suite {
                                              // non-zero)
             startState.commands.add("pwd");
 
-            SshCommandTaskService.SshCommandTaskState returnState = this.host
+            SshCommandTaskService.SshCommandTaskState returnState = this
                     .postServiceSynchronously(
                             SshCommandTaskFactoryService.SELF_LINK, startState,
                             SshCommandTaskService.SshCommandTaskState.class);
 
-            SshCommandTaskService.SshCommandTaskState completeState = this.host
+            SshCommandTaskService.SshCommandTaskState completeState = this
                     .waitForServiceState(
                             SshCommandTaskService.SshCommandTaskState.class,
                             returnState.documentSelfLink,

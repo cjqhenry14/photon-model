@@ -19,16 +19,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
+import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.DiskFactoryService;
 import com.vmware.photon.controller.model.resources.DiskService;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
@@ -46,6 +50,7 @@ import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
+import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.test.VerificationHost;
 import com.vmware.xenon.services.common.AuthCredentialsFactoryService;
@@ -103,6 +108,11 @@ public class TestAWSProvisionTask  {
                             AWSInstanceService.class)),
                     new AWSInstanceService());
             serviceSelfLinks.add(AWSInstanceService.SELF_LINK);
+            host.startService(
+                    Operation.createPost(UriUtils.buildUri(host,
+                            AWSStatsService.class)),
+                    new AWSStatsService());
+            serviceSelfLinks.add(AWSStatsService.SELF_LINK);
             ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
         } catch (Throwable e) {
             throw new Exception(e);
@@ -160,6 +170,14 @@ public class TestAWSProvisionTask  {
         // check that the VM has been created
         ProvisioningUtils.queryComputeInstances(this.host, 2);
 
+        // issue a stats request via the stats adapter
+        // if we are not running in mock mode wait 10 minutes for stats
+        // to be published
+        if (!isMock) {
+            Thread.sleep(TimeUnit.MINUTES.toMillis(10));
+        }
+        issueStatsRequest(outComputeVM);
+
         // delete vm
         deleteVMs(outComputeVM.documentSelfLink);
 
@@ -168,6 +186,42 @@ public class TestAWSProvisionTask  {
     }
 
 
+    private void issueStatsRequest(ComputeState vm) throws Throwable {
+        // spin up a stateless service that acts as the parent link to patch back to
+        StatelessService parentService = new StatelessService() {
+            public void handleRequest(Operation op) {
+                if (op.getAction() == Action.PATCH) {
+                    if (!isMock) {
+                        ComputeStatsResponse resp = op.getBody(ComputeStatsResponse.class);
+                        if (resp.statsList.size() != 1) {
+                            host.failIteration(new IllegalStateException("response size was incorrect."));
+                            return;
+                        }
+                        if (resp.statsList.get(0).statValues.size() != 3) {
+                            host.failIteration(new IllegalStateException("incorrect number of metrics received."));
+                            return;
+                        }
+                        if (!resp.statsList.get(0).computeLink.equals(vm.documentSelfLink)) {
+                            host.failIteration(new IllegalStateException("Incorrect computeLink returned."));
+                            return;
+                        }
+                    }
+                    host.completeIteration();
+                }
+            }
+        };
+        String servicePath = UUID.randomUUID().toString();
+        Operation startOp = Operation.createPost(UriUtils.buildUri(this.host, servicePath));
+        this.host.startService(startOp, parentService);
+        ComputeStatsRequest statsRequest = new ComputeStatsRequest();
+        statsRequest.computeLink = vm.documentSelfLink;
+        statsRequest.isMockRequest = isMock;
+        statsRequest.parentTaskLink = servicePath;
+        this.host.sendAndWait(Operation.createPatch(UriUtils.buildUri(
+                this.host, AWSUriPaths.AWS_STATS_SERVICE))
+                .setBody(statsRequest)
+                .setReferer(this.host.getUri()));
+    }
     /**
      * Create a compute host description for an AWS instance
      */
@@ -259,7 +313,7 @@ public class TestAWSProvisionTask  {
 
         awsVMDesc.customProperties = new HashMap<String, String>();
         awsVMDesc.customProperties
-                .put(AWSInstanceService.AWS_SECURITY_GROUP, securityGroup);
+                .put(AWSConstants.AWS_SECURITY_GROUP, securityGroup);
         awsVMDesc.environmentName =
                 AWSInstanceService.AWS_ENVIRONMENT_NAME;
 
@@ -271,6 +325,8 @@ public class TestAWSProvisionTask  {
         // set the create service to the aws instance service
         awsVMDesc.instanceAdapterReference = UriUtils.buildUri(this.host,
                 AWSUriPaths.AWS_INSTANCE_SERVICE);
+        awsVMDesc.statsAdapterReference = UriUtils.buildUri(this.host,
+                AWSUriPaths.AWS_STATS_SERVICE);
 
         ComputeDescriptionService.ComputeDescription vmComputeDesc = TestUtils.doPost(this.host, awsVMDesc,
                 ComputeDescriptionService.ComputeDescription.class,

@@ -11,8 +11,9 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model;
+package com.vmware.photon.controller.model.tasks;
 
+import com.vmware.photon.controller.model.helpers.BaseModelTest;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskFactoryService;
@@ -22,25 +23,19 @@ import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskFactoryServic
 import com.vmware.photon.controller.model.tasks.SnapshotTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.SshCommandTaskFactoryService;
 
-import com.vmware.xenon.common.Service;
-
 /**
  * Service factories used in Photon Model Task package.
  */
 public class TaskServices {
-    @SuppressWarnings("rawtypes")
-    private static final Class[] FACTORIES = {
-            ProvisionComputeTaskFactoryService.class,
-            ProvisionFirewallTaskFactoryService.class,
-            ProvisionNetworkTaskFactoryService.class,
-            ResourceAllocationTaskFactoryService.class,
-            ResourceEnumerationTaskFactoryService.class,
-            ResourceRemovalTaskFactoryService.class,
-            SnapshotTaskFactoryService.class,
-            SshCommandTaskFactoryService.class };
-
     @SuppressWarnings("unchecked")
-    public static Class<? extends Service>[] getFactories() {
-        return (Class<?extends Service>[])FACTORIES;
+    public static void startFactories(BaseModelTest test) throws Throwable {
+        test.startFactoryService(ProvisionComputeTaskFactoryService.class,
+                ProvisionFirewallTaskFactoryService.class,
+                ProvisionNetworkTaskFactoryService.class,
+                ResourceAllocationTaskFactoryService.class,
+                ResourceEnumerationTaskFactoryService.class,
+                ResourceRemovalTaskFactoryService.class,
+                SnapshotTaskFactoryService.class,
+                SshCommandTaskFactoryService.class);
     }
 }

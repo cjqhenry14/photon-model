@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
 
-import com.vmware.photon.controller.model.helpers.TestHost;
+import com.vmware.photon.controller.model.helpers.BaseModelTest;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionServiceTest;
@@ -35,26 +35,26 @@ public class ModelUtils {
             .toString();
 
     public static ComputeDescriptionService.ComputeDescription createComputeDescription(
-            TestHost host, String instanceAdapterLink, String bootAdapterLink)
+            BaseModelTest test, String instanceAdapterLink, String bootAdapterLink)
             throws Throwable {
         ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
                 .buildValidStartState();
         // disable periodic maintenance for tests by default.
         cd.healthAdapterReference = null;
         if (instanceAdapterLink != null) {
-            cd.instanceAdapterReference = UriUtils.buildUri(host,
+            cd.instanceAdapterReference = UriUtils.buildUri(test.getHost(),
                     instanceAdapterLink);
         }
         if (bootAdapterLink != null) {
-            cd.bootAdapterReference = UriUtils.buildUri(host, bootAdapterLink);
+            cd.bootAdapterReference = UriUtils.buildUri(test.getHost(), bootAdapterLink);
         }
-        return host.postServiceSynchronously(
+        return test.postServiceSynchronously(
                 ComputeDescriptionFactoryService.SELF_LINK, cd,
                 ComputeDescriptionService.ComputeDescription.class);
     }
 
     public static ComputeService.ComputeStateWithDescription createCompute(
-            TestHost host, ComputeDescriptionService.ComputeDescription cd)
+            BaseModelTest test, ComputeDescriptionService.ComputeDescription cd)
             throws Throwable {
         ComputeService.ComputeState cs = new ComputeService.ComputeStateWithDescription();
         cs.id = UUID.randomUUID().toString();
@@ -75,7 +75,7 @@ public class ModelUtils {
         cs.tenantLinks = new ArrayList<>();
         cs.tenantLinks.add("http://tenant");
 
-        ComputeService.ComputeState returnState = host
+        ComputeService.ComputeState returnState = test
                 .postServiceSynchronously(ComputeFactoryService.SELF_LINK, cs,
                         ComputeService.ComputeState.class);
 
@@ -84,15 +84,15 @@ public class ModelUtils {
     }
 
     public static ComputeService.ComputeStateWithDescription createComputeWithDescription(
-            TestHost host, String instanceAdapterLink, String bootAdapterLink)
+            BaseModelTest test, String instanceAdapterLink, String bootAdapterLink)
             throws Throwable {
-        return ModelUtils.createCompute(host, ModelUtils
-                .createComputeDescription(host, instanceAdapterLink,
+        return ModelUtils.createCompute(test, ModelUtils
+                .createComputeDescription(test, instanceAdapterLink,
                         bootAdapterLink));
     }
 
     public static ComputeService.ComputeStateWithDescription createComputeWithDescription(
-            TestHost host) throws Throwable {
-        return createComputeWithDescription(host, null, null);
+            BaseModelTest test) throws Throwable {
+        return createComputeWithDescription(test, null, null);
     }
 }

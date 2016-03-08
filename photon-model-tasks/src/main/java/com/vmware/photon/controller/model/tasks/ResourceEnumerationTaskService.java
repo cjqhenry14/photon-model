@@ -132,12 +132,6 @@ public class ResourceEnumerationTaskService extends StatefulService {
         }
     }
 
-    public ResourceEnumerationTaskState getBody(Operation op) {
-        ResourceEnumerationTaskState body = op
-                .getBody(ResourceEnumerationTaskState.class);
-        return body;
-    }
-
     @Override
     public void handlePatch(Operation patch) {
         ResourceEnumerationTaskState body = getBody(patch);

@@ -4,7 +4,7 @@
 
   <groupId>com.vmware.photon.controller</groupId>
   <artifactId>photon-model-parent</artifactId>
-  <version>0.3.1-SNAPSHOT</version>
+  <version>0.3.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>photon-model-parent</name>
@@ -66,7 +66,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <xenon.version>0.6.0</xenon.version>
+    <xenon.version>0.7.2-SNAPSHOT</xenon.version>
     <xenon.common.version>${xenon.version}</xenon.common.version>
     <xenon.ui.version>${xenon.version}</xenon.ui.version>
   </properties>

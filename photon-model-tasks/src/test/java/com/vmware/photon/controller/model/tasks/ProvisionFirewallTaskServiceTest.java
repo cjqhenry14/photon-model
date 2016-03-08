@@ -14,9 +14,7 @@
 package com.vmware.photon.controller.model.tasks;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -30,11 +28,8 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
-import com.vmware.photon.controller.model.TaskServices;
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.helpers.TestHost;
 import com.vmware.photon.controller.model.resources.FirewallFactoryService;
 import com.vmware.photon.controller.model.resources.FirewallService;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState;
@@ -59,7 +54,7 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
     }
 
     private static ProvisionFirewallTaskService.ProvisionFirewallTaskState buildValidStartState(
-            TestHost host,
+            BaseModelTest test,
             FirewallInstanceRequest.InstanceRequestType requestType,
             boolean success) throws Throwable {
         ProvisionFirewallTaskService.ProvisionFirewallTaskState startState = new ProvisionFirewallTaskService.ProvisionFirewallTaskState();
@@ -71,10 +66,10 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
         fState.regionID = "regionId";
         fState.resourcePoolLink = "http://resourcePoolLink";
         if (success) {
-            fState.instanceAdapterReference = UriUtils.buildUri(host,
+            fState.instanceAdapterReference = UriUtils.buildUri(test.getHost(),
                     MockAdapter.MockFirewallInstanceSuccessAdapter.SELF_LINK);
         } else {
-            fState.instanceAdapterReference = UriUtils.buildUri(host,
+            fState.instanceAdapterReference = UriUtils.buildUri(test.getHost(),
                     MockAdapter.MockFirewallInstanceFailureAdapter.SELF_LINK);
         }
         fState.id = UUID.randomUUID().toString();
@@ -88,7 +83,7 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
         rules.add(ssh);
         fState.ingress = rules;
         fState.egress = rules;
-        FirewallState returnState = host.postServiceSynchronously(
+        FirewallState returnState = test.postServiceSynchronously(
                 FirewallFactoryService.SELF_LINK, fState, FirewallState.class);
         startState.requestType = requestType;
         startState.firewallDescriptionLink = returnState.documentSelfLink;
@@ -99,16 +94,16 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
     }
 
     private static ProvisionFirewallTaskService.ProvisionFirewallTaskState postAndWaitForService(
-            TestHost host,
+            BaseModelTest test,
             ProvisionFirewallTaskService.ProvisionFirewallTaskState startState)
             throws Throwable {
-        ProvisionFirewallTaskService.ProvisionFirewallTaskState returnState = host
+        ProvisionFirewallTaskService.ProvisionFirewallTaskState returnState = test
                 .postServiceSynchronously(
                         ProvisionFirewallTaskFactoryService.SELF_LINK,
                         startState,
                         ProvisionFirewallTaskService.ProvisionFirewallTaskState.class);
 
-        ProvisionFirewallTaskService.ProvisionFirewallTaskState completeState = host
+        ProvisionFirewallTaskService.ProvisionFirewallTaskState completeState = test
                 .waitForServiceState(
                         ProvisionFirewallTaskService.ProvisionFirewallTaskState.class,
                         returnState.documentSelfLink,
@@ -118,14 +113,9 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
         return completeState;
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    private static Class<? extends Service>[] getFactoryServices() {
-        List<Class<? extends Service>> services = new ArrayList<>();
-        Collections.addAll(services, ModelServices.getFactories());
-        Collections.addAll(services, TaskServices.getFactories());
-        Collections.addAll(services, MockAdapter.getFactories());
-        return services.toArray((Class<? extends Service>[]) new Class[services
-                .size()]);
+    private static void startFactoryServices(BaseModelTest test) throws Throwable {
+        TaskServices.startFactories(test);
+        MockAdapter.startFactories(test);
     }
 
     /**
@@ -160,22 +150,18 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
      */
     public static class HandleStartTest extends BaseModelTest {
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ProvisionFirewallTaskServiceTest.getFactoryServices();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
+        protected void startRequiredServices() throws Throwable {
+            ProvisionFirewallTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
         public void testValidateProvisionFirewallTaskService() throws Throwable {
             ProvisionFirewallTaskService.ProvisionFirewallTaskState startState = buildValidStartState(
-                    host, FirewallInstanceRequest.InstanceRequestType.CREATE,
+                    this, FirewallInstanceRequest.InstanceRequestType.CREATE,
                     true);
             ProvisionFirewallTaskService.ProvisionFirewallTaskState completeState = postAndWaitForService(
-                    host, startState);
+                    this, startState);
             assertThat(completeState.taskInfo.stage,
                     is(TaskState.TaskStage.FINISHED));
         }
@@ -183,23 +169,21 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
         @Test
         public void testMissingValue() throws Throwable {
             ProvisionFirewallTaskService.ProvisionFirewallTaskState invalidRequestType = buildValidStartState(
-                    this.host,
+                    this,
                     FirewallInstanceRequest.InstanceRequestType.CREATE, true);
             ProvisionFirewallTaskService.ProvisionFirewallTaskState invalidFirewallDescriptionLink = buildValidStartState(
-                    this.host,
+                    this,
                     FirewallInstanceRequest.InstanceRequestType.CREATE, true);
 
             invalidRequestType.requestType = null;
             invalidFirewallDescriptionLink.firewallDescriptionLink = null;
 
-            this.host
-                    .postServiceSynchronously(
+            this.postServiceSynchronously(
                             ProvisionFirewallTaskFactoryService.SELF_LINK,
                             invalidRequestType,
                             ProvisionFirewallTaskService.ProvisionFirewallTaskState.class,
                             IllegalArgumentException.class);
-            this.host
-                    .postServiceSynchronously(
+            this.postServiceSynchronously(
                             ProvisionFirewallTaskFactoryService.SELF_LINK,
                             invalidFirewallDescriptionLink,
                             ProvisionFirewallTaskService.ProvisionFirewallTaskState.class,
@@ -213,23 +197,19 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
      */
     public static class HandlePatchTest extends BaseModelTest {
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ProvisionFirewallTaskServiceTest.getFactoryServices();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
+        protected void startRequiredServices() throws Throwable {
+            ProvisionFirewallTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
         public void testCreateFirewallSuccess() throws Throwable {
             ProvisionFirewallTaskService.ProvisionFirewallTaskState startState = buildValidStartState(
-                    host, FirewallInstanceRequest.InstanceRequestType.CREATE,
+                    this, FirewallInstanceRequest.InstanceRequestType.CREATE,
                     true);
 
             ProvisionFirewallTaskService.ProvisionFirewallTaskState completeState = postAndWaitForService(
-                    host, startState);
+                    this, startState);
 
             assertThat(completeState.taskInfo.stage,
                     is(TaskState.TaskStage.FINISHED));
@@ -238,11 +218,11 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
         @Test
         public void testDeleteFirewallSuccess() throws Throwable {
             ProvisionFirewallTaskService.ProvisionFirewallTaskState startState = buildValidStartState(
-                    host, FirewallInstanceRequest.InstanceRequestType.DELETE,
+                    this, FirewallInstanceRequest.InstanceRequestType.DELETE,
                     true);
 
             ProvisionFirewallTaskService.ProvisionFirewallTaskState completeState = postAndWaitForService(
-                    host, startState);
+                    this, startState);
 
             assertThat(completeState.taskInfo.stage,
                     is(TaskState.TaskStage.FINISHED));
@@ -251,11 +231,11 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
         @Test
         public void testCreateFirewallServiceAdapterFailure() throws Throwable {
             ProvisionFirewallTaskService.ProvisionFirewallTaskState startState = buildValidStartState(
-                    host, FirewallInstanceRequest.InstanceRequestType.CREATE,
+                    this, FirewallInstanceRequest.InstanceRequestType.CREATE,
                     false);
 
             ProvisionFirewallTaskService.ProvisionFirewallTaskState completeState = postAndWaitForService(
-                    host, startState);
+                    this, startState);
             assertThat(completeState.taskInfo.stage,
                     is(TaskState.TaskStage.FAILED));
         }

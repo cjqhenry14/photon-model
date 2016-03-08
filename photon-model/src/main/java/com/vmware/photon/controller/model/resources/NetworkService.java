@@ -76,14 +76,31 @@ public class NetworkService extends StatefulService {
     @Override
     public void handleStart(Operation start) {
         try {
-            if (!start.hasBody()) {
-                throw new IllegalArgumentException("body is required");
-            }
-            validateState(start.getBody(NetworkState.class));
+            processInput(start);
             start.complete();
-        } catch (Throwable e) {
-            start.fail(e);
+        } catch (Throwable t) {
+            start.fail(t);
         }
+    }
+
+    @Override
+    public void handlePut(Operation put) {
+        try {
+            NetworkState returnState = processInput(put);
+            setState(put, returnState);
+            put.complete();
+        } catch (Throwable t) {
+            put.fail(t);
+        }
+    }
+
+    private NetworkState processInput(Operation op) {
+        if (!op.hasBody()) {
+            throw (new IllegalArgumentException("body is required"));
+        }
+        NetworkState state = op.getBody(NetworkState.class);
+        validateState(state);
+        return state;
     }
 
     public static void validateState(NetworkState state) {
@@ -109,7 +126,7 @@ public class NetworkService extends StatefulService {
         }
         // do we have a subnet in CIDR notation
         // creating new SubnetUtils to validate
-        SubnetUtils subnetUtils = new SubnetUtils(state.subnetCIDR);
+        new SubnetUtils(state.subnetCIDR);
     }
 
     @Override

@@ -89,18 +89,34 @@ public class ResourceDescriptionService extends StatefulService {
     @Override
     public void handleStart(Operation start) {
         try {
-            if (!start.hasBody()) {
-                throw new IllegalArgumentException("body is required");
-            }
-            validate(start.getBody(ResourceDescription.class));
+            processInput(start);
             start.complete();
         } catch (Throwable t) {
             start.fail(t);
-            return;
         }
     }
 
-    public static void validate(ResourceDescription state) throws Throwable {
+    @Override
+    public void handlePut(Operation put) {
+        try {
+            ResourceDescription returnState = processInput(put);
+            setState(put, returnState);
+            put.complete();
+        } catch (Throwable t) {
+            put.fail(t);
+        }
+    }
+
+    private ResourceDescription processInput(Operation op) {
+        if (!op.hasBody()) {
+            throw (new IllegalArgumentException("body is required"));
+        }
+        ResourceDescription state = op.getBody(ResourceDescription.class);
+        validate(state);
+        return state;
+    }
+
+    public static void validate(ResourceDescription state) {
         if (state.computeType == null || state.computeDescriptionLink == null) {
             throw new IllegalArgumentException("incomplete ResourceDescription");
         }

@@ -29,7 +29,6 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
 
 import com.vmware.xenon.common.Service;
@@ -93,21 +92,10 @@ public class ResourceDescriptionServiceTest extends Suite {
      * This class implements tests for the handleStart method.
      */
     public static class HandleStartTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testValidStartState() throws Throwable {
             ResourceDescriptionService.ResourceDescription startState = buildValidStartState();
-            ResourceDescriptionService.ResourceDescription returnState = host
-                    .postServiceSynchronously(
+            ResourceDescriptionService.ResourceDescription returnState = postServiceSynchronously(
                             ResourceDescriptionFactoryService.SELF_LINK,
                             startState,
                             ResourceDescriptionService.ResourceDescription.class);
@@ -119,11 +107,29 @@ public class ResourceDescriptionServiceTest extends Suite {
         }
 
         @Test
+        public void testDuplicatePost() throws Throwable {
+            ResourceDescriptionService.ResourceDescription startState = buildValidStartState();
+            ResourceDescriptionService.ResourceDescription returnState = postServiceSynchronously(
+                            ResourceDescriptionFactoryService.SELF_LINK,
+                            startState,
+                            ResourceDescriptionService.ResourceDescription.class);
+
+            assertNotNull(returnState);
+            assertThat(returnState.computeType, is(startState.computeType));
+            startState.computeType = "new-compute-type";
+            returnState = postServiceSynchronously(
+                            ResourceDescriptionFactoryService.SELF_LINK,
+                            startState,
+                            ResourceDescriptionService.ResourceDescription.class);
+            assertThat(returnState.computeType, is(startState.computeType));
+        }
+
+        @Test
         public void testMissingComputeType() throws Throwable {
             ResourceDescriptionService.ResourceDescription startState = buildValidStartState();
             startState.computeType = null;
 
-            host.postServiceSynchronously(
+            postServiceSynchronously(
                     ResourceDescriptionFactoryService.SELF_LINK, startState,
                     ResourceDescriptionService.ResourceDescription.class,
                     IllegalArgumentException.class);
@@ -134,7 +140,7 @@ public class ResourceDescriptionServiceTest extends Suite {
             ResourceDescriptionService.ResourceDescription startState = buildValidStartState();
             startState.computeDescriptionLink = null;
 
-            host.postServiceSynchronously(
+            postServiceSynchronously(
                     ResourceDescriptionFactoryService.SELF_LINK, startState,
                     ResourceDescriptionService.ResourceDescription.class,
                     IllegalArgumentException.class);
@@ -145,17 +151,6 @@ public class ResourceDescriptionServiceTest extends Suite {
      * This class implements tests for query.
      */
     public static class QueryTest extends BaseModelTest {
-
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testTenantLinksQuery() throws Throwable {
             ResourceDescriptionService.ResourceDescription rd = buildValidStartState();
@@ -165,8 +160,7 @@ public class ResourceDescriptionServiceTest extends Suite {
             rd.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));
 
-            ResourceDescriptionService.ResourceDescription startState = host
-                    .postServiceSynchronously(
+            ResourceDescriptionService.ResourceDescription startState = postServiceSynchronously(
                             ResourceDescriptionFactoryService.SELF_LINK,
                             rd,
                             ResourceDescriptionService.ResourceDescription.class);
@@ -176,9 +170,9 @@ public class ResourceDescriptionServiceTest extends Suite {
             String propertyName = QueryTask.QuerySpecification
                     .buildCollectionItemName(ServiceDocumentDescription.FIELD_NAME_TENANT_LINKS);
 
-            QueryTask q = host.createDirectQueryTask(kind, propertyName,
+            QueryTask q = createDirectQueryTask(kind, propertyName,
                     rd.tenantLinks.get(0));
-            q = host.querySynchronously(q);
+            q = querySynchronously(q);
             assertNotNull(q.results.documentLinks);
             assertThat(q.results.documentCount, is(1L));
             assertThat(q.results.documentLinks.get(0),

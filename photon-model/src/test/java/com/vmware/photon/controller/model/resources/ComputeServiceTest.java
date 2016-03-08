@@ -33,7 +33,6 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
 
 import com.vmware.xenon.common.Service;
@@ -103,7 +102,6 @@ public class ComputeServiceTest extends Suite {
                     Service.ServiceOption.CONCURRENT_GET_HANDLING,
                     Service.ServiceOption.PERSISTENCE,
                     Service.ServiceOption.REPLICATION,
-                    Service.ServiceOption.INSTRUMENTATION,
                     Service.ServiceOption.OWNER_SELECTION);
 
             assertThat(this.computeService.getOptions(), is(expected));
@@ -114,25 +112,15 @@ public class ComputeServiceTest extends Suite {
      * This class implements tests for the handleStart method.
      */
     public static class HandleStartTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
 
         @Test
         public void testValidStartState() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             ComputeService.ComputeState startState = ComputeServiceTest
                     .buildValidStartState(cd);
-            ComputeService.ComputeState returnState = host
-                    .postServiceSynchronously(ComputeFactoryService.SELF_LINK,
-                            startState, ComputeService.ComputeState.class);
+            ComputeService.ComputeState returnState = postServiceSynchronously(
+                    ComputeFactoryService.SELF_LINK, startState, ComputeService.ComputeState.class);
 
             assertNotNull(returnState);
             assertThat(returnState.id, is(startState.id));
@@ -146,15 +134,32 @@ public class ComputeServiceTest extends Suite {
         }
 
         @Test
+        public void testDuplicatePost() throws Throwable {
+            ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
+                    .createComputeDescription(this);
+            ComputeService.ComputeState startState = ComputeServiceTest
+                    .buildValidStartState(cd);
+            ComputeService.ComputeState returnState = postServiceSynchronously(
+                    ComputeFactoryService.SELF_LINK, startState, ComputeService.ComputeState.class);
+
+            assertNotNull(returnState);
+            assertThat(returnState.address, is(startState.address));
+            startState.address = "new-address";
+            returnState = postServiceSynchronously(ComputeFactoryService.SELF_LINK,
+                            startState, ComputeService.ComputeState.class);
+            assertThat(returnState.address, is(startState.address));
+
+        }
+
+        @Test
         public void testMissingId() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             ComputeService.ComputeState startState = buildValidStartState(cd);
             startState.id = null;
 
-            ComputeService.ComputeState returnState = host
-                    .postServiceSynchronously(ComputeFactoryService.SELF_LINK,
-                            startState, ComputeService.ComputeState.class);
+            ComputeService.ComputeState returnState = postServiceSynchronously(
+                    ComputeFactoryService.SELF_LINK, startState, ComputeService.ComputeState.class);
 
             assertNotNull(returnState);
             assertNotNull(returnState.id);
@@ -163,12 +168,12 @@ public class ComputeServiceTest extends Suite {
         @Test
         public void testMissingDescriptionLink() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             ComputeService.ComputeState startState = buildValidStartState(cd);
             startState.powerState = ComputeService.PowerState.OFF;
             startState.descriptionLink = null;
 
-            host.postServiceSynchronously(ComputeFactoryService.SELF_LINK,
+            postServiceSynchronously(ComputeFactoryService.SELF_LINK,
                     startState, ComputeService.ComputeState.class,
                     IllegalArgumentException.class);
         }
@@ -176,7 +181,7 @@ public class ComputeServiceTest extends Suite {
         @Test
         public void testMissingAdapterManagementReference() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             cd.supportedChildren = new ArrayList<>();
             cd.supportedChildren
                     .add(ComputeDescriptionService.ComputeDescription.ComputeType.VM_HOST
@@ -184,7 +189,7 @@ public class ComputeServiceTest extends Suite {
             ComputeService.ComputeState startState = buildValidStartState(cd);
             startState.adapterManagementReference = null;
 
-            host.postServiceSynchronously(ComputeFactoryService.SELF_LINK,
+            postServiceSynchronously(ComputeFactoryService.SELF_LINK,
                     startState, ComputeService.ComputeState.class,
                     IllegalArgumentException.class);
         }
@@ -194,30 +199,18 @@ public class ComputeServiceTest extends Suite {
      * This class implements tests for the handleGet method.
      */
     public static class HandleGetTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testGet() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             ComputeService.ComputeState startState = buildValidStartState(cd);
 
-            ComputeService.ComputeState returnState = host
-                    .postServiceSynchronously(ComputeFactoryService.SELF_LINK,
-                            startState, ComputeService.ComputeState.class);
+            ComputeService.ComputeState returnState = postServiceSynchronously(
+                    ComputeFactoryService.SELF_LINK, startState, ComputeService.ComputeState.class);
             assertNotNull(returnState);
 
-            ComputeService.ComputeState getState = host
-                    .getServiceSynchronously(returnState.documentSelfLink,
-                            ComputeService.ComputeState.class);
+            ComputeService.ComputeState getState = getServiceSynchronously(
+                    returnState.documentSelfLink, ComputeService.ComputeState.class);
 
             assertThat(getState.id, is(startState.id));
             assertThat(getState.descriptionLink, is(startState.descriptionLink));
@@ -231,16 +224,15 @@ public class ComputeServiceTest extends Suite {
         @Test
         public void testGetExpand() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             ComputeService.ComputeStateWithDescription startState = buildValidStartState(cd);
 
-            ComputeService.ComputeState returnState = host
-                    .postServiceSynchronously(ComputeFactoryService.SELF_LINK,
+            ComputeService.ComputeState returnState = postServiceSynchronously(
+                    ComputeFactoryService.SELF_LINK,
                             startState, ComputeService.ComputeState.class);
             assertNotNull(returnState);
 
-            ComputeService.ComputeStateWithDescription getState = host
-                    .getServiceSynchronously(
+            ComputeService.ComputeStateWithDescription getState = getServiceSynchronously(
                             UriUtils.buildExpandLinksQueryUri(
                                     URI.create(returnState.documentSelfLink))
                                     .toString(),
@@ -258,24 +250,15 @@ public class ComputeServiceTest extends Suite {
      * This class implements tests for the handlePatch method.
      */
     public static class HandlePatchTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
 
         @Test
         public void testPatch() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             ComputeService.ComputeState startState = buildValidStartState(cd);
 
-            ComputeService.ComputeState returnState = host
-                    .postServiceSynchronously(ComputeFactoryService.SELF_LINK,
+            ComputeService.ComputeState returnState = postServiceSynchronously(
+                    ComputeFactoryService.SELF_LINK,
                             startState, ComputeService.ComputeState.class);
             assertNotNull(returnState);
 
@@ -287,11 +270,11 @@ public class ComputeServiceTest extends Suite {
             patchBody.resourcePoolLink = "http://newResourcePool";
             patchBody.adapterManagementReference = URI
                     .create("http://newAdapterManagementReference");
-            host.patchServiceSynchronously(returnState.documentSelfLink,
+            patchServiceSynchronously(returnState.documentSelfLink,
                     patchBody);
 
-            ComputeService.ComputeStateWithDescription getState = host
-                    .getServiceSynchronously(returnState.documentSelfLink,
+            ComputeService.ComputeStateWithDescription getState = getServiceSynchronously(
+                    returnState.documentSelfLink,
                             ComputeService.ComputeStateWithDescription.class);
 
             assertThat(getState.id, is(patchBody.id));
@@ -307,20 +290,20 @@ public class ComputeServiceTest extends Suite {
         @Test
         public void testPatchNoChange() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             ComputeService.ComputeState startState = buildValidStartState(cd);
 
-            ComputeService.ComputeState returnState = host
-                    .postServiceSynchronously(ComputeFactoryService.SELF_LINK,
+            ComputeService.ComputeState returnState = postServiceSynchronously(
+                    ComputeFactoryService.SELF_LINK,
                             startState, ComputeService.ComputeState.class);
             assertNotNull(returnState);
 
             ComputeService.ComputeState patchBody = new ComputeService.ComputeState();
-            host.patchServiceSynchronously(returnState.documentSelfLink,
+            patchServiceSynchronously(returnState.documentSelfLink,
                     patchBody);
 
-            ComputeService.ComputeStateWithDescription getState = host
-                    .getServiceSynchronously(returnState.documentSelfLink,
+            ComputeService.ComputeStateWithDescription getState = getServiceSynchronously(
+                    returnState.documentSelfLink,
                             ComputeService.ComputeStateWithDescription.class);
 
             assertThat(getState.id, is(startState.id));
@@ -340,20 +323,10 @@ public class ComputeServiceTest extends Suite {
     public static class QueryTest extends BaseModelTest {
         public static final int SERVICE_COUNT = 10;
 
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testTenantLinksQuery() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             ComputeService.ComputeState cs = buildValidStartState(cd);
 
             URI tenantUri = UriUtils.buildUri(host, TenantFactoryService.class);
@@ -361,17 +334,17 @@ public class ComputeServiceTest extends Suite {
             cs.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));
 
-            ComputeService.ComputeState startState = host
-                    .postServiceSynchronously(ComputeFactoryService.SELF_LINK,
+            ComputeService.ComputeState startState = postServiceSynchronously(
+                    ComputeFactoryService.SELF_LINK,
                             cs, ComputeService.ComputeState.class);
 
             String kind = Utils.buildKind(ComputeService.ComputeState.class);
             String propertyName = QueryTask.QuerySpecification
                     .buildCollectionItemName(ServiceDocumentDescription.FIELD_NAME_TENANT_LINKS);
 
-            QueryTask q = host.createDirectQueryTask(kind, propertyName,
+            QueryTask q = createDirectQueryTask(kind, propertyName,
                     cs.tenantLinks.get(0));
-            q = host.querySynchronously(q);
+            q = querySynchronously(q);
             assertNotNull(q.results.documentLinks);
             assertThat(q.results.documentCount, is(1L));
             assertThat(q.results.documentLinks.get(0),
@@ -391,7 +364,7 @@ public class ComputeServiceTest extends Suite {
             patchBody.customProperties = new HashMap<>();
             patchBody.customProperties.put(TEST_DESC_PROPERTY_NAME,
                     newCustomPropertyValue);
-            host.patchServiceSynchronously(customPropComputeStateLink,
+            patchServiceSynchronously(customPropComputeStateLink,
                     patchBody);
 
             String kind = Utils.buildKind(ComputeService.ComputeState.class);
@@ -401,20 +374,20 @@ public class ComputeServiceTest extends Suite {
                             TEST_DESC_PROPERTY_NAME);
 
             // Query computes with newCustomPropClause and expect 1 instance
-            QueryTask q = host.createDirectQueryTask(kind, propertyName,
+            QueryTask q = createDirectQueryTask(kind, propertyName,
                     newCustomPropertyValue);
             queryComputes(q, 1);
 
             // Query computes with old CustomPropClause and expect
             // SERVICE_COUNT-1 instances
-            q = host.createDirectQueryTask(kind, propertyName,
+            q = createDirectQueryTask(kind, propertyName,
                     TEST_DESC_PROPERTY_VALUE);
             queryComputes(q, SERVICE_COUNT - 1);
         }
 
         private void queryComputes(QueryTask q, int expectedCount)
                 throws Throwable {
-            QueryTask queryTask = host.querySynchronously(q);
+            QueryTask queryTask = querySynchronously(q);
             assertNotNull(queryTask.results.documentLinks);
             assertFalse(queryTask.results.documentLinks.isEmpty());
             assertThat(queryTask.results.documentLinks.size(),
@@ -425,9 +398,9 @@ public class ComputeServiceTest extends Suite {
                 throws Throwable {
             ComputeService.ComputeState[] instances = new ComputeService.ComputeState[c];
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             for (int i = 0; i < c; i++) {
-                instances[i] = host.postServiceSynchronously(
+                instances[i] = postServiceSynchronously(
                         ComputeFactoryService.SELF_LINK,
                         buildValidStartState(cd),
                         ComputeService.ComputeState.class);

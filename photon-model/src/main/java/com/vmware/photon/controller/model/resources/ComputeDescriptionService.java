@@ -173,6 +173,12 @@ public class ComputeDescriptionService extends StatefulService {
         public URI healthAdapterReference;
 
         /**
+         * URI reference to the adapter used to get the stats info of this
+         * host.
+         */
+        public URI statsAdapterReference;
+
+        /**
          * URI reference to the adapter used to enumerate instances of this
          * host.
          */
@@ -189,14 +195,31 @@ public class ComputeDescriptionService extends StatefulService {
     @Override
     public void handleStart(Operation start) {
         try {
-            if (!start.hasBody()) {
-                throw new IllegalArgumentException("body is required");
-            }
-            validateState(start.getBody(ComputeDescription.class));
+            processInput(start);
             start.complete();
-        } catch (Throwable e) {
-            start.fail(e);
+        } catch (Throwable t) {
+            start.fail(t);
         }
+    }
+
+    @Override
+    public void handlePut(Operation put) {
+        try {
+            ComputeDescription returnState = processInput(put);
+            setState(put, returnState);
+            put.complete();
+        } catch (Throwable t) {
+            put.fail(t);
+        }
+    }
+
+    private ComputeDescription processInput(Operation op) {
+        if (!op.hasBody()) {
+            throw (new IllegalArgumentException("body is required"));
+        }
+        ComputeDescription state = op.getBody(ComputeDescription.class);
+        validateState(state);
+        return state;
     }
 
     public static void validateState(ComputeDescription state) {
@@ -292,6 +315,8 @@ public class ComputeDescriptionService extends StatefulService {
                 "/instanceAdapterReference");
         template.healthAdapterReference = UriUtils.buildUri(this.getHost(),
                 "/healthAdapterReference");
+        template.statsAdapterReference = UriUtils.buildUri(this.getHost(),
+                "/statsAdapterReference");
         template.enumerationAdapterReference = UriUtils.buildUri(
                 this.getHost(), "/enumerationAdapterReference");
 

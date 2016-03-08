@@ -62,13 +62,9 @@ public class AWSInstanceService extends StatelessService {
     // The security group specifies things such as the ports to be open,
     // firewall rules etc and is
     // specific to an instance and should come from the compute desc for the VM
-    public static final String AWS_SECURITY_GROUP = "awsSecurityGroup";
-    public static final String AWS_INSTANCE_ID = "awsInstanceId";
 
     private static final String AWS_RUNNING_NAME = "running";
     private static final String AWS_TERMINATED_NAME = "terminated";
-
-    private static final String EXPAND = "expand";
 
     @Override
     public void handleRequest(Operation op) {
@@ -190,42 +186,29 @@ public class AWSInstanceService extends StatelessService {
      * requested resource and then passing to the next step
      */
     private void getVMDescription(AWSAllocation aws, AWSStages next) {
-
-        URI computeURI = UriUtils.extendUriWithQuery(
-                aws.computeRequest.computeReference, EXPAND,
-                Boolean.TRUE.toString());
-        sendRequest(Operation.createGet(computeURI).setCompletion((o, e) -> {
-            if (e != null) {
-                aws.stage = AWSStages.ERROR;
-                aws.error = e;
-                handleAllocation(aws);
-                return;
-            }
-
-            aws.child = o.getBody(ComputeStateWithDescription.class);
+        Consumer<Operation> onSuccess =  (op) -> {
+            aws.child = op.getBody(ComputeStateWithDescription.class);
             aws.stage = next;
             handleAllocation(aws);
-        }));
+        };
+        URI computeUri = UriUtils.extendUriWithQuery(
+                aws.computeRequest.computeReference, UriUtils.URI_PARAM_ODATA_EXPAND,
+                Boolean.TRUE.toString());
+        AWSUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(aws));
     }
 
     /*
      * Method will get the service for the identified link
      */
     private void getParentDescription(AWSAllocation aws, AWSStages next) {
-        URI parentURI = UriUtils.extendUriWithQuery(
-                UriUtils.buildUri(this.getHost(), aws.child.parentLink),
-                EXPAND, Boolean.TRUE.toString());
-        sendRequest(Operation.createGet(parentURI).setCompletion((o, e) -> {
-            if (e != null) {
-                aws.stage = AWSStages.ERROR;
-                aws.error = e;
-                handleAllocation(aws);
-                return;
-            }
-            aws.parent = o.getBody(ComputeStateWithDescription.class);
+        Consumer<Operation> onSuccess =  (op) -> {
+            aws.parent = op.getBody(ComputeStateWithDescription.class);
             aws.stage = next;
             handleAllocation(aws);
-        }));
+        };
+        URI parentURI = UriUtils.buildExpandLinksQueryUri
+                (UriUtils.buildUri(this.getHost(), aws.child.parentLink));
+        AWSUtils.getServiceState(this, parentURI, onSuccess, getFailureConsumer(aws));
     }
 
     private void getParentAuth(AWSAllocation aws, AWSStages next) {
@@ -235,19 +218,21 @@ public class AWSInstanceService extends StatelessService {
         } else {
             parentAuthLink = aws.parent.description.authCredentialsLink;
         }
-        URI authURI = UriUtils.buildUri(this.getHost(), parentAuthLink);
-        sendRequest(Operation.createGet(authURI).setCompletion((o, e) -> {
-            if (e != null) {
-                aws.stage = AWSStages.ERROR;
-                aws.error = e;
-                handleAllocation(aws);
-                return;
-            }
-
-            aws.parentAuth = o.getBody(AuthCredentialsServiceState.class);
+        URI authUri = UriUtils.buildUri(this.getHost(), parentAuthLink);
+        Consumer<Operation> onSuccess =  (op) -> {
+            aws.parentAuth = op.getBody(AuthCredentialsServiceState.class);
             aws.stage = next;
             handleAllocation(aws);
-        }));
+        };
+        AWSUtils.getServiceState(this, authUri, onSuccess, getFailureConsumer(aws));
+    }
+
+    private Consumer<Throwable> getFailureConsumer(AWSAllocation aws) {
+        return  (t) -> {
+            aws.stage = AWSStages.ERROR;
+            aws.error = t;
+            handleAllocation(aws);
+        };
     }
 
     /*
@@ -358,6 +343,7 @@ public class AWSInstanceService extends StatelessService {
         RunInstancesRequest runInstancesRequest = new RunInstancesRequest()
                 .withImageId(imageId.toString()).withInstanceType(instanceType)
                 .withMinCount(1).withMaxCount(1)
+                .withMonitoring(true)
                 .withSecurityGroupIds(aws.securityGroupId);
         if (cloudConfig != null) {
             try {
@@ -434,7 +420,7 @@ public class AWSInstanceService extends StatelessService {
                     } else {
                         resultDesc.customProperties = computeDesc.customProperties;
                     }
-                    resultDesc.customProperties.put(AWS_INSTANCE_ID,
+                    resultDesc.customProperties.put(AWSConstants.AWS_INSTANCE_ID,
                             instance.getInstanceId());
                     resultDesc.networkLinks = new ArrayList<String>();
                     resultDesc.networkLinks.add(UriUtils.buildUriPath(
@@ -495,7 +481,7 @@ public class AWSInstanceService extends StatelessService {
             return;
         }
 
-        String instanceId = aws.child.customProperties.get(AWS_INSTANCE_ID);
+        String instanceId = aws.child.customProperties.get(AWSConstants.AWS_INSTANCE_ID);
         if (instanceId == null) {
             aws.error = new IllegalStateException(
                     "AWS InstanceId not available");

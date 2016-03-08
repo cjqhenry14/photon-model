@@ -14,7 +14,6 @@
 package com.vmware.photon.controller.model.resources;
 
 import java.net.URI;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -102,14 +101,31 @@ public class FirewallService extends StatefulService {
     @Override
     public void handleStart(Operation start) {
         try {
-            if (!start.hasBody()) {
-                throw new IllegalArgumentException("body is required");
-            }
-            validateState(start.getBody(FirewallState.class));
+            processInput(start);
             start.complete();
-        } catch (Throwable e) {
-            start.fail(e);
+        } catch (Throwable t) {
+            start.fail(t);
         }
+    }
+
+    @Override
+    public void handlePut(Operation put) {
+        try {
+            FirewallState returnState = processInput(put);
+            setState(put, returnState);
+            put.complete();
+        } catch (Throwable t) {
+            put.fail(t);
+        }
+    }
+
+    private FirewallState processInput(Operation op) {
+        if (!op.hasBody()) {
+            throw (new IllegalArgumentException("body is required"));
+        }
+        FirewallState state = op.getBody(FirewallState.class);
+        validateState(state);
+        return state;
     }
 
     public static void validateState(FirewallState state) {
@@ -161,7 +177,7 @@ public class FirewallService extends StatefulService {
 
             // IP range must be in CIDR notation
             // creating new SubnetUtils to validate
-            SubnetUtils subnetUtils = new SubnetUtils(rule.ipRange);
+            new SubnetUtils(rule.ipRange);
             validatePorts(rule.ports);
         }
     }

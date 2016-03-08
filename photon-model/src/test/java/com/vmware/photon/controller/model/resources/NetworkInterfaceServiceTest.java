@@ -30,7 +30,6 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
 
 import com.vmware.xenon.common.Service;
@@ -90,21 +89,10 @@ public class NetworkInterfaceServiceTest extends Suite {
      * This class implements tests for the handleStart method.
      */
     public static class HandleStartTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testValidStartState() throws Throwable {
             NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
-            NetworkInterfaceService.NetworkInterfaceState returnState = host
-                    .postServiceSynchronously(
+            NetworkInterfaceService.NetworkInterfaceState returnState = postServiceSynchronously(
                             NetworkInterfaceFactoryService.SELF_LINK,
                             startState,
                             NetworkInterfaceService.NetworkInterfaceState.class);
@@ -117,12 +105,29 @@ public class NetworkInterfaceServiceTest extends Suite {
         }
 
         @Test
+        public void testDuplicatePost() throws Throwable {
+            NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
+            NetworkInterfaceService.NetworkInterfaceState returnState = postServiceSynchronously(
+                            NetworkInterfaceFactoryService.SELF_LINK,
+                            startState,
+                            NetworkInterfaceService.NetworkInterfaceState.class);
+
+            assertNotNull(returnState);
+            assertThat(returnState.networkBridgeLink, is(startState.networkBridgeLink));
+            startState.networkBridgeLink = "new-bridge";
+            returnState = postServiceSynchronously(
+                            NetworkInterfaceFactoryService.SELF_LINK,
+                            startState,
+                            NetworkInterfaceService.NetworkInterfaceState.class);
+            assertThat(returnState.networkBridgeLink, is(startState.networkBridgeLink));
+        }
+
+        @Test
         public void testMissingId() throws Throwable {
             NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
             startState.id = null;
 
-            NetworkInterfaceService.NetworkInterfaceState returnState = host
-                    .postServiceSynchronously(
+            NetworkInterfaceService.NetworkInterfaceState returnState = postServiceSynchronously(
                             NetworkInterfaceFactoryService.SELF_LINK,
                             startState,
                             NetworkInterfaceService.NetworkInterfaceState.class);
@@ -133,8 +138,7 @@ public class NetworkInterfaceServiceTest extends Suite {
 
         @Test
         public void testMissingBody() throws Throwable {
-            NetworkInterfaceService.NetworkInterfaceState returnState = host
-                    .postServiceSynchronously(
+            postServiceSynchronously(
                             NetworkInterfaceFactoryService.SELF_LINK,
                             null,
                             NetworkInterfaceService.NetworkInterfaceState.class,
@@ -145,8 +149,7 @@ public class NetworkInterfaceServiceTest extends Suite {
         public void testInvalidAddress() throws Throwable {
             NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
             startState.address = "bad-ip-address";
-            NetworkInterfaceService.NetworkInterfaceState returnState = host
-                    .postServiceSynchronously(
+            postServiceSynchronously(
                             NetworkInterfaceFactoryService.SELF_LINK,
                             startState,
                             NetworkInterfaceService.NetworkInterfaceState.class,
@@ -158,8 +161,7 @@ public class NetworkInterfaceServiceTest extends Suite {
             NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
             startState.address = null;
             startState.networkDescriptionLink = null;
-            NetworkInterfaceService.NetworkInterfaceState returnState = host
-                    .postServiceSynchronously(
+            postServiceSynchronously(
                             NetworkInterfaceFactoryService.SELF_LINK,
                             startState,
                             NetworkInterfaceService.NetworkInterfaceState.class,
@@ -171,8 +173,7 @@ public class NetworkInterfaceServiceTest extends Suite {
             NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
             startState.address = "10.0.0.1";
             startState.networkDescriptionLink = "10.0.0.2";
-            NetworkInterfaceService.NetworkInterfaceState returnState = host
-                    .postServiceSynchronously(
+            postServiceSynchronously(
                             NetworkInterfaceFactoryService.SELF_LINK,
                             startState,
                             NetworkInterfaceService.NetworkInterfaceState.class,
@@ -184,22 +185,11 @@ public class NetworkInterfaceServiceTest extends Suite {
      * This class implements tests for the handlePatch method.
      */
     public static class HandlePatchTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testPatch() throws Throwable {
             NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
 
-            NetworkInterfaceService.NetworkInterfaceState returnState = host
-                    .postServiceSynchronously(
+            NetworkInterfaceService.NetworkInterfaceState returnState = postServiceSynchronously(
                             NetworkInterfaceFactoryService.SELF_LINK,
                             startState,
                             NetworkInterfaceService.NetworkInterfaceState.class);
@@ -212,10 +202,10 @@ public class NetworkInterfaceServiceTest extends Suite {
             patchState.tenantLinks = new ArrayList<>();
             patchState.tenantLinks.add("tenant-linkA");
 
-            host.patchServiceSynchronously(returnState.documentSelfLink,
+            patchServiceSynchronously(returnState.documentSelfLink,
                     patchState);
 
-            returnState = host.getServiceSynchronously(
+            returnState = getServiceSynchronously(
                     returnState.documentSelfLink,
                     NetworkInterfaceService.NetworkInterfaceState.class);
 
@@ -233,16 +223,6 @@ public class NetworkInterfaceServiceTest extends Suite {
      * This class implements tests for query.
      */
     public static class QueryTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testTenantLinksQuery() throws Throwable {
             NetworkInterfaceService.NetworkInterfaceState nic = buildValidStartState();
@@ -250,8 +230,7 @@ public class NetworkInterfaceServiceTest extends Suite {
             nic.tenantLinks = new ArrayList<>();
             nic.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));
-            NetworkInterfaceService.NetworkInterfaceState startState = host
-                    .postServiceSynchronously(
+            NetworkInterfaceService.NetworkInterfaceState startState = postServiceSynchronously(
                             NetworkInterfaceFactoryService.SELF_LINK, nic,
                             NetworkInterfaceService.NetworkInterfaceState.class);
 
@@ -260,9 +239,9 @@ public class NetworkInterfaceServiceTest extends Suite {
             String propertyName = QueryTask.QuerySpecification
                     .buildCollectionItemName(ServiceDocumentDescription.FIELD_NAME_TENANT_LINKS);
 
-            QueryTask q = host.createDirectQueryTask(kind, propertyName,
+            QueryTask q = createDirectQueryTask(kind, propertyName,
                     nic.tenantLinks.get(0));
-            q = host.querySynchronously(q);
+            q = querySynchronously(q);
             assertNotNull(q.results.documentLinks);
             assertThat(q.results.documentCount, is(1L));
             assertThat(q.results.documentLinks.get(0),

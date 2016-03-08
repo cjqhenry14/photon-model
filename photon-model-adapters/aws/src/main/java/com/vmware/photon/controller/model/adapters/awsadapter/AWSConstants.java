@@ -13,21 +13,7 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
-import com.vmware.photon.controller.model.UriPaths;
-
-/**
- * URI definitions for AWS adapters.
- */
-public class AWSUriPaths {
-
-    public static final String PROVISIONING_AWS = UriPaths.PROVISIONING
-            + "/aws";
-    public static final String AWS_INSTANCE_SERVICE = PROVISIONING_AWS
-            + "/instance-service";
-    public static final String AWS_NETWORK_SERVICE = PROVISIONING_AWS
-            + "/network-service";
-    public static final String AWS_FIREWALL_SERVICE = PROVISIONING_AWS
-            + "/firewall-service";
-    public static final String AWS_STATS_SERVICE = PROVISIONING_AWS
-            + "/stats-service";
+public class AWSConstants {
+    public static final String AWS_SECURITY_GROUP = "awsSecurityGroup";
+    public static final String AWS_INSTANCE_ID = "awsInstanceId";
 }

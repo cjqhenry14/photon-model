@@ -15,6 +15,13 @@ package com.vmware.photon.controller.model.tasks;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Collection;
+
+import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.StatefulService;
+import com.vmware.xenon.common.TaskState;
+import com.vmware.xenon.common.TaskState.TaskStage;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Utility functions used in provisioning hosts.
@@ -112,5 +119,55 @@ public class TaskUtils {
         if (Integer.parseUnsignedInt(hostMask[1]) > 32) {
             throw new IllegalArgumentException("CIDR mask may not be larger than 32");
         }
+    }
+
+    /**
+     * Issue a patch request to the specified service
+     * @param service Service to issue the patch to
+     * @param body Patch body
+     */
+    public static void sendPatch(StatefulService service, Object body) {
+        Operation patch = Operation
+                .createPatch(service.getUri())
+                .setBody(body);
+        service.sendRequest(patch);
+    }
+
+    /**
+     * Patch a service to failure after logging all errors
+     * @param service Service to patch
+     * @param tList List of throwable objects
+     */
+    public static void sendFailurePatch(StatefulService service, Collection<Throwable> tList) {
+        Throwable errorToPatch = null;
+        for (Throwable t: tList) {
+            errorToPatch = t;
+            service.logWarning("Operation failed: %s", Utils.toString(t));
+        }
+        sendFailurePatch(service, errorToPatch);
+    }
+
+    /**
+     * Patch a service to failure
+     * @param service Service to patch
+     * @param t Throwable object
+     */
+    public static void sendFailurePatch(StatefulService service, Throwable t) {
+        TaskState state = new TaskState();
+        state.stage = TaskStage.FAILED;
+        state.failure = Utils.toServiceErrorResponse(t);
+        service.logWarning("Operation failed: %s", Utils.toString(t));
+        sendPatch(service, state);
+    }
+
+    /**
+     * Create a TaskState object with the specified stage
+     * @param stage Stage for the TaskState object
+     * @return
+     */
+    public static TaskState createTaskState(TaskStage stage) {
+        TaskState tState = new TaskState();
+        tState.stage = stage;
+        return tState;
     }
 }

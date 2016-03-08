@@ -202,14 +202,31 @@ public class DiskService extends StatefulService {
     @Override
     public void handleStart(Operation start) {
         try {
-            if (!start.hasBody()) {
-                throw new IllegalArgumentException("body is required");
-            }
-            validateState(start.getBody(DiskState.class));
+            processInput(start);
             start.complete();
-        } catch (Throwable e) {
-            start.fail(e);
+        } catch (Throwable t) {
+            start.fail(t);
         }
+    }
+
+    @Override
+    public void handlePut(Operation put) {
+        try {
+            DiskState returnState = processInput(put);
+            setState(put, returnState);
+            put.complete();
+        } catch (Throwable t) {
+            put.fail(t);
+        }
+    }
+
+    private DiskState processInput(Operation op) {
+        if (!op.hasBody()) {
+            throw (new IllegalArgumentException("body is required"));
+        }
+        DiskState state = op.getBody(DiskState.class);
+        validateState(state);
+        return state;
     }
 
     private void validateState(DiskState state) {

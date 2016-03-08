@@ -20,9 +20,8 @@ import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.SnapshotRequest;
-
+import com.vmware.photon.controller.model.helpers.BaseModelTest;
 import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceErrorResponse;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.TaskState;
@@ -31,21 +30,17 @@ import com.vmware.xenon.common.TaskState;
  * Mock adapters used by photon model task tests.
  */
 public class MockAdapter {
-    @SuppressWarnings("rawtypes")
-    private static final Class[] FACTORIES = {
-            MockSuccessInstanceAdapter.class, MockFailureInstanceAdapter.class,
-            MockSuccessBootAdapter.class, MockFailureBootAdapter.class,
-            MockSuccessEnumerationAdapter.class,
-            MockFailureEnumerationAdapter.class,
-            MockSnapshotSuccessAdapter.class, MockSnapshotFailureAdapter.class,
-            MockNetworkInstanceSuccessAdapter.class,
-            MockNetworkInstanceFailureAdapter.class,
-            MockFirewallInstanceSuccessAdapter.class,
-            MockFirewallInstanceFailureAdapter.class };
-
     @SuppressWarnings("unchecked")
-    public static Class<? extends Service>[] getFactories() {
-        return (Class<? extends Service>[]) FACTORIES;
+    public static void startFactories(BaseModelTest test) throws Throwable {
+        test.startFactoryService(MockSuccessInstanceAdapter.class, MockFailureInstanceAdapter.class,
+                MockSuccessBootAdapter.class, MockFailureBootAdapter.class,
+                MockSuccessEnumerationAdapter.class,
+                MockFailureEnumerationAdapter.class,
+                MockSnapshotSuccessAdapter.class, MockSnapshotFailureAdapter.class,
+                MockNetworkInstanceSuccessAdapter.class,
+                MockNetworkInstanceFailureAdapter.class,
+                MockFirewallInstanceSuccessAdapter.class,
+                MockFirewallInstanceFailureAdapter.class);
     }
 
     /**

@@ -30,7 +30,6 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
 
 import com.vmware.xenon.common.Service;
@@ -105,21 +104,10 @@ public class ResourcePoolServiceTest extends Suite {
      * This class implements tests for the handleStart method.
      */
     public static class HandleStartTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testValidStartState() throws Throwable {
             ResourcePoolService.ResourcePoolState startState = buildValidStartState();
-            ResourcePoolService.ResourcePoolState returnState = host
-                    .postServiceSynchronously(
+            ResourcePoolService.ResourcePoolState returnState = postServiceSynchronously(
                             ResourcePoolFactoryService.SELF_LINK, startState,
                             ResourcePoolService.ResourcePoolState.class);
 
@@ -141,12 +129,33 @@ public class ResourcePoolServiceTest extends Suite {
         }
 
         @Test
+        public void testDuplicatePost() throws Throwable {
+            ResourcePoolService.ResourcePoolState startState = buildValidStartState();
+            ResourcePoolService.ResourcePoolState returnState = postServiceSynchronously(
+                            ResourcePoolFactoryService.SELF_LINK, startState,
+                            ResourcePoolService.ResourcePoolState.class);
+
+            assertNotNull(returnState);
+            assertThat(returnState.projectName, is(startState.projectName));
+            startState.projectName = "new projectName";
+            returnState = postServiceSynchronously(
+                            ResourcePoolFactoryService.SELF_LINK, startState,
+                            ResourcePoolService.ResourcePoolState.class);
+
+            assertNotNull(returnState);
+            assertThat(returnState.projectName, is(startState.projectName));
+            ResourcePoolService.ResourcePoolState newState = getServiceSynchronously(
+                    returnState.documentSelfLink,
+                            ResourcePoolService.ResourcePoolState.class);
+            assertThat(newState.projectName, is(startState.projectName));
+        }
+
+        @Test
         public void testMissingId() throws Throwable {
             ResourcePoolService.ResourcePoolState startState = buildValidStartState();
             startState.id = null;
 
-            ResourcePoolService.ResourcePoolState returnState = host
-                    .postServiceSynchronously(
+            ResourcePoolService.ResourcePoolState returnState = postServiceSynchronously(
                             ResourcePoolFactoryService.SELF_LINK, startState,
                             ResourcePoolService.ResourcePoolState.class);
 
@@ -159,27 +168,17 @@ public class ResourcePoolServiceTest extends Suite {
      * This class implements tests for the handlePatch method.
      */
     public static class HandlePatchTest extends BaseModelTest {
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testPatchResourcePoolName() throws Throwable {
             ResourcePoolService.ResourcePoolState startState = createResourcePoolService();
 
             ResourcePoolService.ResourcePoolState patchState = new ResourcePoolService.ResourcePoolState();
             patchState.name = UUID.randomUUID().toString();
-            host.patchServiceSynchronously(startState.documentSelfLink,
+            patchServiceSynchronously(startState.documentSelfLink,
                     patchState);
 
-            ResourcePoolService.ResourcePoolState newState = host
-                    .getServiceSynchronously(startState.documentSelfLink,
+            ResourcePoolService.ResourcePoolState newState = getServiceSynchronously(
+                    startState.documentSelfLink,
                             ResourcePoolService.ResourcePoolState.class);
             assertThat(newState.name, is(patchState.name));
         }
@@ -190,11 +189,11 @@ public class ResourcePoolServiceTest extends Suite {
 
             ResourcePoolService.ResourcePoolState patchState = new ResourcePoolService.ResourcePoolState();
             patchState.projectName = UUID.randomUUID().toString();
-            host.patchServiceSynchronously(startState.documentSelfLink,
+            patchServiceSynchronously(startState.documentSelfLink,
                     patchState);
 
-            ResourcePoolService.ResourcePoolState newState = host
-                    .getServiceSynchronously(startState.documentSelfLink,
+            ResourcePoolService.ResourcePoolState newState = getServiceSynchronously(
+                    startState.documentSelfLink,
                             ResourcePoolService.ResourcePoolState.class);
             assertThat(newState.projectName, is(patchState.projectName));
         }
@@ -205,11 +204,10 @@ public class ResourcePoolServiceTest extends Suite {
 
             ResourcePoolService.ResourcePoolState patchState = new ResourcePoolService.ResourcePoolState();
             patchState.maxDiskCostPerMinute = 12345.6789;
-            host.patchServiceSynchronously(startState.documentSelfLink,
-                    patchState);
+            patchServiceSynchronously(startState.documentSelfLink, patchState);
 
-            ResourcePoolService.ResourcePoolState newState = host
-                    .getServiceSynchronously(startState.documentSelfLink,
+            ResourcePoolService.ResourcePoolState newState = getServiceSynchronously(
+                    startState.documentSelfLink,
                             ResourcePoolService.ResourcePoolState.class);
             assertThat(newState.maxDiskCostPerMinute,
                     is(patchState.maxDiskCostPerMinute));
@@ -221,11 +219,11 @@ public class ResourcePoolServiceTest extends Suite {
 
             ResourcePoolService.ResourcePoolState patchState = new ResourcePoolService.ResourcePoolState();
             patchState.maxCpuCostPerMinute = 12345.6789;
-            host.patchServiceSynchronously(startState.documentSelfLink,
+            patchServiceSynchronously(startState.documentSelfLink,
                     patchState);
 
-            ResourcePoolService.ResourcePoolState newState = host
-                    .getServiceSynchronously(startState.documentSelfLink,
+            ResourcePoolService.ResourcePoolState newState = getServiceSynchronously(
+                    startState.documentSelfLink,
                             ResourcePoolService.ResourcePoolState.class);
             assertThat(newState.maxCpuCostPerMinute,
                     is(patchState.maxCpuCostPerMinute));
@@ -237,11 +235,11 @@ public class ResourcePoolServiceTest extends Suite {
 
             ResourcePoolService.ResourcePoolState patchState = new ResourcePoolService.ResourcePoolState();
             patchState.maxCpuCount = 500L;
-            host.patchServiceSynchronously(startState.documentSelfLink,
+            patchServiceSynchronously(startState.documentSelfLink,
                     patchState);
 
-            ResourcePoolService.ResourcePoolState newState = host
-                    .getServiceSynchronously(startState.documentSelfLink,
+            ResourcePoolService.ResourcePoolState newState = getServiceSynchronously(
+                    startState.documentSelfLink,
                             ResourcePoolService.ResourcePoolState.class);
             assertThat(newState.maxCpuCount, is(startState.maxCpuCount));
         }
@@ -249,7 +247,7 @@ public class ResourcePoolServiceTest extends Suite {
         private ResourcePoolService.ResourcePoolState createResourcePoolService()
                 throws Throwable {
             ResourcePoolService.ResourcePoolState startState = buildValidStartState();
-            return host.postServiceSynchronously(
+            return postServiceSynchronously(
                     ResourcePoolFactoryService.SELF_LINK, startState,
                     ResourcePoolService.ResourcePoolState.class);
         }
@@ -259,17 +257,6 @@ public class ResourcePoolServiceTest extends Suite {
      * This class implements tests for query.
      */
     public static class QueryTest extends BaseModelTest {
-
-        @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return ModelServices.getFactories();
-        }
-
-        @Before
-        public void setUpTest() throws Throwable {
-            super.setUpClass();
-        }
-
         @Test
         public void testTenantLinksQuery() throws Throwable {
             ResourcePoolService.ResourcePoolState rp = buildValidStartState();
@@ -279,8 +266,7 @@ public class ResourcePoolServiceTest extends Suite {
             rp.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));
 
-            ResourcePoolService.ResourcePoolState startState = host
-                    .postServiceSynchronously(
+            ResourcePoolService.ResourcePoolState startState = postServiceSynchronously(
                             ResourcePoolFactoryService.SELF_LINK, rp,
                             ResourcePoolService.ResourcePoolState.class);
 
@@ -289,9 +275,9 @@ public class ResourcePoolServiceTest extends Suite {
             String propertyName = QueryTask.QuerySpecification
                     .buildCollectionItemName(ServiceDocumentDescription.FIELD_NAME_TENANT_LINKS);
 
-            QueryTask q = host.createDirectQueryTask(kind, propertyName,
+            QueryTask q = createDirectQueryTask(kind, propertyName,
                     rp.tenantLinks.get(0));
-            q = host.querySynchronously(q);
+            q = querySynchronously(q);
             assertNotNull(q.results.documentLinks);
             assertThat(q.results.documentCount, is(1L));
             assertThat(q.results.documentLinks.get(0),
@@ -302,25 +288,24 @@ public class ResourcePoolServiceTest extends Suite {
         public void testResourcePoolQuery() throws Throwable {
             // Create a resourcePool
             ResourcePoolService.ResourcePoolState rp = buildValidStartState();
-            ResourcePoolService.ResourcePoolState startState = host
-                    .postServiceSynchronously(
+            ResourcePoolService.ResourcePoolState startState = postServiceSynchronously(
                             ResourcePoolFactoryService.SELF_LINK, rp,
                             ResourcePoolService.ResourcePoolState.class);
 
             // Create a ComputeService in the same resource Pool
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(host);
+                    .createComputeDescription(this);
             ComputeService.ComputeState cs = ComputeServiceTest
                     .buildValidStartState(cd);
             cs.resourcePoolLink = startState.documentSelfLink;
-            ComputeService.ComputeState csStartState = host
-                    .postServiceSynchronously(ComputeFactoryService.SELF_LINK,
+            ComputeService.ComputeState csStartState = postServiceSynchronously(
+                    ComputeFactoryService.SELF_LINK,
                             cs, ComputeService.ComputeState.class);
 
             QueryTask q = new QueryTask();
             q.querySpec = startState.querySpecification;
             q.taskInfo.isDirect = true;
-            QueryTask qr = host.querySynchronously(q);
+            QueryTask qr = querySynchronously(q);
 
             assertNotNull(qr.results.documentLinks);
             assertThat(qr.results.documentCount, is(1L));

@@ -78,20 +78,36 @@ public class SnapshotService extends StatefulService {
         super.toggleOption(ServiceOption.PERSISTENCE, true);
         super.toggleOption(ServiceOption.REPLICATION, true);
         super.toggleOption(ServiceOption.OWNER_SELECTION, true);
-        super.toggleOption(ServiceOption.INSTRUMENTATION, true);
     }
 
     @Override
     public void handleStart(Operation start) {
         try {
-            if (!start.hasBody()) {
-                throw new IllegalArgumentException("body is required");
-            }
-            validateState(start.getBody(SnapshotState.class));
+            processInput(start);
             start.complete();
-        } catch (Throwable e) {
-            start.fail(e);
+        } catch (Throwable t) {
+            start.fail(t);
         }
+    }
+
+    @Override
+    public void handlePut(Operation put) {
+        try {
+            SnapshotState returnState = processInput(put);
+            setState(put, returnState);
+            put.complete();
+        } catch (Throwable t) {
+            put.fail(t);
+        }
+    }
+
+    private SnapshotState processInput(Operation op) {
+        if (!op.hasBody()) {
+            throw (new IllegalArgumentException("body is required"));
+        }
+        SnapshotState state = op.getBody(SnapshotState.class);
+        validateState(state);
+        return state;
     }
 
     public static void validateState(SnapshotState state) {

@@ -145,8 +145,6 @@ public class ResourceAllocationTaskService extends StatefulService {
     public static final long DEFAULT_TIMEOUT_MICROS = TimeUnit.MINUTES
             .toMicros(10);
 
-    public static final long QUERY_RETRY_WAIT = 1;
-
     public static final String CUSTOM_DISPLAY_NAME = "displayName";
 
     public ResourceAllocationTaskService() {
@@ -233,12 +231,6 @@ public class ResourceAllocationTaskService extends StatefulService {
 
                             validateAndCompleteStart(start, state);
                         }));
-    }
-
-    public ResourceAllocationTaskState getBody(Operation op) {
-        ResourceAllocationTaskState body = op
-                .getBody(ResourceAllocationTaskState.class);
-        return body;
     }
 
     @Override
@@ -427,7 +419,7 @@ public class ResourceAllocationTaskService extends StatefulService {
                     () -> {
                         getQueryResults(currentState, desc, queryLink,
                                 computeDescriptionLinks);
-                    }, QUERY_RETRY_WAIT, TimeUnit.SECONDS);
+                    }, getHost().getMaintenanceIntervalMicros(), TimeUnit.MICROSECONDS);
             return;
         }
 
@@ -456,17 +448,14 @@ public class ResourceAllocationTaskService extends StatefulService {
         }
 
         logInfo("Reissuing query since no compute hosts were found");
-        // retry query. Compute hosts might be created in a different node and
-        // might have
-        // not replicated yet. We could broadcast the query across nodes (its no
-        // more work)
-        // but the task should be robust to resources being available after its
-        // created
+        // Retry query. Compute hosts might be created in a different node and
+        // might have not replicated yet.Redo first stage query and find all
+        // compute descriptions.
         getHost().schedule(
                 () -> {
                     doQueryComputeResources(desc, currentState,
-                            computeDescriptionLinks);
-                }, QUERY_RETRY_WAIT, TimeUnit.SECONDS);
+                            null);
+                }, getHost().getMaintenanceIntervalMicros(), TimeUnit.MICROSECONDS);
         return;
     }
 

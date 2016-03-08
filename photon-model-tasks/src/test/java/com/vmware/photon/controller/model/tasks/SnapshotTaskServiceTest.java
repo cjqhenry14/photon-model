@@ -14,11 +14,8 @@
 package com.vmware.photon.controller.model.tasks;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -32,10 +29,7 @@ import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
-import com.vmware.photon.controller.model.ModelServices;
-import com.vmware.photon.controller.model.TaskServices;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.helpers.TestHost;
 import com.vmware.photon.controller.model.resources.SnapshotFactoryService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
 
@@ -51,10 +45,6 @@ import com.vmware.xenon.common.UriUtils;
         SnapshotTaskServiceTest.HandleStartTest.class,
         SnapshotTaskServiceTest.EndToEndTest.class })
 public class SnapshotTaskServiceTest extends Suite {
-    private static final String TEST_DESC_PROPERTY_NAME = "testDescProperty";
-    private static final String TEST_DESC_PROPERTY_VALUE = UUID.randomUUID()
-            .toString();
-
     public SnapshotTaskServiceTest(Class<?> klass, RunnerBuilder builder)
             throws InitializationError {
         super(klass, builder);
@@ -73,7 +63,7 @@ public class SnapshotTaskServiceTest extends Suite {
     }
 
     private static SnapshotService.SnapshotState createSnapshotService(
-            TestHost host) throws Throwable {
+            BaseModelTest test) throws Throwable {
         SnapshotService.SnapshotState st = new SnapshotService.SnapshotState();
         st.id = UUID.randomUUID().toString();
         st.name = "friendly-name";
@@ -82,21 +72,16 @@ public class SnapshotTaskServiceTest extends Suite {
         st.customProperties = new HashMap<>();
         st.customProperties.put("defaultKey", "defaultVal");
 
-        SnapshotService.SnapshotState serviceState = host
+        SnapshotService.SnapshotState serviceState = test
                 .postServiceSynchronously(SnapshotFactoryService.SELF_LINK, st,
                         SnapshotService.SnapshotState.class);
 
         return serviceState;
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    private static Class<? extends Service>[] getFactoryServices() {
-        List<Class<? extends Service>> services = new ArrayList<>();
-        Collections.addAll(services, ModelServices.getFactories());
-        Collections.addAll(services, TaskServices.getFactories());
-        Collections.addAll(services, MockAdapter.getFactories());
-        return services.toArray((Class<? extends Service>[]) new Class[services
-                .size()]);
+    private static void startFactoryServices(BaseModelTest test) throws Throwable {
+        TaskServices.startFactories(test);
+        MockAdapter.startFactories(test);
     }
 
     /**
@@ -129,15 +114,10 @@ public class SnapshotTaskServiceTest extends Suite {
      * This class implements tests for the handleStart method.
      */
     public static class HandleStartTest extends BaseModelTest {
-
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return SnapshotTaskServiceTest.getFactoryServices();
-        }
-
-        @Before
-        public void setUpClass() throws Throwable {
-            super.setUpClass();
+        protected void startRequiredServices() throws Throwable {
+            SnapshotTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
@@ -147,7 +127,7 @@ public class SnapshotTaskServiceTest extends Suite {
 
             SnapshotTaskService.SnapshotTaskState taskState = buildValidStartState(serviceState);
 
-            this.host.postServiceSynchronously(
+            this.postServiceSynchronously(
                     SnapshotTaskFactoryService.SELF_LINK, taskState,
                     SnapshotTaskService.SnapshotTaskState.class,
                     IllegalArgumentException.class);
@@ -155,12 +135,12 @@ public class SnapshotTaskServiceTest extends Suite {
 
         @Test
         public void testMissingSnapshotAdapterReference() throws Throwable {
-            SnapshotService.SnapshotState serviceState = createSnapshotService(this.host);
+            SnapshotService.SnapshotState serviceState = createSnapshotService(this);
 
             SnapshotTaskService.SnapshotTaskState taskState = buildValidStartState(serviceState);
             taskState.snapshotAdapterReference = null;
 
-            this.host.postServiceSynchronously(
+            this.postServiceSynchronously(
                     SnapshotTaskFactoryService.SELF_LINK, taskState,
                     SnapshotTaskService.SnapshotTaskState.class,
                     IllegalArgumentException.class);
@@ -173,29 +153,25 @@ public class SnapshotTaskServiceTest extends Suite {
 
     public static class EndToEndTest extends BaseModelTest {
         @Override
-        protected Class<? extends Service>[] getFactoryServices() {
-            return SnapshotTaskServiceTest.getFactoryServices();
-        }
-
-        @Before
-        public void setUpClass() throws Throwable {
-            super.setUpClass();
+        protected void startRequiredServices() throws Throwable {
+            SnapshotTaskServiceTest.startFactoryServices(this);
+            super.startRequiredServices();
         }
 
         @Test
         public void testSuccess() throws Throwable {
-            SnapshotService.SnapshotState serviceState = createSnapshotService(this.host);
+            SnapshotService.SnapshotState serviceState = createSnapshotService(this);
 
             SnapshotTaskService.SnapshotTaskState startState = buildValidStartState(serviceState);
             startState.snapshotAdapterReference = UriUtils.buildUri(this.host,
                     MockAdapter.MockSnapshotSuccessAdapter.SELF_LINK);
 
-            SnapshotTaskService.SnapshotTaskState returnState = this.host
+            SnapshotTaskService.SnapshotTaskState returnState = this
                     .postServiceSynchronously(
                             SnapshotTaskFactoryService.SELF_LINK, startState,
                             SnapshotTaskService.SnapshotTaskState.class);
 
-            returnState = this.host
+            returnState = this
                     .waitForServiceState(
                             SnapshotTaskService.SnapshotTaskState.class,
                             returnState.documentSelfLink,
@@ -207,18 +183,18 @@ public class SnapshotTaskServiceTest extends Suite {
 
         @Test
         public void testFailure() throws Throwable {
-            SnapshotService.SnapshotState serviceState = createSnapshotService(this.host);
+            SnapshotService.SnapshotState serviceState = createSnapshotService(this);
 
             SnapshotTaskService.SnapshotTaskState startState = buildValidStartState(serviceState);
             startState.snapshotAdapterReference = UriUtils.buildUri(this.host,
                     MockAdapter.MockSnapshotFailureAdapter.SELF_LINK);
 
-            SnapshotTaskService.SnapshotTaskState returnState = this.host
+            SnapshotTaskService.SnapshotTaskState returnState = this
                     .postServiceSynchronously(
                             SnapshotTaskFactoryService.SELF_LINK, startState,
                             SnapshotTaskService.SnapshotTaskState.class);
 
-            returnState = this.host
+            returnState = this
                     .waitForServiceState(
                             SnapshotTaskService.SnapshotTaskState.class,
                             returnState.documentSelfLink,

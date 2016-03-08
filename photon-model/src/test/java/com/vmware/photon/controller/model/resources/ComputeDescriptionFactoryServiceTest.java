@@ -43,6 +43,7 @@ public class ComputeDescriptionFactoryServiceTest {
                 Service.ServiceOption.CONCURRENT_GET_HANDLING,
                 Service.ServiceOption.CONCURRENT_UPDATE_HANDLING,
                 Service.ServiceOption.FACTORY,
+                Service.ServiceOption.IDEMPOTENT_POST,
                 Service.ServiceOption.REPLICATION);
 
         assertThat(this.computeDescriptionFactoryService.getOptions(),
