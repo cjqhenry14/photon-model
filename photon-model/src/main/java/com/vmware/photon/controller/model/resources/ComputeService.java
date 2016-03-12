@@ -209,10 +209,8 @@ public class ComputeService extends StatefulService {
     @Override
     public void handleStart(Operation start) {
         try {
-            processInput(start);
-            getHost().registerForServiceAvailability((o, e) -> {
-                completeStart(start);
-            }, ComputeDescriptionFactoryService.SELF_LINK);
+            validateStartOrPut(start);
+            start.complete();
         } catch (Throwable t) {
             start.fail(t);
         }
@@ -221,55 +219,26 @@ public class ComputeService extends StatefulService {
     @Override
     public void handlePut(Operation put) {
         try {
-            ComputeState returnState = processInput(put);
+            ComputeState returnState = validateStartOrPut(put);
             setState(put, returnState);
-            getHost().registerForServiceAvailability((o, e) -> {
-                completeStart(put);
-            }, ComputeDescriptionFactoryService.SELF_LINK);
+            put.complete();
         } catch (Throwable t) {
             put.fail(t);
         }
     }
 
-    private ComputeState processInput(Operation op) {
+    private ComputeState validateStartOrPut(Operation op) {
         if (!op.hasBody()) {
             throw (new IllegalArgumentException("body is required"));
         }
         ComputeState state = op.getBody(ComputeState.class);
+        if (state.descriptionLink == null || state.descriptionLink.isEmpty()) {
+            throw new IllegalArgumentException("descriptionLink is required");
+        }
         return state;
     }
 
-    private void completeStart(Operation start) {
-        try {
-            ComputeState s = start.getBody(ComputeState.class);
-            validateState(s);
-
-            Operation getDesc = Operation.createGet(this, s.descriptionLink)
-                    .setCompletion(
-                            (o, e) -> {
-                                if (e != null) {
-                                    start.fail(e);
-                                    return;
-                                }
-
-                                ComputeDescription desc = o
-                                        .getBody(ComputeDescription.class);
-                                try {
-                                    validateSupportedChildren(s, desc);
-                                } catch (Throwable ex) {
-                                    start.fail(ex);
-                                    return;
-                                }
-                                start.complete();
-                            });
-
-            sendRequest(getDesc);
-        } catch (Throwable e) {
-            start.fail(e);
-        }
-    }
-
-    private static void validateSupportedChildren(ComputeState state,
+    public static void validateSupportedChildren(ComputeState state,
             ComputeDescription description) {
 
         if (description.supportedChildren == null) {

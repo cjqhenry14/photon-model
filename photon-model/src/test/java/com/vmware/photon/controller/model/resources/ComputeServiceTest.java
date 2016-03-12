@@ -18,12 +18,12 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-
 
 import org.junit.Before;
 import org.junit.Test;
@@ -34,7 +34,6 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.UriUtils;
@@ -114,7 +113,7 @@ public class ComputeServiceTest extends Suite {
     public static class HandleStartTest extends BaseModelTest {
 
         @Test
-        public void testValidStartState() throws Throwable {
+        public void testValidStartStateWithRestart() throws Throwable {
             ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
                     .createComputeDescription(this);
             ComputeService.ComputeState startState = ComputeServiceTest
@@ -130,6 +129,22 @@ public class ComputeServiceTest extends Suite {
             assertThat(returnState.primaryMAC, is(startState.primaryMAC));
             assertThat(returnState.powerState, is(startState.powerState));
             assertThat(returnState.adapterManagementReference,
+                    is(startState.adapterManagementReference));
+
+            this.host.stop();
+            this.host.setPort(0);
+            this.host.setMaintenanceIntervalMicros(TimeUnit.MILLISECONDS.toMicros(100));
+            this.host.start();
+            startFactories(this);
+            ComputeService.ComputeState getState = getServiceSynchronously(
+                    returnState.documentSelfLink, ComputeService.ComputeState.class);
+            assertThat(getState.id, is(startState.id));
+            assertThat(getState.descriptionLink,
+                    is(getState.descriptionLink));
+            assertThat(getState.address, is(startState.address));
+            assertThat(getState.primaryMAC, is(startState.primaryMAC));
+            assertThat(getState.powerState, is(startState.powerState));
+            assertThat(getState.adapterManagementReference,
                     is(startState.adapterManagementReference));
         }
 
@@ -172,22 +187,6 @@ public class ComputeServiceTest extends Suite {
             ComputeService.ComputeState startState = buildValidStartState(cd);
             startState.powerState = ComputeService.PowerState.OFF;
             startState.descriptionLink = null;
-
-            postServiceSynchronously(ComputeFactoryService.SELF_LINK,
-                    startState, ComputeService.ComputeState.class,
-                    IllegalArgumentException.class);
-        }
-
-        @Test
-        public void testMissingAdapterManagementReference() throws Throwable {
-            ComputeDescriptionService.ComputeDescription cd = ComputeDescriptionServiceTest
-                    .createComputeDescription(this);
-            cd.supportedChildren = new ArrayList<>();
-            cd.supportedChildren
-                    .add(ComputeDescriptionService.ComputeDescription.ComputeType.VM_HOST
-                            .toString());
-            ComputeService.ComputeState startState = buildValidStartState(cd);
-            startState.adapterManagementReference = null;
 
             postServiceSynchronously(ComputeFactoryService.SELF_LINK,
                     startState, ComputeService.ComputeState.class,
