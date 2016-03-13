@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.esotericsoftware.kryo.serializers.VersionFieldSerializer.Since;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -176,6 +178,7 @@ public class ComputeDescriptionService extends StatefulService {
          * URI reference to the adapter used to get the stats info of this
          * host.
          */
+        @Since(032)
         public URI statsAdapterReference;
 
         /**
