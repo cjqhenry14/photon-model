@@ -2,6 +2,10 @@
 
 ## 0.3.2
 
+* AWS stats service implementation
+
+* Handle OData queries in ComputeService
+
 ## 0.3.1
 
 * Make resource service factories idempotent
