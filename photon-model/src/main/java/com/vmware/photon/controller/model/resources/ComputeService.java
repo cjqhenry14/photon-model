@@ -178,9 +178,8 @@ public class ComputeService extends StatefulService {
     @Override
     public void handleGet(Operation get) {
         ComputeState currentState = getState(get);
-        boolean doExpand = get.getUri().getQuery() != null
-                && get.getUri().getQuery()
-                        .contains(UriUtils.URI_PARAM_ODATA_EXPAND);
+        boolean doExpand = get.getUri().getQuery() != null &&
+                UriUtils.hasODataExpandParamValue(get.getUri());
 
         if (!doExpand) {
             get.setBody(currentState).complete();

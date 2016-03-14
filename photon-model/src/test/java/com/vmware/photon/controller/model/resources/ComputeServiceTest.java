@@ -231,11 +231,21 @@ public class ComputeServiceTest extends Suite {
                             startState, ComputeService.ComputeState.class);
             assertNotNull(returnState);
 
-            ComputeService.ComputeStateWithDescription getState = getServiceSynchronously(
-                            UriUtils.buildExpandLinksQueryUri(
-                                    URI.create(returnState.documentSelfLink))
-                                    .toString(),
-                            ComputeService.ComputeStateWithDescription.class);
+            ComputeService.ComputeStateWithDescription  getState = getServiceSynchronously(
+                    UriUtils.extendUriWithQuery(UriUtils.buildUri(returnState.documentSelfLink),
+                            UriUtils.URI_PARAM_ODATA_EXPAND_NO_DOLLAR_SIGN, Boolean.TRUE.toString()).toString(),
+                    ComputeService.ComputeStateWithDescription.class);
+
+            assertThat(getState.id, is(startState.id));
+            assertNotNull(getState.description);
+            assertThat(getState.description.id, is(startState.description.id));
+            assertThat(getState.description.name,
+                    is(startState.description.name));
+
+            getState = getServiceSynchronously(
+                    UriUtils.extendUriWithQuery(UriUtils.buildUri(returnState.documentSelfLink),
+                            UriUtils.URI_PARAM_ODATA_EXPAND, Boolean.TRUE.toString()).toString(),
+                    ComputeService.ComputeStateWithDescription.class);
 
             assertThat(getState.id, is(startState.id));
             assertNotNull(getState.description);
