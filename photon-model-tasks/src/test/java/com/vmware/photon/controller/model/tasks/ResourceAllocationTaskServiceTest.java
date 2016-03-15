@@ -33,16 +33,11 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
-import com.vmware.photon.controller.model.resources.ComputeFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeService;
-import com.vmware.photon.controller.model.resources.DiskFactoryService;
 import com.vmware.photon.controller.model.resources.DiskService;
-import com.vmware.photon.controller.model.resources.NetworkInterfaceFactoryService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
-import com.vmware.photon.controller.model.resources.ResourceDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
 import com.vmware.photon.controller.model.tasks.ResourceAllocationTaskService.ResourceAllocationTaskState;
 
@@ -95,7 +90,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         cd.zoneId = zoneId;
         ComputeDescriptionService.ComputeDescription cd1 = test
                 .postServiceSynchronously(
-                        ComputeDescriptionFactoryService.SELF_LINK, cd,
+                        ComputeDescriptionService.FACTORY_LINK, cd,
                         ComputeDescriptionService.ComputeDescription.class);
 
         // Create parent Compute
@@ -106,7 +101,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         cs.adapterManagementReference = URI
                 .create("https://esxhost-01:443/sdk");
         ComputeService.ComputeState cs1 = test.postServiceSynchronously(
-                ComputeFactoryService.SELF_LINK, cs,
+                ComputeService.FACTORY_LINK, cs,
                 ComputeService.ComputeState.class);
 
         return cs1;
@@ -144,7 +139,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
             cd.bootAdapterReference = UriUtils.buildUri(test.getHost(), bootAdapterLink);
         }
         return test.postServiceSynchronously(
-                ComputeDescriptionFactoryService.SELF_LINK, cd,
+                ComputeDescriptionService.FACTORY_LINK, cd,
                 ComputeDescriptionService.ComputeDescription.class);
     }
 
@@ -156,7 +151,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         d.name = "friendly-name";
         d.capacityMBytes = 100L;
         DiskService.DiskState d1 = test.postServiceSynchronously(
-                DiskFactoryService.SELF_LINK, d, DiskService.DiskState.class);
+                DiskService.FACTORY_LINK, d, DiskService.DiskState.class);
         List<String> links = new ArrayList<>();
         links.add(d1.documentSelfLink);
         return links;
@@ -169,7 +164,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         n.networkDescriptionLink = "http://network-description";
         NetworkInterfaceService.NetworkInterfaceState n1 = test
                 .postServiceSynchronously(
-                        NetworkInterfaceFactoryService.SELF_LINK, n,
+                        NetworkInterfaceService.FACTORY_LINK, n,
                         NetworkInterfaceService.NetworkInterfaceState.class);
         List<String> links = new ArrayList<>();
         links.add(n1.documentSelfLink);
@@ -188,7 +183,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
         rd.networkDescriptionLinks = networkDescriptionLinks;
 
         return test.postServiceSynchronously(
-                ResourceDescriptionFactoryService.SELF_LINK, rd,
+                ResourceDescriptionService.FACTORY_LINK, rd,
                 ResourceDescriptionService.ResourceDescription.class);
     }
 

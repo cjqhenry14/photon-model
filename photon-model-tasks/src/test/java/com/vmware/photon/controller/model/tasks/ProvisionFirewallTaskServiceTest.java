@@ -30,7 +30,6 @@ import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.resources.FirewallFactoryService;
 import com.vmware.photon.controller.model.resources.FirewallService;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState;
 
@@ -84,7 +83,7 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
         fState.ingress = rules;
         fState.egress = rules;
         FirewallState returnState = test.postServiceSynchronously(
-                FirewallFactoryService.SELF_LINK, fState, FirewallState.class);
+                FirewallService.FACTORY_LINK, fState, FirewallState.class);
         startState.requestType = requestType;
         startState.firewallDescriptionLink = returnState.documentSelfLink;
 

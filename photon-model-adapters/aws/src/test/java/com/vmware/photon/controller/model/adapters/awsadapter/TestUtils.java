@@ -19,14 +19,12 @@ import java.util.UUID;
 
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
 
-import com.vmware.photon.controller.model.resources.FirewallFactoryService;
 import com.vmware.photon.controller.model.resources.FirewallService;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState;
-import com.vmware.photon.controller.model.resources.NetworkFactoryService;
+import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
-import com.vmware.photon.controller.model.resources.ResourcePoolFactoryService;
+import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.test.VerificationHost;
@@ -98,7 +96,7 @@ public class TestUtils {
 
     public static void postFirewall(VerificationHost host, FirewallState state, Operation response)
             throws Throwable {
-        URI firewallFactory = UriUtils.buildUri(host, FirewallFactoryService.class);
+        URI firewallFactory = UriUtils.buildUri(host, FirewallService.FACTORY_LINK);
         host.testStart(1);
         Operation startPost = Operation.createPost(firewallFactory)
                 .setBody(state)
@@ -117,7 +115,7 @@ public class TestUtils {
 
     public static void postNetwork(VerificationHost host, NetworkState state, Operation response)
             throws Throwable {
-        URI networkFactory = UriUtils.buildUri(host, NetworkFactoryService.class);
+        URI networkFactory = UriUtils.buildUri(host, NetworkService.FACTORY_LINK);
         host.testStart(1);
         Operation startPost = Operation.createPost(networkFactory)
                 .setBody(state)
@@ -168,7 +166,7 @@ public class TestUtils {
     }
 
     public static void postResourcePool(VerificationHost host,Operation response) throws Throwable {
-        URI poolFactory = UriUtils.buildUri(host,ResourcePoolFactoryService.class);
+        URI poolFactory = UriUtils.buildUri(host, ResourcePoolService.FACTORY_LINK);
         ResourcePoolState pool = new ResourcePoolState();
         pool.name = "test-aws";
         host.testStart(1);

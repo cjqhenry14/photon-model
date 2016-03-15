@@ -27,15 +27,19 @@ import com.vmware.photon.controller.model.tasks.SshCommandTaskFactoryService;
  * Service factories used in Photon Model Task package.
  */
 public class TaskServices {
-    @SuppressWarnings("unchecked")
+
     public static void startFactories(BaseModelTest test) throws Throwable {
-        test.startFactoryService(ProvisionComputeTaskFactoryService.class,
-                ProvisionFirewallTaskFactoryService.class,
-                ProvisionNetworkTaskFactoryService.class,
-                ResourceAllocationTaskFactoryService.class,
-                ResourceEnumerationTaskFactoryService.class,
-                ResourceRemovalTaskFactoryService.class,
-                SnapshotTaskFactoryService.class,
-                SshCommandTaskFactoryService.class);
+        if (test.getHost().getServiceStage(ProvisionComputeTaskFactoryService.SELF_LINK) != null) {
+            return;
+        }
+        test.getHost().startFactoryServicesSynchronously(
+                new ProvisionComputeTaskFactoryService(),
+                new ProvisionFirewallTaskFactoryService(),
+                new ProvisionNetworkTaskFactoryService(),
+                new ResourceAllocationTaskFactoryService(),
+                new ResourceEnumerationTaskFactoryService(),
+                new ResourceRemovalTaskFactoryService(),
+                new SnapshotTaskFactoryService(),
+                new SshCommandTaskFactoryService());
     }
 }

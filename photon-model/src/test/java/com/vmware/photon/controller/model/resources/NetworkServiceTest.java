@@ -105,7 +105,7 @@ public class NetworkServiceTest extends Suite {
         public void testValidStartState() throws Throwable {
             NetworkService.NetworkState startState = buildValidStartState();
             NetworkService.NetworkState returnState = postServiceSynchronously(
-                    NetworkFactoryService.SELF_LINK,
+                    NetworkService.FACTORY_LINK,
                             startState, NetworkService.NetworkState.class);
 
             assertNotNull(returnState);
@@ -128,13 +128,13 @@ public class NetworkServiceTest extends Suite {
         public void testDuplicatePost() throws Throwable {
             NetworkService.NetworkState startState = buildValidStartState();
             NetworkService.NetworkState returnState = postServiceSynchronously(
-                    NetworkFactoryService.SELF_LINK,
+                    NetworkService.FACTORY_LINK,
                             startState, NetworkService.NetworkState.class);
 
             assertNotNull(returnState);
             assertThat(returnState.name, is(startState.name));
             startState.name = "new-name";
-            returnState = postServiceSynchronously(NetworkFactoryService.SELF_LINK,
+            returnState = postServiceSynchronously(NetworkService.FACTORY_LINK,
                             startState, NetworkService.NetworkState.class);
             assertThat(returnState.name, is(startState.name));
         }
@@ -164,7 +164,7 @@ public class NetworkServiceTest extends Suite {
                     missingSubnet, invalidSubnet1, invalidSubnet2, invalidSubnet3,
                     invalidSubnet4, invalidSubnet5 };
             for (NetworkService.NetworkState state : states) {
-                postServiceSynchronously(NetworkFactoryService.SELF_LINK,
+                postServiceSynchronously(NetworkService.FACTORY_LINK,
                         state, NetworkService.NetworkState.class,
                         IllegalArgumentException.class);
             }
@@ -180,7 +180,7 @@ public class NetworkServiceTest extends Suite {
             NetworkService.NetworkState startState = buildValidStartState();
 
             NetworkService.NetworkState returnState = postServiceSynchronously(
-                    NetworkFactoryService.SELF_LINK,
+                    NetworkService.FACTORY_LINK,
                             startState, NetworkService.NetworkState.class);
 
             NetworkService.NetworkState patchState = new NetworkService.NetworkState();
@@ -232,7 +232,7 @@ public class NetworkServiceTest extends Suite {
             networkState.tenantLinks.add(UriUtils.buildUriPath(
                     tenantUri.getPath(), "tenantA"));
             NetworkService.NetworkState startState = postServiceSynchronously(
-                    NetworkFactoryService.SELF_LINK,
+                    NetworkService.FACTORY_LINK,
                             networkState, NetworkService.NetworkState.class);
 
             String kind = Utils.buildKind(NetworkService.NetworkState.class);

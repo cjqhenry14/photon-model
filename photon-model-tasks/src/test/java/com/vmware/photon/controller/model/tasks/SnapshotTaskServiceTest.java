@@ -30,7 +30,6 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.resources.SnapshotFactoryService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
 
 import com.vmware.xenon.common.Service;
@@ -73,7 +72,7 @@ public class SnapshotTaskServiceTest extends Suite {
         st.customProperties.put("defaultKey", "defaultVal");
 
         SnapshotService.SnapshotState serviceState = test
-                .postServiceSynchronously(SnapshotFactoryService.SELF_LINK, st,
+                .postServiceSynchronously(SnapshotService.FACTORY_LINK, st,
                         SnapshotService.SnapshotState.class);
 
         return serviceState;

@@ -41,8 +41,6 @@ public class AWSInstanceServiceTest extends Suite{
         super(klass, builder);
     }
 
-
-
     /**
      * This class implements tests for the handleRequest method.
      */
@@ -60,10 +58,9 @@ public class AWSInstanceServiceTest extends Suite{
                     AuthCredentialsService.AuthCredentialsServiceState.class);
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         protected void startRequiredServices() throws Throwable {
-            super.startFactoryService(AWSInstanceService.class);
+            getHost().startService(new AWSInstanceService());
         }
 
         @Before

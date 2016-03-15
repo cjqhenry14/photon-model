@@ -23,11 +23,8 @@ import java.util.concurrent.TimeUnit;
 
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
-import com.vmware.photon.controller.model.resources.ComputeFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeService;
-import com.vmware.photon.controller.model.resources.DiskFactoryService;
 import com.vmware.photon.controller.model.resources.DiskService;
-import com.vmware.photon.controller.model.resources.NetworkInterfaceFactoryService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
 import com.vmware.xenon.common.Operation;
@@ -539,16 +536,13 @@ public class ResourceAllocationTaskService extends StatefulService {
                             : null);
 
             // as long as you can predict the document self link of a service,
-            // you can start
-            // services that depend on each other in parallel!
-            // The provision task requires a compute host resource, but DCP will
-            // automatically
-            // register for availability, if the compute host is not created
-            // yet. So, we set the
-            // link in the provision task, and let the system run in parallel
+            // you can start services that depend on each other in parallel!
+            // The provision task requires a compute host resource, but the runtime will
+            // automatically register for availability, if the compute host is not created
+            // yet. So, we set the link in the provision task, and let the system run in parallel
 
             String computeResourceLink = UriUtils.buildUriPath(
-                    ComputeFactoryService.SELF_LINK, computeResourceId);
+                    ComputeService.FACTORY_LINK, computeResourceId);
             ProvisionComputeTaskService.ProvisionComputeTaskState provisionTaskState = new ProvisionComputeTaskService.ProvisionComputeTaskState();
             provisionTaskState.computeLink = computeResourceLink;
 
@@ -562,26 +556,21 @@ public class ResourceAllocationTaskService extends StatefulService {
             provisionTaskState.taskSubStage = ProvisionComputeTaskService.ProvisionComputeTaskState.SubStage.CREATING_HOST;
             provisionTaskState.tenantLinks = currentState.tenantLinks;
             sendRequest(Operation
-                    .createPost(
-                            UriUtils.buildUri(
-                                    getHost(),
-                                    ProvisionComputeTaskFactoryService.SELF_LINK))
+                    .createPost(this, ProvisionComputeTaskFactoryService.SELF_LINK)
                     .setBody(provisionTaskState)
-                    .setCompletion(
-                            (o, e) -> {
-                                if (e != null) {
-                                    logSevere(
-                                            "Failure creating provisioning task: %s",
-                                            Utils.toString(e));
-                                    // we fail on first task failure, we could
-                                    // in theory keep going ...
-                                    sendFailureSelfPatch(e);
-                                    return;
-                                }
-                                // nothing to do, the tasks will patch us with
-                                // finished when each one is
-                                // done
-                            }));
+                    .setCompletion((o, e) -> {
+                        if (e == null) {
+                            // task will patch us when done
+                            return;
+                        }
+                        logSevere(
+                                "Failure creating provisioning task: %s",
+                                Utils.toString(e));
+                        // we fail on first task failure, we could
+                        // in theory keep going ...
+                        sendFailureSelfPatch(e);
+                        return;
+                    }));
         }
     }
 
@@ -617,9 +606,9 @@ public class ResourceAllocationTaskService extends StatefulService {
                             ComputeSubTaskService.ComputeSubTaskState body = o
                                     .getBody(ComputeSubTaskService.ComputeSubTaskState.class);
                             // continue, passing the sub task link
-                            doComputeResourceProvisioning(currentState, desc,
-                                    body.documentSelfLink);
-                        });
+                        doComputeResourceProvisioning(currentState, desc,
+                                body.documentSelfLink);
+                    });
         getHost().startService(startPost, new ComputeSubTaskService());
     }
 
@@ -659,11 +648,10 @@ public class ResourceAllocationTaskService extends StatefulService {
         resource.networkLinks = networkLinks;
         resource.customProperties = currentState.customProperties;
         resource.tenantLinks = currentState.tenantLinks;
+        resource.documentSelfLink = resource.id;
 
         sendRequest(Operation
-                .createPost(
-                        UriUtils.buildUri(getHost(),
-                                ComputeFactoryService.SELF_LINK))
+                .createPost(this, ComputeService.FACTORY_LINK)
                 .setBody(resource)
                 .setCompletion(
                         (o, e) -> {
@@ -675,7 +663,7 @@ public class ResourceAllocationTaskService extends StatefulService {
                                 return;
                             }
                             // nothing to do
-                        }));
+                    }));
     }
 
     /**
@@ -731,12 +719,13 @@ public class ResourceAllocationTaskService extends StatefulService {
                                 .getBody(DiskService.DiskState.class);
                         // create a new disk based off the template but use a
                         // unique ID
-                        templateDisk.id = UUID.randomUUID().toString();
-                        sendRequest(Operation
-                                .createPost(this, DiskFactoryService.SELF_LINK)
-                                .setBody(templateDisk)
-                                .setCompletion(diskCreateCompletion));
-                    }));
+                    templateDisk.id = UUID.randomUUID().toString();
+                    templateDisk.documentSelfLink = templateDisk.id;
+                    sendRequest(Operation
+                            .createPost(this, DiskService.FACTORY_LINK)
+                            .setBody(templateDisk)
+                            .setCompletion(diskCreateCompletion));
+                }));
         }
     }
 
@@ -786,14 +775,14 @@ public class ResourceAllocationTaskService extends StatefulService {
 
                                 NetworkInterfaceService.NetworkInterfaceState templateNetwork = o
                                         .getBody(NetworkInterfaceService.NetworkInterfaceState.class);
-                                templateNetwork.id = UUID.randomUUID()
-                                        .toString();
+                                templateNetwork.id = UUID.randomUUID().toString();
+                                templateNetwork.documentSelfLink = templateNetwork.id;
                                 // create a new network based off the template
                                 // but use a unique ID
                                 sendRequest(Operation
                                         .createPost(
                                                 this,
-                                                NetworkInterfaceFactoryService.SELF_LINK)
+                                                NetworkInterfaceService.FACTORY_LINK)
                                         .setBody(templateNetwork)
                                         .setCompletion(
                                                 networkInterfaceCreateCompletion));

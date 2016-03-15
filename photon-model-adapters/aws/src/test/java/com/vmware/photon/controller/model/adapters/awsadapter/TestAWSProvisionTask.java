@@ -27,17 +27,14 @@ import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
-import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
-import com.vmware.photon.controller.model.resources.ComputeFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-import com.vmware.photon.controller.model.resources.DiskFactoryService;
 import com.vmware.photon.controller.model.resources.DiskService;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
-import com.vmware.photon.controller.model.resources.ResourcePoolFactoryService;
+import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
@@ -46,7 +43,6 @@ import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
-
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
@@ -90,7 +86,7 @@ public class TestAWSProvisionTask  {
     private static final String DEFAULT_COREOS_PRIVATE_KEY_FILE = "private_coreos.key";
 
     // fields that are used across method calls, stash them as private fields
-    private String resourcePoolId;
+    private String resourcePoolLink;
     private String parentResourceId;
 
     @Before
@@ -136,7 +132,7 @@ public class TestAWSProvisionTask  {
         // Create a resource pool where the VM will be housed
         ResourcePoolState outPool =
                 createAWSResourcePool();
-        this.resourcePoolId = outPool.documentSourceLink;
+        this.resourcePoolLink = outPool.documentSelfLink;
 
         // create a compute host for the AWS EC2 VM
         ComputeService.ComputeState outComputeHost =
@@ -242,6 +238,7 @@ public class TestAWSProvisionTask  {
                 new ComputeDescriptionService.ComputeDescription();
 
         awshostDescription.id = UUID.randomUUID().toString();
+        awshostDescription.documentSelfLink = awshostDescription.id;
         awshostDescription.supportedChildren = new ArrayList<String>();
         awshostDescription.supportedChildren.add(ComputeType.VM_GUEST.name());
         awshostDescription.instanceAdapterReference = UriUtils.buildUri(this.host,
@@ -250,22 +247,22 @@ public class TestAWSProvisionTask  {
         awshostDescription.authCredentialsLink = authLink;
         TestUtils.doPost(this.host, awshostDescription,
                 ComputeDescriptionService.ComputeDescription.class,
-                UriUtils.buildUri(this.host, ComputeDescriptionFactoryService.SELF_LINK));
+                UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
 
         ComputeService.ComputeState awsComputeHost =
                 new ComputeService.ComputeState();
 
         awsComputeHost.id = UUID.randomUUID().toString();
+        awsComputeHost.documentSelfLink = awsComputeHost.id;
         awsComputeHost.descriptionLink = UriUtils.buildUriPath(
-                ComputeDescriptionFactoryService.SELF_LINK, awshostDescription.id);
-        awsComputeHost.resourcePoolLink = UriUtils.buildUriPath(
-                ResourcePoolFactoryService.SELF_LINK, this.resourcePoolId);
+                ComputeDescriptionService.FACTORY_LINK, awshostDescription.id);
+        awsComputeHost.resourcePoolLink = this.resourcePoolLink;
 
         awsComputeHost.adapterManagementReference = UriUtils.buildUri(awsEndPoint);
 
         ComputeService.ComputeState returnState = TestUtils.doPost(this.host, awsComputeHost,
                 ComputeService.ComputeState.class,
-                UriUtils.buildUri(this.host, ComputeFactoryService.SELF_LINK));
+                UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
         return returnState;
     }
 
@@ -280,7 +277,7 @@ public class TestAWSProvisionTask  {
 
         ResourcePoolState returnPool =
                 TestUtils.doPost(this.host, inPool, ResourcePoolState.class,
-                        UriUtils.buildUri(this.host, ResourcePoolFactoryService.SELF_LINK));
+                        UriUtils.buildUri(this.host, ResourcePoolService.FACTORY_LINK));
 
         return returnPool;
     }
@@ -330,7 +327,7 @@ public class TestAWSProvisionTask  {
 
         ComputeDescriptionService.ComputeDescription vmComputeDesc = TestUtils.doPost(this.host, awsVMDesc,
                 ComputeDescriptionService.ComputeDescription.class,
-                UriUtils.buildUri(this.host, ComputeDescriptionFactoryService.SELF_LINK));
+                UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
 
         // Step 3: create boot disk
         List<String> vmDisks = new ArrayList<String>();
@@ -348,19 +345,19 @@ public class TestAWSProvisionTask  {
 
         TestUtils.doPost(this.host, rootDisk,
                 DiskService.DiskState.class,
-                UriUtils.buildUri(this.host, DiskFactoryService.SELF_LINK));
-        vmDisks.add(UriUtils.buildUriPath(DiskFactoryService.SELF_LINK, rootDisk.id));
+                UriUtils.buildUri(this.host, DiskService.FACTORY_LINK));
+        vmDisks.add(UriUtils.buildUriPath(DiskService.FACTORY_LINK, rootDisk.id));
 
         ComputeService.ComputeState resource = new ComputeService.ComputeState();
         resource.id = UUID.randomUUID().toString();
         resource.parentLink = parentResourceId;
         resource.descriptionLink = vmComputeDesc.documentSelfLink;
-        resource.resourcePoolLink = this.resourcePoolId;
+        resource.resourcePoolLink = this.resourcePoolLink;
         resource.diskLinks = vmDisks;
 
         ComputeService.ComputeState vmComputeState = TestUtils.doPost(this.host, resource,
                 ComputeService.ComputeState.class,
-                UriUtils.buildUri(this.host, ComputeFactoryService.SELF_LINK));
+                UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
         return vmComputeState;
     }
 

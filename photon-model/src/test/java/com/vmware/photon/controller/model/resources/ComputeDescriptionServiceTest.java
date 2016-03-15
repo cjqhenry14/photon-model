@@ -97,7 +97,7 @@ public class ComputeDescriptionServiceTest extends Suite {
         // disable periodic maintenance for tests by default.
         cd.healthAdapterReference = null;
         return test.postServiceSynchronously(
-                ComputeDescriptionFactoryService.SELF_LINK, cd,
+                ComputeDescriptionService.FACTORY_LINK, cd,
                 ComputeDescriptionService.ComputeDescription.class);
     }
 
@@ -136,7 +136,7 @@ public class ComputeDescriptionServiceTest extends Suite {
         public void testValidStartState() throws Throwable {
             ComputeDescriptionService.ComputeDescription startState = buildValidStartState();
             ComputeDescriptionService.ComputeDescription returnState = postServiceSynchronously(
-                            ComputeDescriptionFactoryService.SELF_LINK,
+                    ComputeDescriptionService.FACTORY_LINK,
                             startState,
                             ComputeDescriptionService.ComputeDescription.class);
 
@@ -152,7 +152,7 @@ public class ComputeDescriptionServiceTest extends Suite {
         public void testDuplicatePost() throws Throwable {
             ComputeDescriptionService.ComputeDescription startState = buildValidStartState();
             ComputeDescriptionService.ComputeDescription returnState = postServiceSynchronously(
-                            ComputeDescriptionFactoryService.SELF_LINK,
+                    ComputeDescriptionService.FACTORY_LINK,
                             startState,
                             ComputeDescriptionService.ComputeDescription.class);
 
@@ -160,7 +160,7 @@ public class ComputeDescriptionServiceTest extends Suite {
             assertThat(returnState.name, is(startState.name));
             startState.name = "new-name";
             returnState = postServiceSynchronously(
-                            ComputeDescriptionFactoryService.SELF_LINK,
+                    ComputeDescriptionService.FACTORY_LINK,
                             startState,
                             ComputeDescriptionService.ComputeDescription.class);
             assertThat(returnState.name, is(startState.name));
@@ -172,7 +172,7 @@ public class ComputeDescriptionServiceTest extends Suite {
             startState.id = null;
 
             ComputeDescriptionService.ComputeDescription returnState = postServiceSynchronously(
-                            ComputeDescriptionFactoryService.SELF_LINK,
+                    ComputeDescriptionService.FACTORY_LINK,
                             startState,
                             ComputeDescriptionService.ComputeDescription.class);
 
@@ -186,7 +186,7 @@ public class ComputeDescriptionServiceTest extends Suite {
             startState.bootAdapterReference = null;
 
             postServiceSynchronously(
-                    ComputeDescriptionFactoryService.SELF_LINK, startState,
+                    ComputeDescriptionService.FACTORY_LINK, startState,
                     ComputeDescriptionService.ComputeDescription.class,
                     IllegalArgumentException.class);
         }
@@ -197,7 +197,7 @@ public class ComputeDescriptionServiceTest extends Suite {
             startState.powerAdapterReference = null;
 
             postServiceSynchronously(
-                    ComputeDescriptionFactoryService.SELF_LINK, startState,
+                    ComputeDescriptionService.FACTORY_LINK, startState,
                     ComputeDescriptionService.ComputeDescription.class,
                     IllegalArgumentException.class);
         }
@@ -208,7 +208,7 @@ public class ComputeDescriptionServiceTest extends Suite {
             startState.instanceAdapterReference = null;
 
             postServiceSynchronously(
-                    ComputeDescriptionFactoryService.SELF_LINK, startState,
+                    ComputeDescriptionService.FACTORY_LINK, startState,
                     ComputeDescriptionService.ComputeDescription.class,
                     IllegalArgumentException.class);
         }
@@ -229,7 +229,7 @@ public class ComputeDescriptionServiceTest extends Suite {
                     "tenantA"));
 
             ComputeDescriptionService.ComputeDescription startState = postServiceSynchronously(
-                            ComputeDescriptionFactoryService.SELF_LINK, disk,
+                    ComputeDescriptionService.FACTORY_LINK, disk,
                             ComputeDescriptionService.ComputeDescription.class);
 
             String kind = Utils
@@ -256,7 +256,7 @@ public class ComputeDescriptionServiceTest extends Suite {
                     newCustomPropertyValue);
 
             postServiceSynchronously(
-                    ComputeDescriptionFactoryService.SELF_LINK, cd,
+                    ComputeDescriptionService.FACTORY_LINK, cd,
                     ComputeDescriptionService.ComputeDescription.class);
 
             String kind = Utils
@@ -279,7 +279,7 @@ public class ComputeDescriptionServiceTest extends Suite {
                     .add(ComputeDescriptionService.ComputeDescription.ComputeType.DOCKER_CONTAINER
                             .toString());
             postServiceSynchronously(
-                    ComputeDescriptionFactoryService.SELF_LINK, cd,
+                    ComputeDescriptionService.FACTORY_LINK, cd,
                     ComputeDescriptionService.ComputeDescription.class);
 
             String kind = Utils

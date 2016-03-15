@@ -16,7 +16,10 @@ package com.vmware.photon.controller.model.resources;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
+import com.vmware.photon.controller.model.UriPaths;
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -30,6 +33,12 @@ import com.vmware.xenon.services.common.QueryTask;
  * track the desired versus realized resources.
  */
 public class ResourcePoolService extends StatefulService {
+
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/pools";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(ResourcePoolService.class);
+    }
 
     /**
      * This class represents the document state associated with a
@@ -215,7 +224,9 @@ public class ResourcePoolService extends StatefulService {
     }
 
     public static void validateState(ResourcePoolState state) {
-
+        if (state.id == null) {
+            state.id = UUID.randomUUID().toString();
+        }
         if (state.properties == null) {
             state.properties = EnumSet
                     .noneOf(ResourcePoolState.ResourcePoolProperty.class);

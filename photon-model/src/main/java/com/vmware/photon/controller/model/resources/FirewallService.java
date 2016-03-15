@@ -21,6 +21,8 @@ import java.util.UUID;
 
 import org.apache.commons.net.util.SubnetUtils;
 
+import com.vmware.photon.controller.model.UriPaths;
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -30,6 +32,13 @@ import com.vmware.xenon.common.StatefulService;
  * Represents a firewall resource.
  */
 public class FirewallService extends StatefulService {
+
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/firewalls";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(FirewallService.class);
+    }
+
     public static final String[] PROTOCOL = { "tcp", "udp", "icmp" };
 
     /**
@@ -129,6 +138,10 @@ public class FirewallService extends StatefulService {
     }
 
     public static void validateState(FirewallState state) {
+        if (state.id == null) {
+            state.id = UUID.randomUUID().toString();
+        }
+
         if (state.networkDescriptionLink == null
                 || state.networkDescriptionLink.isEmpty()) {
             throw new IllegalArgumentException(

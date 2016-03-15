@@ -96,9 +96,9 @@ public class ResourceDescriptionServiceTest extends Suite {
         public void testValidStartState() throws Throwable {
             ResourceDescriptionService.ResourceDescription startState = buildValidStartState();
             ResourceDescriptionService.ResourceDescription returnState = postServiceSynchronously(
-                            ResourceDescriptionFactoryService.SELF_LINK,
-                            startState,
-                            ResourceDescriptionService.ResourceDescription.class);
+                    ResourceDescriptionService.FACTORY_LINK,
+                    startState,
+                    ResourceDescriptionService.ResourceDescription.class);
 
             assertNotNull(returnState);
             assertThat(returnState.computeType, is(startState.computeType));
@@ -110,17 +110,17 @@ public class ResourceDescriptionServiceTest extends Suite {
         public void testDuplicatePost() throws Throwable {
             ResourceDescriptionService.ResourceDescription startState = buildValidStartState();
             ResourceDescriptionService.ResourceDescription returnState = postServiceSynchronously(
-                            ResourceDescriptionFactoryService.SELF_LINK,
-                            startState,
-                            ResourceDescriptionService.ResourceDescription.class);
+                    ResourceDescriptionService.FACTORY_LINK,
+                    startState,
+                    ResourceDescriptionService.ResourceDescription.class);
 
             assertNotNull(returnState);
             assertThat(returnState.computeType, is(startState.computeType));
             startState.computeType = "new-compute-type";
             returnState = postServiceSynchronously(
-                            ResourceDescriptionFactoryService.SELF_LINK,
-                            startState,
-                            ResourceDescriptionService.ResourceDescription.class);
+                    ResourceDescriptionService.FACTORY_LINK,
+                    startState,
+                    ResourceDescriptionService.ResourceDescription.class);
             assertThat(returnState.computeType, is(startState.computeType));
         }
 
@@ -130,7 +130,7 @@ public class ResourceDescriptionServiceTest extends Suite {
             startState.computeType = null;
 
             postServiceSynchronously(
-                    ResourceDescriptionFactoryService.SELF_LINK, startState,
+                    ResourceDescriptionService.FACTORY_LINK, startState,
                     ResourceDescriptionService.ResourceDescription.class,
                     IllegalArgumentException.class);
         }
@@ -141,7 +141,7 @@ public class ResourceDescriptionServiceTest extends Suite {
             startState.computeDescriptionLink = null;
 
             postServiceSynchronously(
-                    ResourceDescriptionFactoryService.SELF_LINK, startState,
+                    ResourceDescriptionService.FACTORY_LINK, startState,
                     ResourceDescriptionService.ResourceDescription.class,
                     IllegalArgumentException.class);
         }
@@ -161,9 +161,9 @@ public class ResourceDescriptionServiceTest extends Suite {
                     "tenantA"));
 
             ResourceDescriptionService.ResourceDescription startState = postServiceSynchronously(
-                            ResourceDescriptionFactoryService.SELF_LINK,
-                            rd,
-                            ResourceDescriptionService.ResourceDescription.class);
+                    ResourceDescriptionService.FACTORY_LINK,
+                    rd,
+                    ResourceDescriptionService.ResourceDescription.class);
 
             String kind = Utils
                     .buildKind(ResourceDescriptionService.ResourceDescription.class);

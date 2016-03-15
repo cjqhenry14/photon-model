@@ -32,10 +32,8 @@ import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionServiceTest;
-import com.vmware.photon.controller.model.resources.ComputeFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 
 import com.vmware.xenon.common.Service;
@@ -84,7 +82,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
                 enumerationAdapterReference);
 
         return test.postServiceSynchronously(
-                ComputeDescriptionFactoryService.SELF_LINK, cd,
+                ComputeDescriptionService.FACTORY_LINK, cd,
                 ComputeDescriptionService.ComputeDescription.class);
     }
 
@@ -111,7 +109,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
         cs.tenantLinks.add("http://tenant");
 
         ComputeService.ComputeState returnState = test
-                .postServiceSynchronously(ComputeFactoryService.SELF_LINK, cs,
+                .postServiceSynchronously(ComputeService.FACTORY_LINK, cs,
                         ComputeService.ComputeState.class);
 
         return ComputeService.ComputeStateWithDescription.create(cd,

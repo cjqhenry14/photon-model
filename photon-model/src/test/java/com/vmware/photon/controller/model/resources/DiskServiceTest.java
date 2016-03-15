@@ -100,7 +100,7 @@ public class DiskServiceTest extends Suite {
         public void testValidStartState() throws Throwable {
             DiskService.DiskState startState = buildValidStartState();
             DiskService.DiskState returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
 
             assertNotNull(returnState);
@@ -115,14 +115,14 @@ public class DiskServiceTest extends Suite {
         public void testDuplicatePost() throws Throwable {
             DiskService.DiskState startState = buildValidStartState();
             DiskService.DiskState returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
 
             assertNotNull(returnState);
             assertThat(returnState.name, is(startState.name));
             startState.name = "new-name";
             returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
             assertThat(returnState.name, is(startState.name));
 
@@ -134,7 +134,7 @@ public class DiskServiceTest extends Suite {
             startState.id = null;
 
             DiskService.DiskState returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
 
             assertNotNull(returnState);
@@ -146,7 +146,7 @@ public class DiskServiceTest extends Suite {
             DiskService.DiskState startState = buildValidStartState();
             startState.name = null;
 
-            postServiceSynchronously(DiskFactoryService.SELF_LINK,
+            postServiceSynchronously(DiskService.FACTORY_LINK,
                     startState, DiskService.DiskState.class,
                     IllegalArgumentException.class);
         }
@@ -156,7 +156,7 @@ public class DiskServiceTest extends Suite {
             DiskService.DiskState startState = buildValidStartState();
             startState.type = null;
 
-            postServiceSynchronously(DiskFactoryService.SELF_LINK,
+            postServiceSynchronously(DiskService.FACTORY_LINK,
                     startState, DiskService.DiskState.class,
                     IllegalArgumentException.class);
         }
@@ -171,7 +171,7 @@ public class DiskServiceTest extends Suite {
                     "http://customizationServiceReference");
 
             DiskService.DiskState returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
 
             assertNotNull(returnState);
@@ -185,7 +185,7 @@ public class DiskServiceTest extends Suite {
             startState.sourceImageReference = null;
             startState.customizationServiceReference = null;
 
-            postServiceSynchronously(DiskFactoryService.SELF_LINK,
+            postServiceSynchronously(DiskService.FACTORY_LINK,
                     startState, DiskService.DiskState.class,
                     IllegalArgumentException.class);
         }
@@ -196,7 +196,7 @@ public class DiskServiceTest extends Suite {
             startState.status = null;
 
             DiskService.DiskState returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
 
             assertNotNull(returnState);
@@ -210,12 +210,12 @@ public class DiskServiceTest extends Suite {
             startState.bootConfig.files[0] = new DiskService.DiskState.BootConfig.FileEntry();
             startState.bootConfig.files[0].path = null;
 
-            postServiceSynchronously(DiskFactoryService.SELF_LINK,
+            postServiceSynchronously(DiskService.FACTORY_LINK,
                     startState, DiskService.DiskState.class,
                     IllegalArgumentException.class);
             startState.bootConfig.files[0].path = "";
 
-            postServiceSynchronously(DiskFactoryService.SELF_LINK,
+            postServiceSynchronously(DiskService.FACTORY_LINK,
                     startState, DiskService.DiskState.class,
                     IllegalArgumentException.class);
 
@@ -233,7 +233,7 @@ public class DiskServiceTest extends Suite {
             startState.zoneId = "startZoneId";
 
             DiskService.DiskState returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
 
             DiskService.DiskState patchState = new DiskService.DiskState();
@@ -267,7 +267,7 @@ public class DiskServiceTest extends Suite {
             startState.name = "startName";
 
             DiskService.DiskState returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
 
             DiskService.DiskState patchState = new DiskService.DiskState();
@@ -301,7 +301,7 @@ public class DiskServiceTest extends Suite {
             startState.status = DiskService.DiskStatus.DETACHED;
 
             DiskService.DiskState returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
 
             DiskService.DiskState patchState = new DiskService.DiskState();
@@ -334,7 +334,7 @@ public class DiskServiceTest extends Suite {
             startState.capacityMBytes = 100L;
 
             DiskService.DiskState returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
 
             DiskService.DiskState patchState = new DiskService.DiskState();
@@ -376,7 +376,7 @@ public class DiskServiceTest extends Suite {
             startState.currencyUnit = "currency-unit1";
 
             DiskService.DiskState returnState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, startState,
+                    DiskService.FACTORY_LINK, startState,
                     DiskService.DiskState.class);
 
             DiskService.DiskState patchState = new DiskService.DiskState();
@@ -424,7 +424,7 @@ public class DiskServiceTest extends Suite {
                     "tenantA"));
 
             DiskService.DiskState startState = postServiceSynchronously(
-                    DiskFactoryService.SELF_LINK, disk,
+                    DiskService.FACTORY_LINK, disk,
                     DiskService.DiskState.class);
 
             String kind = Utils.buildKind(DiskService.DiskState.class);

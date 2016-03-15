@@ -93,9 +93,9 @@ public class NetworkInterfaceServiceTest extends Suite {
         public void testValidStartState() throws Throwable {
             NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
             NetworkInterfaceService.NetworkInterfaceState returnState = postServiceSynchronously(
-                            NetworkInterfaceFactoryService.SELF_LINK,
-                            startState,
-                            NetworkInterfaceService.NetworkInterfaceState.class);
+                    NetworkInterfaceService.FACTORY_LINK,
+                    startState,
+                    NetworkInterfaceService.NetworkInterfaceState.class);
 
             assertNotNull(returnState);
             assertThat(returnState.id, is(startState.id));
@@ -108,17 +108,17 @@ public class NetworkInterfaceServiceTest extends Suite {
         public void testDuplicatePost() throws Throwable {
             NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
             NetworkInterfaceService.NetworkInterfaceState returnState = postServiceSynchronously(
-                            NetworkInterfaceFactoryService.SELF_LINK,
-                            startState,
-                            NetworkInterfaceService.NetworkInterfaceState.class);
+                    NetworkInterfaceService.FACTORY_LINK,
+                    startState,
+                    NetworkInterfaceService.NetworkInterfaceState.class);
 
             assertNotNull(returnState);
             assertThat(returnState.networkBridgeLink, is(startState.networkBridgeLink));
             startState.networkBridgeLink = "new-bridge";
             returnState = postServiceSynchronously(
-                            NetworkInterfaceFactoryService.SELF_LINK,
-                            startState,
-                            NetworkInterfaceService.NetworkInterfaceState.class);
+                    NetworkInterfaceService.FACTORY_LINK,
+                    startState,
+                    NetworkInterfaceService.NetworkInterfaceState.class);
             assertThat(returnState.networkBridgeLink, is(startState.networkBridgeLink));
         }
 
@@ -128,9 +128,9 @@ public class NetworkInterfaceServiceTest extends Suite {
             startState.id = null;
 
             NetworkInterfaceService.NetworkInterfaceState returnState = postServiceSynchronously(
-                            NetworkInterfaceFactoryService.SELF_LINK,
-                            startState,
-                            NetworkInterfaceService.NetworkInterfaceState.class);
+                    NetworkInterfaceService.FACTORY_LINK,
+                    startState,
+                    NetworkInterfaceService.NetworkInterfaceState.class);
 
             assertNotNull(returnState);
             assertNotNull(returnState.id);
@@ -139,10 +139,10 @@ public class NetworkInterfaceServiceTest extends Suite {
         @Test
         public void testMissingBody() throws Throwable {
             postServiceSynchronously(
-                            NetworkInterfaceFactoryService.SELF_LINK,
-                            null,
-                            NetworkInterfaceService.NetworkInterfaceState.class,
-                            IllegalArgumentException.class);
+                    NetworkInterfaceService.FACTORY_LINK,
+                    null,
+                    NetworkInterfaceService.NetworkInterfaceState.class,
+                    IllegalArgumentException.class);
         }
 
         @Test
@@ -150,10 +150,10 @@ public class NetworkInterfaceServiceTest extends Suite {
             NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
             startState.address = "bad-ip-address";
             postServiceSynchronously(
-                            NetworkInterfaceFactoryService.SELF_LINK,
-                            startState,
-                            NetworkInterfaceService.NetworkInterfaceState.class,
-                            IllegalArgumentException.class);
+                    NetworkInterfaceService.FACTORY_LINK,
+                    startState,
+                    NetworkInterfaceService.NetworkInterfaceState.class,
+                    IllegalArgumentException.class);
         }
 
         @Test
@@ -162,10 +162,10 @@ public class NetworkInterfaceServiceTest extends Suite {
             startState.address = null;
             startState.networkDescriptionLink = null;
             postServiceSynchronously(
-                            NetworkInterfaceFactoryService.SELF_LINK,
-                            startState,
-                            NetworkInterfaceService.NetworkInterfaceState.class,
-                            IllegalArgumentException.class);
+                    NetworkInterfaceService.FACTORY_LINK,
+                    startState,
+                    NetworkInterfaceService.NetworkInterfaceState.class,
+                    IllegalArgumentException.class);
         }
 
         @Test
@@ -174,10 +174,10 @@ public class NetworkInterfaceServiceTest extends Suite {
             startState.address = "10.0.0.1";
             startState.networkDescriptionLink = "10.0.0.2";
             postServiceSynchronously(
-                            NetworkInterfaceFactoryService.SELF_LINK,
-                            startState,
-                            NetworkInterfaceService.NetworkInterfaceState.class,
-                            IllegalArgumentException.class);
+                    NetworkInterfaceService.FACTORY_LINK,
+                    startState,
+                    NetworkInterfaceService.NetworkInterfaceState.class,
+                    IllegalArgumentException.class);
         }
     }
 
@@ -190,9 +190,9 @@ public class NetworkInterfaceServiceTest extends Suite {
             NetworkInterfaceService.NetworkInterfaceState startState = buildValidStartState();
 
             NetworkInterfaceService.NetworkInterfaceState returnState = postServiceSynchronously(
-                            NetworkInterfaceFactoryService.SELF_LINK,
-                            startState,
-                            NetworkInterfaceService.NetworkInterfaceState.class);
+                    NetworkInterfaceService.FACTORY_LINK,
+                    startState,
+                    NetworkInterfaceService.NetworkInterfaceState.class);
 
             NetworkInterfaceService.NetworkInterfaceState patchState = new NetworkInterfaceService.NetworkInterfaceState();
             patchState.address = "10.0.0.1";
@@ -231,8 +231,8 @@ public class NetworkInterfaceServiceTest extends Suite {
             nic.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));
             NetworkInterfaceService.NetworkInterfaceState startState = postServiceSynchronously(
-                            NetworkInterfaceFactoryService.SELF_LINK, nic,
-                            NetworkInterfaceService.NetworkInterfaceState.class);
+                    NetworkInterfaceService.FACTORY_LINK, nic,
+                    NetworkInterfaceService.NetworkInterfaceState.class);
 
             String kind = Utils
                     .buildKind(NetworkInterfaceService.NetworkInterfaceState.class);

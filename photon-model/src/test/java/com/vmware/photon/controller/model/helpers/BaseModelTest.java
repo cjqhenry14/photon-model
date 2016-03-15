@@ -13,7 +13,6 @@
 
 package com.vmware.photon.controller.model.helpers;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -24,19 +23,18 @@ import java.util.function.Predicate;
 import org.junit.Before;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
-import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
-import com.vmware.photon.controller.model.resources.ComputeFactoryService;
-import com.vmware.photon.controller.model.resources.DiskFactoryService;
-import com.vmware.photon.controller.model.resources.FirewallFactoryService;
-import com.vmware.photon.controller.model.resources.NetworkFactoryService;
-import com.vmware.photon.controller.model.resources.NetworkInterfaceFactoryService;
-import com.vmware.photon.controller.model.resources.ResourceDescriptionFactoryService;
-import com.vmware.photon.controller.model.resources.ResourcePoolFactoryService;
-import com.vmware.photon.controller.model.resources.SnapshotFactoryService;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
+import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.resources.DiskService;
+import com.vmware.photon.controller.model.resources.FirewallService;
+import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
+import com.vmware.photon.controller.model.resources.NetworkService;
+import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
+import com.vmware.photon.controller.model.resources.ResourcePoolService;
+import com.vmware.photon.controller.model.resources.SnapshotService;
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
-import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceHost;
 import com.vmware.xenon.common.UriUtils;
@@ -48,14 +46,17 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  * services for unit-tests.
  */
 public abstract class BaseModelTest extends BasicReusableHostTestCase {
-    @SuppressWarnings("unchecked")
+
     public static void startFactories(BaseModelTest test) throws Throwable {
-        test.startFactoryService(ComputeFactoryService.class,
-                ComputeDescriptionFactoryService.class, DiskFactoryService.class,
-                FirewallFactoryService.class, NetworkFactoryService.class,
-                NetworkInterfaceFactoryService.class,
-                ResourceDescriptionFactoryService.class,
-                ResourcePoolFactoryService.class, SnapshotFactoryService.class);
+        if (test.getHost().getServiceStage(ComputeService.FACTORY_LINK) != null) {
+            return;
+        }
+        test.getHost().startFactoryServicesSynchronously(ComputeService.createFactory(),
+                ComputeDescriptionService.createFactory(), DiskService.createFactory(),
+                FirewallService.createFactory(), NetworkService.createFactory(),
+                NetworkInterfaceService.createFactory(),
+                ResourceDescriptionService.createFactory(),
+                ResourcePoolService.createFactory(), SnapshotService.createFactory());
     }
 
     protected void startRequiredServices() throws Throwable {
@@ -66,20 +67,6 @@ public abstract class BaseModelTest extends BasicReusableHostTestCase {
     public void setUp() throws Throwable {
         this.host.setMaintenanceIntervalMicros(TimeUnit.MILLISECONDS.toMicros(250));
         startRequiredServices();
-    }
-
-    @SuppressWarnings("unchecked")
-    public void startFactoryService(Class<? extends Service>... types) throws Throwable {
-        for (Class<? extends Service> type : types) {
-            URI u = UriUtils.buildUri(this.host, type);
-            if (this.host.getServiceStage(u.getPath()) != null) {
-                // service already started, skip
-                return;
-            }
-            // we can make this start the classes in parallel, but since factories
-            // are stateless services that start instantly, this is acceptable
-            this.host.startServiceAndWait(type, u.getPath());
-        }
     }
 
     public <T extends ServiceDocument> T postServiceSynchronously(

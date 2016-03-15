@@ -14,9 +14,12 @@
 package com.vmware.photon.controller.model.resources;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.commons.validator.routines.InetAddressValidator;
 
+import com.vmware.photon.controller.model.UriPaths;
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -26,6 +29,13 @@ import com.vmware.xenon.common.StatefulService;
  * Represents a network interface.
  */
 public class NetworkInterfaceService extends StatefulService {
+
+    public static final String FACTORY_LINK = UriPaths.RESOURCES_NETWORKS
+            + "/interfaces";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(NetworkInterfaceService.class);
+    }
 
     /**
      * Represents the state of a network interface.
@@ -123,6 +133,10 @@ public class NetworkInterfaceService extends StatefulService {
     }
 
     private void validateState(NetworkInterfaceState state) {
+        if (state.id == null) {
+            state.id = UUID.randomUUID().toString();
+        }
+
         if (state.address != null) {
             if (state.networkDescriptionLink != null) {
                 throw new IllegalArgumentException(

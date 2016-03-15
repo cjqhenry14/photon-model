@@ -22,9 +22,10 @@ import java.util.UUID;
 
 import org.apache.commons.validator.routines.InetAddressValidator;
 
+import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
-
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -35,6 +36,12 @@ import com.vmware.xenon.common.UriUtils;
  * Represents a compute resource.
  */
 public class ComputeService extends StatefulService {
+
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/compute";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(ComputeService.class);
+    }
 
     /**
      * Power State.
@@ -234,6 +241,9 @@ public class ComputeService extends StatefulService {
         if (state.descriptionLink == null || state.descriptionLink.isEmpty()) {
             throw new IllegalArgumentException("descriptionLink is required");
         }
+        if (state.id == null) {
+            state.id = UUID.randomUUID().toString();
+        }
         return state;
     }
 
@@ -402,7 +412,7 @@ public class ComputeService extends StatefulService {
         template.id = UUID.randomUUID().toString();
         template.primaryMAC = "01:23:45:67:89:ab";
         template.descriptionLink = UriUtils.buildUriPath(
-                ComputeDescriptionFactoryService.SELF_LINK,
+                ComputeDescriptionService.FACTORY_LINK,
                 "on-prem-one-cpu-vm-guest");
         template.resourcePoolLink = null;
         template.adapterManagementReference = URI

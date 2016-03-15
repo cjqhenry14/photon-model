@@ -23,6 +23,7 @@ import com.vmware.photon.controller.model.adapterapi.SnapshotRequest;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceErrorResponse;
+import com.vmware.xenon.common.ServiceHost;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.TaskState;
 
@@ -30,17 +31,24 @@ import com.vmware.xenon.common.TaskState;
  * Mock adapters used by photon model task tests.
  */
 public class MockAdapter {
-    @SuppressWarnings("unchecked")
+
     public static void startFactories(BaseModelTest test) throws Throwable {
-        test.startFactoryService(MockSuccessInstanceAdapter.class, MockFailureInstanceAdapter.class,
-                MockSuccessBootAdapter.class, MockFailureBootAdapter.class,
-                MockSuccessEnumerationAdapter.class,
-                MockFailureEnumerationAdapter.class,
-                MockSnapshotSuccessAdapter.class, MockSnapshotFailureAdapter.class,
-                MockNetworkInstanceSuccessAdapter.class,
-                MockNetworkInstanceFailureAdapter.class,
-                MockFirewallInstanceSuccessAdapter.class,
-                MockFirewallInstanceFailureAdapter.class);
+        ServiceHost host = test.getHost();
+        if (host.getServiceStage(MockSuccessInstanceAdapter.SELF_LINK) != null) {
+            return;
+        }
+        host.startService(new MockSuccessInstanceAdapter());
+        host.startService(new MockFailureInstanceAdapter());
+        host.startService(new MockSuccessBootAdapter());
+        host.startService(new MockFailureBootAdapter());
+        host.startService(new MockSuccessEnumerationAdapter());
+        host.startService(new MockFailureEnumerationAdapter());
+        host.startService(new MockSnapshotSuccessAdapter());
+        host.startService(new MockSnapshotFailureAdapter());
+        host.startService(new MockNetworkInstanceSuccessAdapter());
+        host.startService(new MockNetworkInstanceFailureAdapter());
+        host.startService(new MockFirewallInstanceSuccessAdapter());
+        host.startService(new MockFirewallInstanceFailureAdapter());
     }
 
     /**

@@ -36,9 +36,8 @@ import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.Inst
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
-import com.vmware.photon.controller.model.resources.NetworkInterfaceFactoryService;
+import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.OperationContext;
@@ -424,7 +423,7 @@ public class AWSInstanceService extends StatelessService {
                             instance.getInstanceId());
                     resultDesc.networkLinks = new ArrayList<String>();
                     resultDesc.networkLinks.add(UriUtils.buildUriPath(
-                            NetworkInterfaceFactoryService.SELF_LINK,
+                            NetworkInterfaceService.FACTORY_LINK,
                             instance.getInstanceId()));
 
                     Operation patchState = Operation
@@ -435,7 +434,7 @@ public class AWSInstanceService extends StatelessService {
                             .createPost(
                                     UriUtils.buildUri(
                                             service.getHost(),
-                                            NetworkInterfaceFactoryService.SELF_LINK))
+                                            NetworkInterfaceService.FACTORY_LINK))
                             .setBody(networkState)
                             .setReferer(service.getHost().getUri());
                     OperationJoin.JoinedCompletionHandler joinCompletion = (ox,

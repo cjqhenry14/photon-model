@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.vmware.photon.controller.model.UriPaths;
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -27,6 +29,12 @@ import com.vmware.xenon.common.StatefulService;
  * Describes a disk instance.
  */
 public class DiskService extends StatefulService {
+
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/disks";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(DiskService.class);
+    }
 
     /**
      * Status of disk.
@@ -231,7 +239,7 @@ public class DiskService extends StatefulService {
 
     private void validateState(DiskState state) {
         if (state.id == null) {
-            throw new IllegalArgumentException("id is required");
+            state.id = UUID.randomUUID().toString();
         }
 
         if (state.name == null) {

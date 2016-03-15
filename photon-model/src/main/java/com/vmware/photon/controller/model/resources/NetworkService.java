@@ -20,6 +20,8 @@ import java.util.UUID;
 
 import org.apache.commons.net.util.SubnetUtils;
 
+import com.vmware.photon.controller.model.UriPaths;
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -29,6 +31,12 @@ import com.vmware.xenon.common.StatefulService;
  * Represents a network resource.
  */
 public class NetworkService extends StatefulService {
+
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/networks";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(NetworkService.class);
+    }
 
     /**
      * Network State document.
@@ -104,6 +112,10 @@ public class NetworkService extends StatefulService {
     }
 
     public static void validateState(NetworkState state) {
+        if (state.id == null) {
+            state.id = UUID.randomUUID().toString();
+        }
+
         if (state.subnetCIDR == null) {
             throw new IllegalArgumentException(
                     "subnet in CIDR notation is required");

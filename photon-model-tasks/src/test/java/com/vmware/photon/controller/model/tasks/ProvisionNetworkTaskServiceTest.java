@@ -29,9 +29,8 @@ import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.resources.NetworkFactoryService;
+import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
-
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
@@ -72,7 +71,7 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
         nState.id = UUID.randomUUID().toString();
 
         NetworkState returnState = test.postServiceSynchronously(
-                NetworkFactoryService.SELF_LINK, nState, NetworkState.class);
+                NetworkService.FACTORY_LINK, nState, NetworkState.class);
         ProvisionNetworkTaskService.ProvisionNetworkTaskState startState = new ProvisionNetworkTaskService.ProvisionNetworkTaskState();
 
         startState.requestType = requestType;

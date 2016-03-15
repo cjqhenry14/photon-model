@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.vmware.photon.controller.model.UriPaths;
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -28,6 +30,11 @@ import com.vmware.xenon.common.UriUtils;
  * Represents a snapshot resource.
  */
 public class SnapshotService extends StatefulService {
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/snapshots";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(SnapshotService.class);
+    }
 
     /**
      * This class represents the document state associated with a
@@ -111,8 +118,8 @@ public class SnapshotService extends StatefulService {
     }
 
     public static void validateState(SnapshotState state) {
-        if (state.id == null || state.id.isEmpty()) {
-            throw new IllegalArgumentException("id is required");
+        if (state.id == null) {
+            state.id = UUID.randomUUID().toString();
         }
 
         if (state.name == null || state.name.isEmpty()) {

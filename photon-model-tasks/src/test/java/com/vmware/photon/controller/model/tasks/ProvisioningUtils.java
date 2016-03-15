@@ -23,19 +23,18 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeoutException;
 
-import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
-import com.vmware.photon.controller.model.resources.ComputeFactoryService;
-import com.vmware.photon.controller.model.resources.DiskFactoryService;
-import com.vmware.photon.controller.model.resources.NetworkInterfaceFactoryService;
-import com.vmware.photon.controller.model.resources.ResourceDescriptionFactoryService;
-import com.vmware.photon.controller.model.resources.ResourcePoolFactoryService;
-import com.vmware.photon.controller.model.resources.SnapshotFactoryService;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
+import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.resources.DiskService;
+import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
+import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
+import com.vmware.photon.controller.model.resources.ResourcePoolService;
+import com.vmware.photon.controller.model.resources.SnapshotService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.ResourceAllocationTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.SnapshotTaskFactoryService;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.TaskState;
@@ -55,19 +54,19 @@ public class ProvisioningUtils {
         host.setSystemAuthorizationContext();
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host, ComputeFactoryService.class)),
-                new ComputeFactoryService());
-        serviceSelfLinks.add(ComputeFactoryService.SELF_LINK);
+                Operation.createPost(host, ComputeService.FACTORY_LINK),
+                ComputeService.createFactory());
+        serviceSelfLinks.add(ComputeService.FACTORY_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host, ResourcePoolFactoryService.class)),
-                new ResourcePoolFactoryService());
-        serviceSelfLinks.add(ResourcePoolFactoryService.SELF_LINK);
+                Operation.createPost(host, ResourcePoolService.FACTORY_LINK),
+                ResourcePoolService.createFactory());
+        serviceSelfLinks.add(ResourcePoolService.FACTORY_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host, SnapshotFactoryService.class)),
-                new SnapshotFactoryService());
-        serviceSelfLinks.add(SnapshotFactoryService.SELF_LINK);
+                Operation.createPost(host, SnapshotService.FACTORY_LINK),
+                SnapshotService.createFactory());
+        serviceSelfLinks.add(SnapshotService.FACTORY_LINK);
 
         host.startService(
                 Operation.createPost(UriUtils.buildUri(host,
@@ -88,16 +87,16 @@ public class ProvisioningUtils {
         serviceSelfLinks.add(ResourceRemovalTaskFactoryService.SELF_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        ComputeDescriptionFactoryService.class)),
-                new ComputeDescriptionFactoryService());
-        serviceSelfLinks.add(ComputeDescriptionFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        ComputeDescriptionService.FACTORY_LINK),
+                ComputeDescriptionService.createFactory());
+        serviceSelfLinks.add(ComputeDescriptionService.FACTORY_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        DiskFactoryService.class)),
-                new DiskFactoryService());
-        serviceSelfLinks.add(DiskFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        DiskService.FACTORY_LINK),
+                DiskService.createFactory());
+        serviceSelfLinks.add(DiskService.FACTORY_LINK);
 
         host.startService(
                 Operation.createPost(UriUtils.buildUri(host,
@@ -106,10 +105,10 @@ public class ProvisioningUtils {
         serviceSelfLinks.add(ProvisionComputeTaskFactoryService.SELF_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        NetworkInterfaceFactoryService.class)),
-                new NetworkInterfaceFactoryService());
-        serviceSelfLinks.add(NetworkInterfaceFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        NetworkInterfaceService.FACTORY_LINK),
+                NetworkInterfaceService.createFactory());
+        serviceSelfLinks.add(NetworkInterfaceService.FACTORY_LINK);
 
         host.startService(
                 Operation.createPost(UriUtils.buildUri(host,
@@ -124,10 +123,10 @@ public class ProvisioningUtils {
         serviceSelfLinks.add(SnapshotTaskFactoryService.SELF_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        ResourceDescriptionFactoryService.class)),
-                new ResourceDescriptionFactoryService());
-        serviceSelfLinks.add(ResourceDescriptionFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        ResourceDescriptionService.FACTORY_LINK),
+                ResourceDescriptionService.createFactory());
+        serviceSelfLinks.add(ResourceDescriptionService.FACTORY_LINK);
 
 
         host.startService(
@@ -154,7 +153,7 @@ public class ProvisioningUtils {
         do {
             ServiceDocumentQueryResult res = host.getFactoryState(UriUtils
                     .buildExpandLinksQueryUri(UriUtils.buildUri(host,
-                            ComputeFactoryService.SELF_LINK)));
+                            ComputeService.FACTORY_LINK)));
             if (res.documents.size() == desiredCount) {
                 return res;
             }

@@ -104,8 +104,8 @@ public class SnapshotServiceTest extends Suite {
             assertNotNull(host);
 
             SnapshotService.SnapshotState returnState = postServiceSynchronously(
-                    SnapshotFactoryService.SELF_LINK,
-                            startState, SnapshotService.SnapshotState.class);
+                    SnapshotService.FACTORY_LINK,
+                    startState, SnapshotService.SnapshotState.class);
 
             assertNotNull(returnState);
             assertThat(returnState.id, is(startState.id));
@@ -119,14 +119,14 @@ public class SnapshotServiceTest extends Suite {
             assertNotNull(host);
 
             SnapshotService.SnapshotState returnState = postServiceSynchronously(
-                    SnapshotFactoryService.SELF_LINK,
-                            startState, SnapshotService.SnapshotState.class);
+                    SnapshotService.FACTORY_LINK,
+                    startState, SnapshotService.SnapshotState.class);
 
             assertNotNull(returnState);
             assertThat(returnState.name, is(startState.name));
             startState.name = "new name";
-            returnState = postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
-                            startState, SnapshotService.SnapshotState.class);
+            returnState = postServiceSynchronously(SnapshotService.FACTORY_LINK,
+                    startState, SnapshotService.SnapshotState.class);
             assertThat(returnState.name, is(startState.name));
         }
 
@@ -137,8 +137,8 @@ public class SnapshotServiceTest extends Suite {
             startState.id = null;
 
             SnapshotService.SnapshotState returnState = postServiceSynchronously(
-                    SnapshotFactoryService.SELF_LINK,
-                            startState, SnapshotService.SnapshotState.class);
+                    SnapshotService.FACTORY_LINK,
+                    startState, SnapshotService.SnapshotState.class);
 
             assertNotNull(returnState);
             assertNotNull(returnState.id);
@@ -149,7 +149,7 @@ public class SnapshotServiceTest extends Suite {
             SnapshotService.SnapshotState startState = buildValidStartState();
             startState.name = null;
 
-            postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
+            postServiceSynchronously(SnapshotService.FACTORY_LINK,
                     startState, SnapshotService.SnapshotState.class,
                     IllegalArgumentException.class);
         }
@@ -159,7 +159,7 @@ public class SnapshotServiceTest extends Suite {
             SnapshotService.SnapshotState startState = buildValidStartState();
             startState.computeLink = null;
 
-            postServiceSynchronously(SnapshotFactoryService.SELF_LINK,
+            postServiceSynchronously(SnapshotService.FACTORY_LINK,
                     startState, SnapshotService.SnapshotState.class,
                     IllegalArgumentException.class);
         }
@@ -180,7 +180,7 @@ public class SnapshotServiceTest extends Suite {
 
             SnapshotService.SnapshotState newState = getServiceSynchronously(
                     startState.documentSelfLink,
-                            SnapshotService.SnapshotState.class);
+                    SnapshotService.SnapshotState.class);
             assertThat(newState.name, is(patchState.name));
         }
 
@@ -195,7 +195,7 @@ public class SnapshotServiceTest extends Suite {
 
             SnapshotService.SnapshotState newState = getServiceSynchronously(
                     startState.documentSelfLink,
-                            SnapshotService.SnapshotState.class);
+                    SnapshotService.SnapshotState.class);
 
             assertThat(newState.description, is(patchState.description));
         }
@@ -211,7 +211,7 @@ public class SnapshotServiceTest extends Suite {
 
             SnapshotService.SnapshotState newState = getServiceSynchronously(
                     startState.documentSelfLink,
-                            SnapshotService.SnapshotState.class);
+                    SnapshotService.SnapshotState.class);
 
             assertThat(newState.computeLink, is(patchState.computeLink));
         }
@@ -231,7 +231,7 @@ public class SnapshotServiceTest extends Suite {
 
             SnapshotService.SnapshotState newState = getServiceSynchronously(
                     startState.documentSelfLink,
-                            SnapshotService.SnapshotState.class);
+                    SnapshotService.SnapshotState.class);
 
             for (Map.Entry<String, String> entry : patchState.customProperties
                     .entrySet()) {
@@ -248,7 +248,7 @@ public class SnapshotServiceTest extends Suite {
                 throws Throwable {
             SnapshotService.SnapshotState startState = buildValidStartState();
             return postServiceSynchronously(
-                    SnapshotFactoryService.SELF_LINK, startState,
+                    SnapshotService.FACTORY_LINK, startState,
                     SnapshotService.SnapshotState.class);
         }
     }
@@ -267,8 +267,8 @@ public class SnapshotServiceTest extends Suite {
                     "tenantA"));
 
             SnapshotService.SnapshotState startState = postServiceSynchronously(
-                    SnapshotFactoryService.SELF_LINK,
-                            st, SnapshotService.SnapshotState.class);
+                    SnapshotService.FACTORY_LINK,
+                    st, SnapshotService.SnapshotState.class);
 
             String kind = Utils.buildKind(SnapshotService.SnapshotState.class);
             String propertyName = QueryTask.QuerySpecification

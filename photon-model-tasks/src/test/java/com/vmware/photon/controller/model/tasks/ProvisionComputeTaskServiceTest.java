@@ -28,7 +28,6 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionServiceTest;
@@ -152,7 +151,7 @@ public class ProvisionComputeTaskServiceTest extends Suite {
             cd.supportedChildren.add(ComputeType.DOCKER_CONTAINER.toString());
             cd.instanceAdapterReference = null;
             ComputeDescriptionService.ComputeDescription cd1 = postServiceSynchronously(
-                    ComputeDescriptionFactoryService.SELF_LINK, cd,
+                    ComputeDescriptionService.FACTORY_LINK, cd,
                     ComputeDescriptionService.ComputeDescription.class);
 
             ComputeService.ComputeStateWithDescription cs = ModelUtils

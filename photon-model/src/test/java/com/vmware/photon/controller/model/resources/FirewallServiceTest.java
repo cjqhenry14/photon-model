@@ -130,7 +130,7 @@ public class FirewallServiceTest extends Suite {
         public void testValidStartState() throws Throwable {
             FirewallService.FirewallState startState = buildValidStartState();
             FirewallService.FirewallState returnState = postServiceSynchronously(
-                    FirewallFactoryService.SELF_LINK,
+                    FirewallService.FACTORY_LINK,
                             startState, FirewallService.FirewallState.class);
 
             assertNotNull(returnState);
@@ -154,13 +154,13 @@ public class FirewallServiceTest extends Suite {
         public void testDuplicatePost() throws Throwable {
             FirewallService.FirewallState startState = buildValidStartState();
             FirewallService.FirewallState returnState = postServiceSynchronously(
-                    FirewallFactoryService.SELF_LINK,
+                    FirewallService.FACTORY_LINK,
                             startState, FirewallService.FirewallState.class);
 
             assertNotNull(returnState);
             assertThat(returnState.regionID, is(startState.regionID));
             startState.regionID = "new-regionID";
-            returnState = postServiceSynchronously(FirewallFactoryService.SELF_LINK,
+            returnState = postServiceSynchronously(FirewallService.FACTORY_LINK,
                     startState, FirewallService.FirewallState.class);
             assertThat(returnState.regionID, is(startState.regionID));
 
@@ -251,7 +251,7 @@ public class FirewallServiceTest extends Suite {
                     invalidEgressPorts2, invalidEgressPorts3,
                     invalidEgressPorts4 };
             for (FirewallService.FirewallState state : stateArray) {
-                postServiceSynchronously(FirewallFactoryService.SELF_LINK,
+                postServiceSynchronously(FirewallService.FACTORY_LINK,
                         state, FirewallService.FirewallState.class,
                         IllegalArgumentException.class);
             }
@@ -268,7 +268,7 @@ public class FirewallServiceTest extends Suite {
             FirewallService.FirewallState startState = buildValidStartState();
 
             FirewallService.FirewallState returnState = postServiceSynchronously(
-                    FirewallFactoryService.SELF_LINK,
+                    FirewallService.FACTORY_LINK,
                             startState, FirewallService.FirewallState.class);
 
             FirewallService.FirewallState.Allow newIngressrule = new FirewallService.FirewallState.Allow();
@@ -349,7 +349,7 @@ public class FirewallServiceTest extends Suite {
             firewallState.tenantLinks.add(UriUtils.buildUriPath(
                     tenantUri.getPath(), "tenantA"));
             FirewallService.FirewallState startState = postServiceSynchronously(
-                    FirewallFactoryService.SELF_LINK,
+                    FirewallService.FACTORY_LINK,
                             firewallState, FirewallService.FirewallState.class);
 
             String kind = Utils.buildKind(FirewallService.FirewallState.class);

@@ -2,6 +2,14 @@
 
 ## 0.3.3
 
+* Remove all template factory services from resource services,
+  replace them with concise FactoryService.createFactory() pattern
+
+* Resource services (the model) no longer enforce that the self link
+  is derived from the id field in the initial state. The resource allocation
+  task still creates links that match the id, but that is no longer
+  validated or required by the resources.
+
 ## 0.3.2
 
 * AWS stats service implementation

@@ -23,6 +23,8 @@ import java.util.UUID;
 
 import com.esotericsoftware.kryo.serializers.VersionFieldSerializer.Since;
 
+import com.vmware.photon.controller.model.UriPaths;
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -34,6 +36,12 @@ import com.vmware.xenon.common.UriUtils;
  * re-used across many compute resources acting as a shared template.
  */
 public class ComputeDescriptionService extends StatefulService {
+    public static final String FACTORY_LINK = UriPaths.RESOURCES
+            + "/compute-descriptions";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(ComputeDescriptionService.class);
+    }
 
     /**
      * This class represents the document state associated with a
@@ -239,6 +247,10 @@ public class ComputeDescriptionService extends StatefulService {
 
         if (state.totalMemoryBytes == 0) {
             state.totalMemoryBytes = (long) Math.pow(2, 30); // 1GB
+        }
+
+        if (state.id == null) {
+            state.id = UUID.randomUUID().toString();
         }
     }
 

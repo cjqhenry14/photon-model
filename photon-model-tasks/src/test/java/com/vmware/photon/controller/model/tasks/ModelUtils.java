@@ -19,10 +19,8 @@ import java.util.HashMap;
 import java.util.UUID;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionServiceTest;
-import com.vmware.photon.controller.model.resources.ComputeFactoryService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.xenon.common.UriUtils;
 
@@ -49,7 +47,7 @@ public class ModelUtils {
             cd.bootAdapterReference = UriUtils.buildUri(test.getHost(), bootAdapterLink);
         }
         return test.postServiceSynchronously(
-                ComputeDescriptionFactoryService.SELF_LINK, cd,
+                ComputeDescriptionService.FACTORY_LINK, cd,
                 ComputeDescriptionService.ComputeDescription.class);
     }
 
@@ -76,7 +74,7 @@ public class ModelUtils {
         cs.tenantLinks.add("http://tenant");
 
         ComputeService.ComputeState returnState = test
-                .postServiceSynchronously(ComputeFactoryService.SELF_LINK, cs,
+                .postServiceSynchronously(ComputeService.FACTORY_LINK, cs,
                         ComputeService.ComputeState.class);
 
         return ComputeService.ComputeStateWithDescription.create(cd,

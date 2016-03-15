@@ -119,7 +119,7 @@ public class ComputeServiceTest extends Suite {
             ComputeService.ComputeState startState = ComputeServiceTest
                     .buildValidStartState(cd);
             ComputeService.ComputeState returnState = postServiceSynchronously(
-                    ComputeFactoryService.SELF_LINK, startState, ComputeService.ComputeState.class);
+                    ComputeService.FACTORY_LINK, startState, ComputeService.ComputeState.class);
 
             assertNotNull(returnState);
             assertThat(returnState.id, is(startState.id));
@@ -155,12 +155,12 @@ public class ComputeServiceTest extends Suite {
             ComputeService.ComputeState startState = ComputeServiceTest
                     .buildValidStartState(cd);
             ComputeService.ComputeState returnState = postServiceSynchronously(
-                    ComputeFactoryService.SELF_LINK, startState, ComputeService.ComputeState.class);
+                    ComputeService.FACTORY_LINK, startState, ComputeService.ComputeState.class);
 
             assertNotNull(returnState);
             assertThat(returnState.address, is(startState.address));
             startState.address = "new-address";
-            returnState = postServiceSynchronously(ComputeFactoryService.SELF_LINK,
+            returnState = postServiceSynchronously(ComputeService.FACTORY_LINK,
                             startState, ComputeService.ComputeState.class);
             assertThat(returnState.address, is(startState.address));
 
@@ -174,7 +174,7 @@ public class ComputeServiceTest extends Suite {
             startState.id = null;
 
             ComputeService.ComputeState returnState = postServiceSynchronously(
-                    ComputeFactoryService.SELF_LINK, startState, ComputeService.ComputeState.class);
+                    ComputeService.FACTORY_LINK, startState, ComputeService.ComputeState.class);
 
             assertNotNull(returnState);
             assertNotNull(returnState.id);
@@ -188,7 +188,7 @@ public class ComputeServiceTest extends Suite {
             startState.powerState = ComputeService.PowerState.OFF;
             startState.descriptionLink = null;
 
-            postServiceSynchronously(ComputeFactoryService.SELF_LINK,
+            postServiceSynchronously(ComputeService.FACTORY_LINK,
                     startState, ComputeService.ComputeState.class,
                     IllegalArgumentException.class);
         }
@@ -205,7 +205,7 @@ public class ComputeServiceTest extends Suite {
             ComputeService.ComputeState startState = buildValidStartState(cd);
 
             ComputeService.ComputeState returnState = postServiceSynchronously(
-                    ComputeFactoryService.SELF_LINK, startState, ComputeService.ComputeState.class);
+                    ComputeService.FACTORY_LINK, startState, ComputeService.ComputeState.class);
             assertNotNull(returnState);
 
             ComputeService.ComputeState getState = getServiceSynchronously(
@@ -227,7 +227,7 @@ public class ComputeServiceTest extends Suite {
             ComputeService.ComputeStateWithDescription startState = buildValidStartState(cd);
 
             ComputeService.ComputeState returnState = postServiceSynchronously(
-                    ComputeFactoryService.SELF_LINK,
+                    ComputeService.FACTORY_LINK,
                             startState, ComputeService.ComputeState.class);
             assertNotNull(returnState);
 
@@ -267,7 +267,7 @@ public class ComputeServiceTest extends Suite {
             ComputeService.ComputeState startState = buildValidStartState(cd);
 
             ComputeService.ComputeState returnState = postServiceSynchronously(
-                    ComputeFactoryService.SELF_LINK,
+                    ComputeService.FACTORY_LINK,
                             startState, ComputeService.ComputeState.class);
             assertNotNull(returnState);
 
@@ -303,7 +303,7 @@ public class ComputeServiceTest extends Suite {
             ComputeService.ComputeState startState = buildValidStartState(cd);
 
             ComputeService.ComputeState returnState = postServiceSynchronously(
-                    ComputeFactoryService.SELF_LINK,
+                    ComputeService.FACTORY_LINK,
                             startState, ComputeService.ComputeState.class);
             assertNotNull(returnState);
 
@@ -344,7 +344,7 @@ public class ComputeServiceTest extends Suite {
                     "tenantA"));
 
             ComputeService.ComputeState startState = postServiceSynchronously(
-                    ComputeFactoryService.SELF_LINK,
+                    ComputeService.FACTORY_LINK,
                             cs, ComputeService.ComputeState.class);
 
             String kind = Utils.buildKind(ComputeService.ComputeState.class);
@@ -410,7 +410,7 @@ public class ComputeServiceTest extends Suite {
                     .createComputeDescription(this);
             for (int i = 0; i < c; i++) {
                 instances[i] = postServiceSynchronously(
-                        ComputeFactoryService.SELF_LINK,
+                        ComputeService.FACTORY_LINK,
                         buildValidStartState(cd),
                         ComputeService.ComputeState.class);
             }

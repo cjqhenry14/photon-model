@@ -21,15 +21,14 @@ import java.util.List;
 import org.junit.Test;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.resources.ComputeDescriptionFactoryService;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
-import com.vmware.photon.controller.model.resources.ComputeFactoryService;
+import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-import com.vmware.photon.controller.model.resources.ResourcePoolFactoryService;
+import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.TaskServices;
 import com.vmware.photon.controller.model.tasks.monitoring.StatsCollectionTaskSchedulerService.StatsCollectionTaskServiceSchedulerState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.ServiceHost;
@@ -73,12 +72,12 @@ public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
         // create a resource pool
         ResourcePoolState rpState = new ResourcePoolState();
         ResourcePoolState rpReturnState = postServiceSynchronously(
-                        ResourcePoolFactoryService.SELF_LINK, rpState,
-                        ResourcePoolState.class);
+                ResourcePoolService.FACTORY_LINK, rpState,
+                ResourcePoolState.class);
         ComputeDescription cDesc = new ComputeDescription();
         cDesc.statsAdapterReference = UriUtils.buildUri(this.host, MockStatsAdapter.SELF_LINK);
         ComputeDescription descReturnState = postServiceSynchronously(
-                ComputeDescriptionFactoryService.SELF_LINK, cDesc,
+                ComputeDescriptionService.FACTORY_LINK, cDesc,
                 ComputeDescription.class);
         ComputeState computeState = new ComputeState();
         computeState.descriptionLink = descReturnState.documentSelfLink;
@@ -86,7 +85,7 @@ public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
         List<String> computeLinks = new ArrayList<String>();
         for (int i = 0; i < numResources; i++) {
             ComputeState res = postServiceSynchronously(
-                    ComputeFactoryService.SELF_LINK, computeState,
+                    ComputeService.FACTORY_LINK, computeState,
                     ComputeState.class);
             computeLinks.add(res.documentSelfLink);
         }
@@ -111,7 +110,7 @@ public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
                 if (resStats.entries.get(MockStatsAdapter.KEY_1) != null &&
                         resStats.entries.get(MockStatsAdapter.KEY_1).latestValue > numResources &&
                         resStats.entries.get(MockStatsAdapter.KEY_2) != null &&
-                        resStats.entries.get(MockStatsAdapter.KEY_2).latestValue > numResources ) {
+                        resStats.entries.get(MockStatsAdapter.KEY_2).latestValue > numResources) {
                     return true;
                 }
                 return false;
