@@ -15,6 +15,7 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -27,10 +28,13 @@ import com.amazonaws.services.ec2.model.CreateSecurityGroupResult;
 import com.amazonaws.services.ec2.model.DeleteSecurityGroupRequest;
 import com.amazonaws.services.ec2.model.DescribeSecurityGroupsRequest;
 import com.amazonaws.services.ec2.model.DescribeSecurityGroupsResult;
+import com.amazonaws.services.ec2.model.Filter;
 import com.amazonaws.services.ec2.model.IpPermission;
 import com.amazonaws.services.ec2.model.SecurityGroup;
+import com.amazonaws.services.ec2.model.Subnet;
 
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState.Allow;
 import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskService.ProvisionFirewallTaskState;
@@ -132,7 +136,7 @@ public class AWSFirewallService extends StatelessService {
             // create security group name from task id for now
             String sgName = NAME_PREFIX + requestState.firewall.id;
             requestState.securityGroupID = createSecurityGroup(
-                    requestState.client, sgName, DEFAULT_SECURITY_GROUP_DESC);
+                    requestState.client, sgName, DEFAULT_SECURITY_GROUP_DESC, null);
             updateFirewallProperties(SECURITY_GROUP_ID,
                     requestState.securityGroupID, requestState,
                     FirewallStage.UPDATE_RULES);
@@ -272,12 +276,20 @@ public class AWSFirewallService extends StatelessService {
         String groupId;
         SecurityGroup group;
 
+        // use the security group provided in the description properties
+        String sgId = getFromCustomProperties(aws.child.description, AWSConstants.AWS_SECURITY_GROUP_ID);
+        if (sgId != null) {
+            return sgId;
+        }
+
         // if the group doesn't exist an exception is thrown. We won't throw a
         // missing group exception
         // we will continue and create the group
         try {
             group = getSecurityGroup(aws.amazonEC2Client);
-            return group.getGroupId();
+            if (group != null) {
+                return group.getGroupId();
+            }
         } catch (AmazonServiceException t) {
             if (!t.getMessage().contains(
                     AWSFirewallService.DEFAULT_SECURITY_GROUP_NAME)) {
@@ -285,8 +297,14 @@ public class AWSFirewallService extends StatelessService {
             }
         }
 
-        AWSNetworkService netSvc = new AWSNetworkService();
-        String subnet = netSvc.getDefaultVPCSubnet(aws);
+        // get the subnet cidr from the subnet provided in description properties (if any)
+        String subnet = getSubnetFromDescription(aws);
+
+        // if no subnet provided then get the default one for the default vpc
+        if (subnet == null) {
+            AWSNetworkService netSvc = new AWSNetworkService();
+            subnet = netSvc.getDefaultVPCSubnet(aws);
+        }
 
         // no subnet is not an option...
         if (subnet == null) {
@@ -294,7 +312,11 @@ public class AWSFirewallService extends StatelessService {
         }
 
         try {
-            groupId = createSecurityGroup(aws.amazonEC2Client);
+            // create the security group for the the vpc
+            // provided in the description properties (if any)
+            String vpcId = getFromCustomProperties(aws.child.description, AWSConstants.AWS_VPC_ID);
+
+            groupId = createSecurityGroup(aws.amazonEC2Client, vpcId);
             updateIngressRules(aws.amazonEC2Client, groupId,
                     getDefaultRules(subnet));
         } catch (AmazonServiceException t) {
@@ -309,6 +331,26 @@ public class AWSFirewallService extends StatelessService {
         return groupId;
     }
 
+    private String getSubnetFromDescription(AWSAllocation aws) {
+        String subnetId = getFromCustomProperties(aws.child.description, AWSConstants.AWS_SUBNET_ID);
+
+        if (subnetId != null) {
+            AWSNetworkService netSvc = new AWSNetworkService();
+            Subnet subnet = netSvc.getSubnet(subnetId, aws.amazonEC2Client);
+            return subnet.getCidrBlock();
+        }
+
+        return null;
+    }
+
+    private String getFromCustomProperties(ComputeDescriptionService.ComputeDescription description, String key) {
+        if (description == null || description.customProperties == null) {
+            return null;
+        }
+
+        return description.customProperties.get(key);
+    }
+
     public SecurityGroup getSecurityGroup(AmazonEC2AsyncClient client) {
         return getSecurityGroup(client,
                 AWSFirewallService.DEFAULT_SECURITY_GROUP_NAME);
@@ -319,10 +361,10 @@ public class AWSFirewallService extends StatelessService {
         SecurityGroup cellGroup = null;
 
         DescribeSecurityGroupsRequest req = new DescribeSecurityGroupsRequest()
-                .withGroupNames(name);
+                .withFilters(new Filter("group-name", Arrays.asList(name)));
         DescribeSecurityGroupsResult cellGroups = client
                 .describeSecurityGroups(req);
-        if (cellGroups != null) {
+        if (cellGroups != null && !cellGroups.getSecurityGroups().isEmpty()) {
             cellGroup = cellGroups.getSecurityGroups().get(0);
         }
         return cellGroup;
@@ -342,16 +384,22 @@ public class AWSFirewallService extends StatelessService {
         return cellGroup;
     }
 
-    public String createSecurityGroup(AmazonEC2AsyncClient client) {
+    public String createSecurityGroup(AmazonEC2AsyncClient client, String vpcId) {
         return createSecurityGroup(client, DEFAULT_SECURITY_GROUP_NAME,
-                DEFAULT_SECURITY_GROUP_DESC);
+                DEFAULT_SECURITY_GROUP_DESC, vpcId);
     }
 
     public String createSecurityGroup(AmazonEC2AsyncClient client, String name,
-            String description) {
+                                      String description, String vpcId) {
 
         CreateSecurityGroupRequest req = new CreateSecurityGroupRequest()
-                .withDescription(description).withGroupName(name);
+                .withDescription(description)
+                .withGroupName(name);
+
+        // set vpc for the security group if provided
+        if (vpcId != null) {
+            req = req.withVpcId(vpcId);
+        }
 
         CreateSecurityGroupResult result = client.createSecurityGroup(req);
 

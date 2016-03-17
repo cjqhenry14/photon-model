@@ -113,7 +113,7 @@ public class TestAWSFirewallService {
      */
     @Test
     public void testDefaultSecurityGroup() throws Throwable {
-        svc.createSecurityGroup(this.client);
+        svc.createSecurityGroup(this.client, null);
         svc.getSecurityGroup(this.client);
         svc.deleteSecurityGroup(this.client);
     }
@@ -126,7 +126,7 @@ public class TestAWSFirewallService {
     @Test
     public void testDefaultSecurityGroupPorts() throws Throwable {
         // create the group
-        String groupId = svc.createSecurityGroup(this.client);
+        String groupId = svc.createSecurityGroup(this.client, null);
 
         // allow the default ports
         svc.updateIngressRules(this.client, groupId, svc.getDefaultRules(this.subnet));
@@ -175,7 +175,8 @@ public class TestAWSFirewallService {
     public void testAllocateSecurityGroupUpdate() throws Throwable {
         String groupId = svc.createSecurityGroup(this.client,
                 AWSFirewallService.DEFAULT_SECURITY_GROUP_NAME,
-                AWSFirewallService.DEFAULT_SECURITY_GROUP_DESC);
+                AWSFirewallService.DEFAULT_SECURITY_GROUP_DESC,
+                null);
 
         List<IpPermission> rules = new ArrayList<>();
         rules.add(new IpPermission()
@@ -214,7 +215,7 @@ public class TestAWSFirewallService {
 
     @Test
     public void testUpdateIngressRules() throws Throwable {
-        String groupID = svc.createSecurityGroup(this.client);
+        String groupID = svc.createSecurityGroup(this.client, null);
         ArrayList<Allow> rules = TestUtils.getAllowIngressRules();
         svc.updateIngressRules(this.client,groupID,svc.buildRules(rules));
         SecurityGroup awsSG = svc.getSecurityGroupByID(this.client,groupID);

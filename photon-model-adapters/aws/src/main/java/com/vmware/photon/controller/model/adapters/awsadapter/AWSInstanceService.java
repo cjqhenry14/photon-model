@@ -158,6 +158,7 @@ public class AWSInstanceService extends StatelessService {
             break;
         case FIREWALL:
             aws.securityGroupId = aws.fwService.allocateSecurityGroup(aws);
+            aws.subnetId = getSubnetId(aws);
             aws.stage = AWSStages.CREATE;
             handleAllocation(aws);
             break;
@@ -344,6 +345,12 @@ public class AWSInstanceService extends StatelessService {
                 .withMinCount(1).withMaxCount(1)
                 .withMonitoring(true)
                 .withSecurityGroupIds(aws.securityGroupId);
+
+        // use the subnet if provided
+        if (aws.subnetId != null) {
+            runInstancesRequest = runInstancesRequest.withSubnetId(aws.subnetId);
+        }
+
         if (cloudConfig != null) {
             try {
                 runInstancesRequest.setUserData(Base64.getEncoder()
@@ -611,4 +618,17 @@ public class AWSInstanceService extends StatelessService {
         }
         return regionId;
     }
+
+   /*
+    * Helper method to get amazon subnet id provided in the description custom properties
+    */
+    private String getSubnetId(AWSAllocation aws) {
+        if (aws.child != null
+                && aws.child.description != null
+                && aws.child.description.customProperties != null) {
+            return aws.child.description.customProperties.get(AWSConstants.AWS_SUBNET_ID);
+        }
+        return null;
+    }
+
 }

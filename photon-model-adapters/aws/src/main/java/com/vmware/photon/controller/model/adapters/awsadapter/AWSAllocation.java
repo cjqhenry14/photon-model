@@ -40,6 +40,7 @@ public class AWSAllocation {
     public AuthCredentialsService.AuthCredentialsServiceState parentAuth;
     public Map<DiskType, DiskState> childDisks;
     public String securityGroupId;
+    public String subnetId;
     public Throwable error;
 
     public AWSFirewallService fwService;

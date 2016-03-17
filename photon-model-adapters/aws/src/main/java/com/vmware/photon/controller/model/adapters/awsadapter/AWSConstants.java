@@ -15,5 +15,8 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 
 public class AWSConstants {
     public static final String AWS_SECURITY_GROUP = "awsSecurityGroup";
+    public static final String AWS_SECURITY_GROUP_ID = "awsSecurityGroupId";
     public static final String AWS_INSTANCE_ID = "awsInstanceId";
+    public static final String AWS_VPC_ID = "awsVpcId";
+    public static final String AWS_SUBNET_ID = "awsSubnetId";
 }
