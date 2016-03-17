@@ -98,7 +98,7 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
             throws Throwable {
         ProvisionFirewallTaskService.ProvisionFirewallTaskState returnState = test
                 .postServiceSynchronously(
-                        ProvisionFirewallTaskFactoryService.SELF_LINK,
+                        ProvisionFirewallTaskService.FACTORY_LINK,
                         startState,
                         ProvisionFirewallTaskService.ProvisionFirewallTaskState.class);
 
@@ -178,12 +178,12 @@ public class ProvisionFirewallTaskServiceTest extends Suite {
             invalidFirewallDescriptionLink.firewallDescriptionLink = null;
 
             this.postServiceSynchronously(
-                            ProvisionFirewallTaskFactoryService.SELF_LINK,
+                            ProvisionFirewallTaskService.FACTORY_LINK,
                             invalidRequestType,
                             ProvisionFirewallTaskService.ProvisionFirewallTaskState.class,
                             IllegalArgumentException.class);
             this.postServiceSynchronously(
-                            ProvisionFirewallTaskFactoryService.SELF_LINK,
+                            ProvisionFirewallTaskService.FACTORY_LINK,
                             invalidFirewallDescriptionLink,
                             ProvisionFirewallTaskService.ProvisionFirewallTaskState.class,
                             IllegalArgumentException.class);

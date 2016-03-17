@@ -15,10 +15,12 @@ package com.vmware.photon.controller.model.tasks;
 
 import java.util.List;
 
+import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest.InstanceRequestType;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.StatefulService;
@@ -30,6 +32,11 @@ import com.vmware.xenon.common.Utils;
  * Provision network task service.
  */
 public class ProvisionNetworkTaskService extends StatefulService {
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/network-allocation-tasks";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(ProvisionNetworkTaskService.class);
+    }
 
     /**
      * SubStage.

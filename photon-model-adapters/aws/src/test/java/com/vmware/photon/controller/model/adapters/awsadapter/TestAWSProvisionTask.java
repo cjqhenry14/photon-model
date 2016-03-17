@@ -36,13 +36,13 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
-import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskFactoryService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
-import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskFactoryService;
+import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
+
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
@@ -154,7 +154,7 @@ public class TestAWSProvisionTask  {
                 provisionTask,
                 ProvisionComputeTaskState.class,
                 UriUtils.buildUri(this.host,
-                        ProvisionComputeTaskFactoryService.SELF_LINK));
+                        ProvisionComputeTaskService.FACTORY_LINK));
 
         URI[] uris = { UriUtils.buildUri(this.host, outTask.documentSelfLink) };
 
@@ -375,7 +375,7 @@ public class TestAWSProvisionTask  {
         this.host.send(Operation
                 .createPost(
                         UriUtils.buildUri(this.host,
-                                ResourceRemovalTaskFactoryService.SELF_LINK))
+                                ResourceRemovalTaskService.FACTORY_LINK))
                 .setBody(deletionState)
                 .setCompletion(this.host.getCompletion()));
 

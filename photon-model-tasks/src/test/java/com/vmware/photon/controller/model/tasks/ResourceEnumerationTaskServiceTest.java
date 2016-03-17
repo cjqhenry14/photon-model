@@ -170,7 +170,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
         public void testMissingComputeDescription() throws Throwable {
             ResourceEnumerationTaskService.ResourceEnumerationTaskState state = buildValidStartState(null);
             this.postServiceSynchronously(
-                            ResourceEnumerationTaskFactoryService.SELF_LINK,
+                            ResourceEnumerationTaskService.FACTORY_LINK,
                             state,
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class,
                             IllegalArgumentException.class);
@@ -182,7 +182,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
             state.adapterManagementReference = null;
 
             this.postServiceSynchronously(
-                            ResourceEnumerationTaskFactoryService.SELF_LINK,
+                            ResourceEnumerationTaskService.FACTORY_LINK,
                             state,
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class,
                             IllegalArgumentException.class);
@@ -194,7 +194,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
             state.resourcePoolLink = null;
 
             this.postServiceSynchronously(
-                            ResourceEnumerationTaskFactoryService.SELF_LINK,
+                            ResourceEnumerationTaskService.FACTORY_LINK,
                             state,
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class,
                             IllegalArgumentException.class);
@@ -223,7 +223,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
 
             ResourceEnumerationTaskService.ResourceEnumerationTaskState startState = this
                     .postServiceSynchronously(
-                            ResourceEnumerationTaskFactoryService.SELF_LINK,
+                            ResourceEnumerationTaskService.FACTORY_LINK,
                             buildValidStartState(computeHost),
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class);
 
@@ -248,7 +248,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
 
             ResourceEnumerationTaskService.ResourceEnumerationTaskState startState = this
                     .postServiceSynchronously(
-                            ResourceEnumerationTaskFactoryService.SELF_LINK,
+                            ResourceEnumerationTaskService.FACTORY_LINK,
                             buildValidStartState(computeHost),
                             ResourceEnumerationTaskService.ResourceEnumerationTaskState.class);
 

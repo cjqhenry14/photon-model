@@ -33,7 +33,7 @@ import com.vmware.photon.controller.model.resources.FirewallService.FirewallStat
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState.Allow;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
-import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskFactoryService;
+import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskService.ProvisionFirewallTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 
@@ -84,7 +84,7 @@ public class TestProvisionAWSFirewall  {
                     Operation.createPost(UriUtils.buildUri(host, AWSFirewallService.class)),
                     new AWSFirewallService());
 
-            this.provisionFirewallFactory = UriUtils.buildUri(this.host,ProvisionFirewallTaskFactoryService.class);
+            this.provisionFirewallFactory = UriUtils.buildUri(this.host,ProvisionFirewallTaskService.FACTORY_LINK);
         } catch (Throwable e) {
             throw new Exception(e);
         }

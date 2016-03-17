@@ -281,7 +281,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            ResourceAllocationTaskService.FACTORY_LINK,
                             startState, ResourceAllocationTaskState.class);
 
             ResourceAllocationTaskState completeState = this
@@ -318,7 +318,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            ResourceAllocationTaskService.FACTORY_LINK,
                             startState, ResourceAllocationTaskState.class);
 
             ResourceAllocationTaskState completeState = this
@@ -339,7 +339,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
                     resourcePool, null, null, null);
 
             this.postServiceSynchronously(
-                    ResourceAllocationTaskFactoryService.SELF_LINK, startState,
+                    ResourceAllocationTaskService.FACTORY_LINK, startState,
                     ResourceAllocationTaskState.class,
                     IllegalArgumentException.class);
         }
@@ -352,7 +352,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
             startState.resourceCount = -1;
 
             this.postServiceSynchronously(
-                    ResourceAllocationTaskFactoryService.SELF_LINK, startState,
+                    ResourceAllocationTaskService.FACTORY_LINK, startState,
                     ResourceAllocationTaskState.class,
                     IllegalArgumentException.class);
         }
@@ -365,7 +365,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
             startState.errorThreshold = -1;
 
             this.postServiceSynchronously(
-                    ResourceAllocationTaskFactoryService.SELF_LINK, startState,
+                    ResourceAllocationTaskService.FACTORY_LINK, startState,
                     ResourceAllocationTaskState.class,
                     IllegalArgumentException.class);
         }
@@ -404,7 +404,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
                 ResourceAllocationTaskState returnState = this
                         .postServiceSynchronously(
-                                ResourceAllocationTaskFactoryService.SELF_LINK,
+                                ResourceAllocationTaskService.FACTORY_LINK,
                                 startState, ResourceAllocationTaskState.class);
 
                 ResourceAllocationTaskState completeState = this
@@ -440,7 +440,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
                     resourcePool, cd.documentSelfLink, null, null);
             ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            ResourceAllocationTaskService.FACTORY_LINK,
                             startState, ResourceAllocationTaskState.class);
 
             Thread.sleep(1500);
@@ -477,7 +477,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
                 ResourceAllocationTaskState returnState = this
                         .postServiceSynchronously(
-                                ResourceAllocationTaskFactoryService.SELF_LINK,
+                                ResourceAllocationTaskService.FACTORY_LINK,
                                 startState, ResourceAllocationTaskState.class);
 
                 ResourceAllocationTaskState completeState = this
@@ -516,7 +516,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
                 ResourceAllocationTaskState returnState = this
                         .postServiceSynchronously(
-                                ResourceAllocationTaskFactoryService.SELF_LINK,
+                                ResourceAllocationTaskService.FACTORY_LINK,
                                 startState, ResourceAllocationTaskState.class);
 
                 ResourceAllocationTaskState completeState = this
@@ -564,7 +564,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            ResourceAllocationTaskService.FACTORY_LINK,
                             startState, ResourceAllocationTaskState.class);
 
             ResourceAllocationTaskState completeState = this
@@ -594,7 +594,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            ResourceAllocationTaskService.FACTORY_LINK,
                             startState, ResourceAllocationTaskState.class);
 
             ResourceAllocationTaskState completeState = this
@@ -623,7 +623,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            ResourceAllocationTaskService.FACTORY_LINK,
                             startState, ResourceAllocationTaskState.class);
 
             ResourceAllocationTaskState completeState = this
@@ -656,7 +656,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            ResourceAllocationTaskService.FACTORY_LINK,
                             startState, ResourceAllocationTaskState.class);
 
             ResourceAllocationTaskState completeState = this
@@ -690,7 +690,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            ResourceAllocationTaskService.FACTORY_LINK,
                             startState, ResourceAllocationTaskState.class);
 
             ResourceAllocationTaskState completeState = this
@@ -722,7 +722,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             ResourceAllocationTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceAllocationTaskFactoryService.SELF_LINK,
+                            ResourceAllocationTaskService.FACTORY_LINK,
                             startState, ResourceAllocationTaskState.class);
 
             ResourceAllocationTaskState completeState = this

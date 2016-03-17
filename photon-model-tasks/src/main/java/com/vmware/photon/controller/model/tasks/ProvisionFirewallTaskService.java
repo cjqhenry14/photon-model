@@ -15,11 +15,12 @@ package com.vmware.photon.controller.model.tasks;
 
 import java.util.List;
 
+import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest.InstanceRequestType;
-
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState;
 
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.StatefulService;
@@ -31,6 +32,11 @@ import com.vmware.xenon.common.Utils;
  * Provision firewall task service.
  */
 public class ProvisionFirewallTaskService extends StatefulService {
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/firewall-allocation-tasks";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(ProvisionFirewallTaskService.class);
+    }
 
     /**
      * Substages of the tasks.

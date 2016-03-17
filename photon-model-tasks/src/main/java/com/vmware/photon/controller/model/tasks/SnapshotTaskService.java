@@ -18,8 +18,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.adapterapi.SnapshotRequest;
 import com.vmware.photon.controller.model.resources.SnapshotService;
+
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -32,6 +35,11 @@ import com.vmware.xenon.common.Utils;
  * Snapshot Task Service.
  */
 public class SnapshotTaskService extends StatefulService {
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/snapshot-tasks";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(SnapshotTaskService.class);
+    }
 
     /**
      * Represents the state of a snapshot task.

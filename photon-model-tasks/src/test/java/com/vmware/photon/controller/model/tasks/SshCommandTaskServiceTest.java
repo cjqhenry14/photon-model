@@ -112,7 +112,7 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.commands.add("ls");
 
             this.postServiceSynchronously(
-                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.FACTORY_LINK, startState,
                     SshCommandTaskService.SshCommandTaskState.class,
                     IllegalArgumentException.class);
         }
@@ -127,7 +127,7 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.commands.add("ls");
 
             this.postServiceSynchronously(
-                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.FACTORY_LINK, startState,
                     SshCommandTaskService.SshCommandTaskState.class,
                     IllegalArgumentException.class);
         }
@@ -141,7 +141,7 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.commands = null;
 
             this.postServiceSynchronously(
-                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.FACTORY_LINK, startState,
                     SshCommandTaskService.SshCommandTaskState.class,
                     IllegalArgumentException.class);
         }
@@ -158,7 +158,7 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.taskInfo.stage = TaskState.TaskStage.STARTED;
 
             this.postServiceSynchronously(
-                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.FACTORY_LINK, startState,
                     SshCommandTaskService.SshCommandTaskState.class,
                     IllegalStateException.class);
         }
@@ -187,7 +187,7 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.commands.add("pwd");
 
             SshCommandTaskService.SshCommandTaskState returnState = postServiceSynchronously(
-                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.FACTORY_LINK, startState,
                     SshCommandTaskService.SshCommandTaskState.class);
 
             SshCommandTaskService.SshCommandTaskState completeState = waitForServiceState(
@@ -214,7 +214,7 @@ public class SshCommandTaskServiceTest extends Suite {
             startState.commands.add("pwd");
 
             SshCommandTaskService.SshCommandTaskState returnState = postServiceSynchronously(
-                    SshCommandTaskFactoryService.SELF_LINK, startState,
+                    SshCommandTaskService.FACTORY_LINK, startState,
                     SshCommandTaskService.SshCommandTaskState.class);
 
             SshCommandTaskService.SshCommandTaskState completeState = waitForServiceState(
@@ -262,7 +262,7 @@ public class SshCommandTaskServiceTest extends Suite {
 
             SshCommandTaskService.SshCommandTaskState returnState = this
                     .postServiceSynchronously(
-                            SshCommandTaskFactoryService.SELF_LINK, startState,
+                            SshCommandTaskService.FACTORY_LINK, startState,
                             SshCommandTaskService.SshCommandTaskState.class);
 
             SshCommandTaskService.SshCommandTaskState completeState = this
@@ -292,7 +292,7 @@ public class SshCommandTaskServiceTest extends Suite {
 
             SshCommandTaskService.SshCommandTaskState returnState = this
                     .postServiceSynchronously(
-                            SshCommandTaskFactoryService.SELF_LINK, startState,
+                            SshCommandTaskService.FACTORY_LINK, startState,
                             SshCommandTaskService.SshCommandTaskState.class);
 
             SshCommandTaskService.SshCommandTaskState completeState = this

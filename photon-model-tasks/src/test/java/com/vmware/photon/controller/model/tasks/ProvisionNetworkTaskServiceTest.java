@@ -86,7 +86,7 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
             throws Throwable {
         ProvisionNetworkTaskService.ProvisionNetworkTaskState returnState = test
                 .postServiceSynchronously(
-                        ProvisionNetworkTaskFactoryService.SELF_LINK,
+                        ProvisionNetworkTaskService.FACTORY_LINK,
                         startState,
                         ProvisionNetworkTaskService.ProvisionNetworkTaskState.class);
 
@@ -168,12 +168,12 @@ public class ProvisionNetworkTaskServiceTest extends Suite {
             invalidNetworkDescriptionLink.networkDescriptionLink = null;
 
             postServiceSynchronously(
-                            ProvisionNetworkTaskFactoryService.SELF_LINK,
+                            ProvisionNetworkTaskService.FACTORY_LINK,
                             invalidRequestType,
                             ProvisionNetworkTaskService.ProvisionNetworkTaskState.class,
                             IllegalArgumentException.class);
             postServiceSynchronously(
-                            ProvisionNetworkTaskFactoryService.SELF_LINK,
+                            ProvisionNetworkTaskService.FACTORY_LINK,
                             invalidNetworkDescriptionLink,
                             ProvisionNetworkTaskService.ProvisionNetworkTaskState.class,
                             IllegalArgumentException.class);

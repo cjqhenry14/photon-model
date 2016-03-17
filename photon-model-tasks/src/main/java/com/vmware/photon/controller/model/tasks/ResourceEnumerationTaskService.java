@@ -17,9 +17,12 @@ import java.net.URI;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.adapterapi.ComputeEnumerateResourceRequest;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
+
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -32,6 +35,11 @@ import com.vmware.xenon.common.Utils;
  * Task used to Enumerate resources on a given compute host.
  */
 public class ResourceEnumerationTaskService extends StatefulService {
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/resource-enumeration-tasks";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(ResourceEnumerationTaskService.class);
+    }
 
     public static final long DEFAULT_TIMEOUT_MICROS = TimeUnit.MINUTES
             .toMicros(10);

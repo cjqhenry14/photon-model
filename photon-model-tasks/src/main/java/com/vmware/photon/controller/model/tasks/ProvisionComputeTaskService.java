@@ -20,12 +20,15 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.validator.routines.InetAddressValidator;
 
+import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.adapterapi.ComputeBootRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.BootDevice;
+
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.ServiceDocument;
@@ -48,6 +51,11 @@ import com.vmware.xenon.common.Utils;
  * available on the current node.
  */
 public class ProvisionComputeTaskService extends StatefulService {
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/compute-tasks";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(ProvisionComputeTaskService.class);
+    }
 
     /**
      * Represent state of a provision task.

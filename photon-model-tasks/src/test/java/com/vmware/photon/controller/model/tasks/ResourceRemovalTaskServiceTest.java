@@ -112,7 +112,7 @@ public class ResourceRemovalTaskServiceTest extends Suite {
             startState.resourceQuerySpec = null;
 
             postServiceSynchronously(
-                    ResourceRemovalTaskFactoryService.SELF_LINK, startState,
+                    ResourceRemovalTaskService.FACTORY_LINK, startState,
                     ResourceRemovalTaskService.ResourceRemovalTaskState.class,
                     IllegalArgumentException.class);
         }
@@ -123,7 +123,7 @@ public class ResourceRemovalTaskServiceTest extends Suite {
             startState.taskInfo = null;
 
             ResourceRemovalTaskService.ResourceRemovalTaskState returnState = postServiceSynchronously(
-                    ResourceRemovalTaskFactoryService.SELF_LINK,
+                    ResourceRemovalTaskService.FACTORY_LINK,
                     startState,
                     ResourceRemovalTaskService.ResourceRemovalTaskState.class);
 
@@ -138,7 +138,7 @@ public class ResourceRemovalTaskServiceTest extends Suite {
             startState.taskSubStage = null;
 
             ResourceRemovalTaskService.ResourceRemovalTaskState returnState = postServiceSynchronously(
-                    ResourceRemovalTaskFactoryService.SELF_LINK,
+                    ResourceRemovalTaskService.FACTORY_LINK,
                     startState,
                     ResourceRemovalTaskService.ResourceRemovalTaskState.class);
 
@@ -166,7 +166,7 @@ public class ResourceRemovalTaskServiceTest extends Suite {
 
             ResourceRemovalTaskService.ResourceRemovalTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceRemovalTaskFactoryService.SELF_LINK,
+                            ResourceRemovalTaskService.FACTORY_LINK,
                             startState,
                             ResourceRemovalTaskService.ResourceRemovalTaskState.class);
 
@@ -190,7 +190,7 @@ public class ResourceRemovalTaskServiceTest extends Suite {
 
             ResourceRemovalTaskService.ResourceRemovalTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceRemovalTaskFactoryService.SELF_LINK,
+                            ResourceRemovalTaskService.FACTORY_LINK,
                             startState,
                             ResourceRemovalTaskService.ResourceRemovalTaskState.class);
 
@@ -208,15 +208,14 @@ public class ResourceRemovalTaskServiceTest extends Suite {
             this.deleteServiceSynchronously(cs.descriptionLink);
 
             // Stop factory service.
-            this.deleteServiceSynchronously(ResourceRemovalTaskFactoryService.SELF_LINK);
+            this.deleteServiceSynchronously(ResourceRemovalTaskService.FACTORY_LINK);
 
             // stop the removal task
             this.stopServiceSynchronously(returnState.documentSelfLink);
 
             // restart and check service restart successfully.
-            this.host.startServiceAndWait(
-                    ResourceRemovalTaskFactoryService.class,
-                    ResourceRemovalTaskFactoryService.SELF_LINK);
+            this.getHost().startFactoryServicesSynchronously(
+                    ResourceRemovalTaskService.createFactory());
 
             // TODO work around until we move to Xenon 0.7.1 or later release. Factories started after
             // initial synch, will not have children restarted
@@ -238,7 +237,7 @@ public class ResourceRemovalTaskServiceTest extends Suite {
 
             ResourceRemovalTaskService.ResourceRemovalTaskState returnState = this
                     .postServiceSynchronously(
-                            ResourceRemovalTaskFactoryService.SELF_LINK,
+                            ResourceRemovalTaskService.FACTORY_LINK,
                             startState,
                             ResourceRemovalTaskService.ResourceRemovalTaskState.class);
 

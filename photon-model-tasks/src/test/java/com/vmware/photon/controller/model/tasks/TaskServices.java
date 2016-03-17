@@ -14,14 +14,6 @@
 package com.vmware.photon.controller.model.tasks;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.ResourceAllocationTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.SnapshotTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.SshCommandTaskFactoryService;
 
 /**
  * Service factories used in Photon Model Task package.
@@ -29,17 +21,17 @@ import com.vmware.photon.controller.model.tasks.SshCommandTaskFactoryService;
 public class TaskServices {
 
     public static void startFactories(BaseModelTest test) throws Throwable {
-        if (test.getHost().getServiceStage(ProvisionComputeTaskFactoryService.SELF_LINK) != null) {
+        if (test.getHost().getServiceStage(ProvisionComputeTaskService.FACTORY_LINK) != null) {
             return;
         }
         test.getHost().startFactoryServicesSynchronously(
-                new ProvisionComputeTaskFactoryService(),
-                new ProvisionFirewallTaskFactoryService(),
-                new ProvisionNetworkTaskFactoryService(),
-                new ResourceAllocationTaskFactoryService(),
-                new ResourceEnumerationTaskFactoryService(),
-                new ResourceRemovalTaskFactoryService(),
-                new SnapshotTaskFactoryService(),
-                new SshCommandTaskFactoryService());
+                SshCommandTaskService.createFactory(),
+                ProvisionComputeTaskService.createFactory(),
+                ProvisionFirewallTaskService.createFactory(),
+                ProvisionNetworkTaskService.createFactory(),
+                ResourceAllocationTaskService.createFactory(),
+                ResourceEnumerationTaskService.createFactory(),
+                ResourceRemovalTaskService.createFactory(),
+                SnapshotTaskService.createFactory());
     }
 }

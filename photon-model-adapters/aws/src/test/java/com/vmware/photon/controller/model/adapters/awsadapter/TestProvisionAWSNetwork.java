@@ -29,7 +29,7 @@ import org.junit.Test;
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
-import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskFactoryService;
+import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskService.ProvisionNetworkTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 
@@ -78,7 +78,7 @@ public class TestProvisionAWSNetwork {
             this.host.startService(
                     Operation.createPost(UriUtils.buildUri(host, AWSNetworkService.class)),
                     new AWSNetworkService());
-            this.provisionNetworkFactory = UriUtils.buildUri(this.host,ProvisionNetworkTaskFactoryService.class);
+            this.provisionNetworkFactory = UriUtils.buildUri(this.host,ProvisionNetworkTaskService.FACTORY_LINK);
         } catch (Throwable e) {
             throw new Exception(e);
         }

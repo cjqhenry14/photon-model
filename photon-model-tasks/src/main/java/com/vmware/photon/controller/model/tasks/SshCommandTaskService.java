@@ -24,6 +24,9 @@ import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
 
+import com.vmware.photon.controller.model.UriPaths;
+
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocument;
@@ -38,6 +41,22 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  * Task to execute commands on remote host via SSH.
  */
 public class SshCommandTaskService extends StatefulService {
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/ssh-command-tasks";
+
+    public static FactoryService createFactory() {
+        FactoryService fs =  new FactoryService(SshCommandTaskState.class) {
+            private ExecutorService executor;
+            @Override
+            public Service createServiceInstance() throws Throwable {
+                if (this.executor == null && getHost() != null) {
+                    this.executor = getHost().allocateExecutor(this);
+                }
+                return new SshCommandTaskService(this.executor);
+            }
+        };
+        fs.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
+        return fs;
+    }
 
     private static final long DEFAULT_EXPIRATION_SECONDS = 600;
 

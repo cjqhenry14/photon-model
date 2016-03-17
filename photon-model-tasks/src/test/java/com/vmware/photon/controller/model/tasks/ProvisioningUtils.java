@@ -30,11 +30,6 @@ import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
-import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.ResourceAllocationTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskFactoryService;
-import com.vmware.photon.controller.model.tasks.SnapshotTaskFactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.TaskState;
@@ -69,22 +64,22 @@ public class ProvisioningUtils {
         serviceSelfLinks.add(SnapshotService.FACTORY_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        ResourceAllocationTaskFactoryService.class)),
-                new ResourceAllocationTaskFactoryService());
-        serviceSelfLinks.add(ResourceAllocationTaskFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        ResourceAllocationTaskService.FACTORY_LINK),
+                ResourceAllocationTaskService.createFactory());
+        serviceSelfLinks.add(ResourceAllocationTaskService.FACTORY_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        ResourceEnumerationTaskFactoryService.class)),
-                new ResourceEnumerationTaskFactoryService());
-        serviceSelfLinks.add(ResourceEnumerationTaskFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        ResourceEnumerationTaskService.FACTORY_LINK),
+                ResourceEnumerationTaskService.createFactory());
+        serviceSelfLinks.add(ResourceEnumerationTaskService.FACTORY_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        ResourceRemovalTaskFactoryService.class)),
-                new ResourceRemovalTaskFactoryService());
-        serviceSelfLinks.add(ResourceRemovalTaskFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        ResourceRemovalTaskService.FACTORY_LINK),
+                ResourceRemovalTaskService.createFactory());
+        serviceSelfLinks.add(ResourceRemovalTaskService.FACTORY_LINK);
 
         host.startService(
                 Operation.createPost(host,
@@ -99,10 +94,10 @@ public class ProvisioningUtils {
         serviceSelfLinks.add(DiskService.FACTORY_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        ProvisionComputeTaskFactoryService.class)),
-                new ProvisionComputeTaskFactoryService());
-        serviceSelfLinks.add(ProvisionComputeTaskFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        ProvisionComputeTaskService.FACTORY_LINK),
+                ProvisionComputeTaskService.createFactory());
+        serviceSelfLinks.add(ProvisionComputeTaskService.FACTORY_LINK);
 
         host.startService(
                 Operation.createPost(host,
@@ -111,16 +106,16 @@ public class ProvisioningUtils {
         serviceSelfLinks.add(NetworkInterfaceService.FACTORY_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        ProvisionNetworkTaskFactoryService.class)),
-                new ProvisionNetworkTaskFactoryService());
-        serviceSelfLinks.add(ProvisionNetworkTaskFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        ProvisionNetworkTaskService.FACTORY_LINK),
+                ProvisionNetworkTaskService.createFactory());
+        serviceSelfLinks.add(ProvisionNetworkTaskService.FACTORY_LINK);
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        SnapshotTaskFactoryService.class)),
-                new SnapshotTaskFactoryService());
-        serviceSelfLinks.add(SnapshotTaskFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        SnapshotTaskService.FACTORY_LINK),
+                SnapshotTaskService.createFactory());
+        serviceSelfLinks.add(SnapshotTaskService.FACTORY_LINK);
 
         host.startService(
                 Operation.createPost(host,
@@ -130,10 +125,10 @@ public class ProvisioningUtils {
 
 
         host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        ProvisionFirewallTaskFactoryService.class)),
-                new ProvisionFirewallTaskFactoryService());
-        serviceSelfLinks.add(ProvisionFirewallTaskFactoryService.SELF_LINK);
+                Operation.createPost(host,
+                        ProvisionFirewallTaskService.FACTORY_LINK),
+                ProvisionFirewallTaskService.createFactory());
+        serviceSelfLinks.add(ProvisionFirewallTaskService.FACTORY_LINK);
 
         waitForServiceStart(host, serviceSelfLinks.toArray(new String[]{}));
 

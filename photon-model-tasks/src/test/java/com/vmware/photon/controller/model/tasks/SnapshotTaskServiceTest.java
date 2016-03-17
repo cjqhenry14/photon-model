@@ -127,7 +127,7 @@ public class SnapshotTaskServiceTest extends Suite {
             SnapshotTaskService.SnapshotTaskState taskState = buildValidStartState(serviceState);
 
             this.postServiceSynchronously(
-                    SnapshotTaskFactoryService.SELF_LINK, taskState,
+                    SnapshotTaskService.FACTORY_LINK, taskState,
                     SnapshotTaskService.SnapshotTaskState.class,
                     IllegalArgumentException.class);
         }
@@ -140,7 +140,7 @@ public class SnapshotTaskServiceTest extends Suite {
             taskState.snapshotAdapterReference = null;
 
             this.postServiceSynchronously(
-                    SnapshotTaskFactoryService.SELF_LINK, taskState,
+                    SnapshotTaskService.FACTORY_LINK, taskState,
                     SnapshotTaskService.SnapshotTaskState.class,
                     IllegalArgumentException.class);
         }
@@ -167,7 +167,7 @@ public class SnapshotTaskServiceTest extends Suite {
 
             SnapshotTaskService.SnapshotTaskState returnState = this
                     .postServiceSynchronously(
-                            SnapshotTaskFactoryService.SELF_LINK, startState,
+                            SnapshotTaskService.FACTORY_LINK, startState,
                             SnapshotTaskService.SnapshotTaskState.class);
 
             returnState = this
@@ -190,7 +190,7 @@ public class SnapshotTaskServiceTest extends Suite {
 
             SnapshotTaskService.SnapshotTaskState returnState = this
                     .postServiceSynchronously(
-                            SnapshotTaskFactoryService.SELF_LINK, startState,
+                            SnapshotTaskService.FACTORY_LINK, startState,
                             SnapshotTaskService.SnapshotTaskState.class);
 
             returnState = this

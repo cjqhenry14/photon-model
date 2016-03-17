@@ -100,7 +100,7 @@ public class ProvisionComputeTaskServiceTest extends Suite {
             startState.isMockRequest = true;
 
             ProvisionComputeTaskService.ProvisionComputeTaskState returnState = postServiceSynchronously(
-                    ProvisionComputeTaskFactoryService.SELF_LINK,
+                    ProvisionComputeTaskService.FACTORY_LINK,
                     startState,
                     ProvisionComputeTaskService.ProvisionComputeTaskState.class);
 
@@ -122,7 +122,7 @@ public class ProvisionComputeTaskServiceTest extends Suite {
             startState.computeLink = null;
 
             postServiceSynchronously(
-                    ProvisionComputeTaskFactoryService.SELF_LINK,
+                    ProvisionComputeTaskService.FACTORY_LINK,
                     startState,
                     ProvisionComputeTaskService.ProvisionComputeTaskState.class,
                     IllegalArgumentException.class);
@@ -136,7 +136,7 @@ public class ProvisionComputeTaskServiceTest extends Suite {
             startState.taskSubStage = null;
 
             postServiceSynchronously(
-                    ProvisionComputeTaskFactoryService.SELF_LINK,
+                    ProvisionComputeTaskService.FACTORY_LINK,
                     startState,
                     ProvisionComputeTaskService.ProvisionComputeTaskState.class,
                     IllegalArgumentException.class);
@@ -162,7 +162,7 @@ public class ProvisionComputeTaskServiceTest extends Suite {
             startState.taskSubStage = ProvisionComputeTaskService.ProvisionComputeTaskState.SubStage.CREATING_HOST;
 
             ProvisionComputeTaskService.ProvisionComputeTaskState returnState = postServiceSynchronously(
-                    ProvisionComputeTaskFactoryService.SELF_LINK,
+                    ProvisionComputeTaskService.FACTORY_LINK,
                     startState,
                     ProvisionComputeTaskService.ProvisionComputeTaskState.class);
 
@@ -202,7 +202,7 @@ public class ProvisionComputeTaskServiceTest extends Suite {
             startState.isMockRequest = true;
 
             ProvisionComputeTaskService.ProvisionComputeTaskState returnState = postServiceSynchronously(
-                    ProvisionComputeTaskFactoryService.SELF_LINK,
+                    ProvisionComputeTaskService.FACTORY_LINK,
                     startState,
                     ProvisionComputeTaskService.ProvisionComputeTaskState.class);
 
@@ -229,7 +229,7 @@ public class ProvisionComputeTaskServiceTest extends Suite {
             startState.isMockRequest = true;
 
             ProvisionComputeTaskService.ProvisionComputeTaskState returnState = postServiceSynchronously(
-                    ProvisionComputeTaskFactoryService.SELF_LINK,
+                    ProvisionComputeTaskService.FACTORY_LINK,
                     startState,
                     ProvisionComputeTaskService.ProvisionComputeTaskState.class);
 
@@ -256,7 +256,7 @@ public class ProvisionComputeTaskServiceTest extends Suite {
             startState.isMockRequest = true;
 
             ProvisionComputeTaskService.ProvisionComputeTaskState returnState = postServiceSynchronously(
-                    ProvisionComputeTaskFactoryService.SELF_LINK,
+                    ProvisionComputeTaskService.FACTORY_LINK,
                     startState,
                     ProvisionComputeTaskService.ProvisionComputeTaskState.class);
 

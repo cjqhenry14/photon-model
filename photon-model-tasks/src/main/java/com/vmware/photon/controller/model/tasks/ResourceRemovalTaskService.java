@@ -18,8 +18,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.resources.ComputeService;
+
+import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocument;
@@ -35,6 +38,11 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  * Task removes the compute service instances.
  */
 public class ResourceRemovalTaskService extends StatefulService {
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/resource-removal-tasks";
+
+    public static FactoryService createFactory() {
+        return FactoryService.createIdempotent(ResourceRemovalTaskService.class);
+    }
 
     public static final long DEFAULT_TIMEOUT_MICROS = TimeUnit.MINUTES
             .toMicros(10);
