@@ -94,6 +94,7 @@ public class TestAWSProvisionTask  {
 
         this.host = VerificationHost.create(0);
         try {
+            this.host.setMaintenanceIntervalMicros(TimeUnit.MILLISECONDS.toMicros(250));
             this.host.start();
             ProvisioningUtils.startProvisioningServices(this.host);
             this.host.setTimeoutSeconds(600);
@@ -332,6 +333,7 @@ public class TestAWSProvisionTask  {
         List<String> vmDisks = new ArrayList<String>();
         DiskState rootDisk = new DiskState();
         rootDisk.id = UUID.randomUUID().toString();
+        rootDisk.documentSelfLink = rootDisk.id;
         rootDisk.name = DEFAULT_ROOT_DISK_NAME;
         rootDisk.type = DiskType.HDD;
         rootDisk.sourceImageReference = URI.create(imageId);
