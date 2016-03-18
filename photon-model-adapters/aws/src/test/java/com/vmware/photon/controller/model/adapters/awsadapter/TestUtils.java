@@ -28,10 +28,9 @@ import com.vmware.photon.controller.model.resources.ResourcePoolService.Resource
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.test.VerificationHost;
-import com.vmware.xenon.services.common.AuthCredentialsFactoryService;
+import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
-import com.vmware.xenon.services.common.TenantFactoryService;
-
+import com.vmware.xenon.services.common.TenantService;
 
 public class TestUtils {
 
@@ -132,7 +131,7 @@ public class TestUtils {
     }
 
     public static NetworkState buildNetworkState(VerificationHost host) {
-        URI tenantFactoryURI = UriUtils.buildUri(host, TenantFactoryService.class);
+        URI tenantFactoryURI = UriUtils.buildFactoryUri(host, TenantService.class);
 
         NetworkState network = new NetworkState();
         network.id = UUID.randomUUID().toString();
@@ -147,7 +146,7 @@ public class TestUtils {
         creds.privateKey = privateKey;
         creds.privateKeyId = privateKeyId;
 
-        URI authFactory = UriUtils.buildUri(host,AuthCredentialsFactoryService.class);
+        URI authFactory = UriUtils.buildFactoryUri(host, AuthCredentialsService.class);
 
         host.testStart(1);
         Operation startPost = Operation.createPost(authFactory)

@@ -31,13 +31,12 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.QueryTask;
-import com.vmware.xenon.services.common.TenantFactoryService;
+import com.vmware.xenon.services.common.TenantService;
 
 /**
  * This class implements tests for the {@link ResourcePoolService} class.
@@ -261,7 +260,7 @@ public class ResourcePoolServiceTest extends Suite {
         public void testTenantLinksQuery() throws Throwable {
             ResourcePoolService.ResourcePoolState rp = buildValidStartState();
 
-            URI tenantUri = UriUtils.buildUri(host, TenantFactoryService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
             rp.tenantLinks = new ArrayList<>();
             rp.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));

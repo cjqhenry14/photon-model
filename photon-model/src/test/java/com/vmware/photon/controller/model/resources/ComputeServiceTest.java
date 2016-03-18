@@ -39,7 +39,7 @@ import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.QueryTask;
-import com.vmware.xenon.services.common.TenantFactoryService;
+import com.vmware.xenon.services.common.TenantService;
 
 /**
  * This class implements tests for the {@link ComputeService} class.
@@ -338,7 +338,7 @@ public class ComputeServiceTest extends Suite {
                     .createComputeDescription(this);
             ComputeService.ComputeState cs = buildValidStartState(cd);
 
-            URI tenantUri = UriUtils.buildUri(host, TenantFactoryService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
             cs.tenantLinks = new ArrayList<>();
             cs.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));

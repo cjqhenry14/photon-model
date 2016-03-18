@@ -36,7 +36,6 @@ import com.vmware.photon.controller.model.resources.ResourcePoolService.Resource
 import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskService.ProvisionFirewallTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
-
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceHost;
@@ -45,8 +44,7 @@ import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.common.test.VerificationHost;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
-import com.vmware.xenon.services.common.TenantFactoryService;
-
+import com.vmware.xenon.services.common.TenantService;
 
 public class TestProvisionAWSFirewall  {
 
@@ -266,7 +264,7 @@ public class TestProvisionAWSFirewall  {
     }
 
     private FirewallState buildFirewallState() {
-        URI tenantFactoryURI = UriUtils.buildUri(host, TenantFactoryService.class);
+        URI tenantFactoryURI = UriUtils.buildFactoryUri(host, TenantService.class);
         FirewallState firewall = new FirewallState();
         firewall.id = UUID.randomUUID().toString();
 

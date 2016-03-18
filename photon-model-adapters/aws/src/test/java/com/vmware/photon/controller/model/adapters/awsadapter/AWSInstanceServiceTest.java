@@ -27,7 +27,6 @@ import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
 
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.services.common.AuthCredentialsFactoryService;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 
 /**
@@ -54,7 +53,7 @@ public class AWSInstanceServiceTest extends Suite{
             creds.privateKey = privateKey;
             creds.privateKeyId = privateKeyId;
             return postServiceSynchronously(
-                    AuthCredentialsFactoryService.SELF_LINK, creds,
+                    AuthCredentialsService.FACTORY_LINK, creds,
                     AuthCredentialsService.AuthCredentialsServiceState.class);
         }
 

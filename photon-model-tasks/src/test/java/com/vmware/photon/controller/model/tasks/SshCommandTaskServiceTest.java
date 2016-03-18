@@ -29,10 +29,9 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
-
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.TaskState;
-import com.vmware.xenon.services.common.AuthCredentialsFactoryService;
+import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
@@ -62,7 +61,7 @@ public class SshCommandTaskServiceTest extends Suite {
         startState.privateKey = privateKey;
         AuthCredentialsServiceState returnState = test
                 .postServiceSynchronously(
-                        AuthCredentialsFactoryService.SELF_LINK, startState,
+                        AuthCredentialsService.FACTORY_LINK, startState,
                         AuthCredentialsServiceState.class);
 
         return returnState.documentSelfLink;

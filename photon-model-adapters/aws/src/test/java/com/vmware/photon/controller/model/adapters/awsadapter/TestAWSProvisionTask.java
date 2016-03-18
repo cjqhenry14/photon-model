@@ -49,7 +49,6 @@ import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.test.VerificationHost;
-import com.vmware.xenon.services.common.AuthCredentialsFactoryService;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 import com.vmware.xenon.services.common.QueryTask;
@@ -230,8 +229,8 @@ public class TestAWSProvisionTask  {
         auth.privateKey = secretKey;
         auth.documentSelfLink = UUID.randomUUID().toString();
         TestUtils.doPost(this.host, auth, AuthCredentialsService.AuthCredentialsServiceState.class,
-                UriUtils.buildUri(this.host, AuthCredentialsFactoryService.SELF_LINK));
-        String authLink = UriUtils.buildUriPath(AuthCredentialsFactoryService.SELF_LINK,
+                UriUtils.buildUri(this.host, AuthCredentialsService.FACTORY_LINK));
+        String authLink = UriUtils.buildUriPath(AuthCredentialsService.FACTORY_LINK,
                 auth.documentSelfLink);
 
         ComputeDescriptionService.ComputeDescription awshostDescription =
@@ -294,8 +293,8 @@ public class TestAWSProvisionTask  {
         auth.privateKey = TestUtils.loadTestResource(this.getClass(), DEFAULT_COREOS_PRIVATE_KEY_FILE);
         auth.documentSelfLink = UUID.randomUUID().toString();
         TestUtils.doPost(this.host, auth, AuthCredentialsService.AuthCredentialsServiceState.class,
-                UriUtils.buildUri(this.host, AuthCredentialsFactoryService.SELF_LINK));
-        String authCredentialsLink = UriUtils.buildUriPath(AuthCredentialsFactoryService.SELF_LINK,
+                UriUtils.buildUri(this.host, AuthCredentialsService.FACTORY_LINK));
+        String authCredentialsLink = UriUtils.buildUriPath(AuthCredentialsService.FACTORY_LINK,
                 auth.documentSelfLink);
 
         // Step 2: Create a VM desc
