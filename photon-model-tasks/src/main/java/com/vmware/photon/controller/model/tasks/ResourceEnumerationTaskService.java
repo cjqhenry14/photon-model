@@ -35,7 +35,7 @@ import com.vmware.xenon.common.Utils;
  * Task used to Enumerate resources on a given compute host.
  */
 public class ResourceEnumerationTaskService extends StatefulService {
-    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/resource-enumeration-tasks";
+    public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/resource-enumeration-tasks";
 
     public static FactoryService createFactory() {
         return FactoryService.createIdempotent(ResourceEnumerationTaskService.class);

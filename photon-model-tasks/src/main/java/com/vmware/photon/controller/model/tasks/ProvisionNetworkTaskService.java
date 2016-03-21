@@ -32,7 +32,7 @@ import com.vmware.xenon.common.Utils;
  * Provision network task service.
  */
 public class ProvisionNetworkTaskService extends StatefulService {
-    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/network-allocation-tasks";
+    public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/network-allocation-tasks";
 
     public static FactoryService createFactory() {
         return FactoryService.createIdempotent(ProvisionNetworkTaskService.class);

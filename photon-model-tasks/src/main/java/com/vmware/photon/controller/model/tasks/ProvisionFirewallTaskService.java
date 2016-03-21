@@ -32,7 +32,7 @@ import com.vmware.xenon.common.Utils;
  * Provision firewall task service.
  */
 public class ProvisionFirewallTaskService extends StatefulService {
-    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/firewall-allocation-tasks";
+    public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/firewall-allocation-tasks";
 
     public static FactoryService createFactory() {
         return FactoryService.createIdempotent(ProvisionFirewallTaskService.class);

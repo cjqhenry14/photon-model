@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
 import org.junit.After;
 import org.junit.Before;
@@ -87,6 +88,7 @@ public class TestAWSProvisionTask  {
     // fields that are used across method calls, stash them as private fields
     private String resourcePoolLink;
     private String parentResourceId;
+    private ComputeService.ComputeState vmState;
 
     @Before
     public void setUp() throws Exception {
@@ -120,6 +122,15 @@ public class TestAWSProvisionTask  {
         if (this.host == null) {
             return;
         }
+        // try to delete the VMs
+        if (vmState != null) {
+            try {
+                deleteVMs(vmState.documentSelfLink);
+            } catch (Throwable deleteEx) {
+                // just log and move on
+                host.log(Level.WARNING, "Exception deleting VM - %s", deleteEx.getMessage());
+            }
+        }
         this.host.tearDownInProcessPeers();
         this.host.toggleNegativeTestMode(false);
         this.host.tearDown();
@@ -140,12 +151,12 @@ public class TestAWSProvisionTask  {
         parentResourceId = outComputeHost.documentSelfLink;
 
         // create a AWS VM compute resoruce
-        ComputeService.ComputeState outComputeVM = createAWSVMResource();
+        vmState = createAWSVMResource();
 
         // kick off a provision task to do the actual VM creation
         ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskService.ProvisionComputeTaskState();
 
-        provisionTask.computeLink = outComputeVM.documentSelfLink;
+        provisionTask.computeLink = vmState.documentSelfLink;
         provisionTask.isMockRequest = isMock;
         provisionTask.taskSubStage =
                 ProvisionComputeTaskState.SubStage.CREATING_HOST;
@@ -159,24 +170,26 @@ public class TestAWSProvisionTask  {
         URI[] uris = { UriUtils.buildUri(this.host, outTask.documentSelfLink) };
 
         Map<URI, ProvisionComputeTaskService.ProvisionComputeTaskState> tasks =
-                this.host.getServiceState(null,
+                    this.host.getServiceState(null,
                         ProvisionComputeTaskService.ProvisionComputeTaskState.class, uris);
         ProvisioningUtils.waitForTaskCompletion(this.host, tasks);
 
         // check that the VM has been created
         ProvisioningUtils.queryComputeInstances(this.host, 2);
 
-        // issue a stats request via the stats adapter
-        // if we are not running in mock mode wait 10 minutes for stats
-        // to be published
-        if (!isMock) {
-            Thread.sleep(TimeUnit.MINUTES.toMillis(10));
-        }
-        issueStatsRequest(outComputeVM);
+        host.setTimeoutSeconds(600);
+        host.waitFor("Error waiting for stats", () -> {
+            try {
+                issueStatsRequest(vmState);
+            } catch (Throwable t) {
+                return false;
+            }
+            return true;
+        });
 
         // delete vm
-        deleteVMs(outComputeVM.documentSelfLink);
-
+        deleteVMs(vmState.documentSelfLink);
+        vmState  = null;
         // check that the VMs are gone
         ProvisioningUtils.queryComputeInstances(this.host, 1);
     }
@@ -193,7 +206,7 @@ public class TestAWSProvisionTask  {
                             host.failIteration(new IllegalStateException("response size was incorrect."));
                             return;
                         }
-                        if (resp.statsList.get(0).statValues.size() != 3) {
+                        if (resp.statsList.get(0).statValues.size() == 0) {
                             host.failIteration(new IllegalStateException("incorrect number of metrics received."));
                             return;
                         }
@@ -218,6 +231,7 @@ public class TestAWSProvisionTask  {
                 .setBody(statsRequest)
                 .setReferer(this.host.getUri()));
     }
+
     /**
      * Create a compute host description for an AWS instance
      */

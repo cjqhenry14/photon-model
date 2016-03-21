@@ -38,7 +38,7 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  * Task removes the compute service instances.
  */
 public class ResourceRemovalTaskService extends StatefulService {
-    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/resource-removal-tasks";
+    public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/resource-removal-tasks";
 
     public static FactoryService createFactory() {
         return FactoryService.createIdempotent(ResourceRemovalTaskService.class);

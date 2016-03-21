@@ -47,7 +47,7 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  * Resource allocation task service.
  */
 public class ResourceAllocationTaskService extends StatefulService {
-    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/resource-allocation-tasks";
+    public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/resource-allocation-tasks";
 
     public static FactoryService createFactory() {
         return FactoryService.createIdempotent(ResourceAllocationTaskService.class);

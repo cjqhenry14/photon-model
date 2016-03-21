@@ -41,7 +41,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  * Task to execute commands on remote host via SSH.
  */
 public class SshCommandTaskService extends StatefulService {
-    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/ssh-command-tasks";
+    public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/ssh-command-tasks";
 
     public static FactoryService createFactory() {
         FactoryService fs =  new FactoryService(SshCommandTaskState.class) {

@@ -35,7 +35,7 @@ import com.vmware.xenon.common.Utils;
  * Snapshot Task Service.
  */
 public class SnapshotTaskService extends StatefulService {
-    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/snapshot-tasks";
+    public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/snapshot-tasks";
 
     public static FactoryService createFactory() {
         return FactoryService.createIdempotent(SnapshotTaskService.class);
