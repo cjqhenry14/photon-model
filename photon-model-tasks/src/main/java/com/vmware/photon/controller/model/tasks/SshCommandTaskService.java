@@ -29,18 +29,17 @@ import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
-import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
+import com.vmware.xenon.services.common.TaskService;
 
 /**
  * Task to execute commands on remote host via SSH.
  */
-public class SshCommandTaskService extends StatefulService {
+public class SshCommandTaskService extends TaskService<SshCommandTaskService.SshCommandTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/ssh-command-tasks";
 
     public static FactoryService createFactory() {
@@ -67,10 +66,7 @@ public class SshCommandTaskService extends StatefulService {
     /**
      * Represent state of SshCommand task.
      */
-    public static class SshCommandTaskState extends ServiceDocument {
-
-        // task state.
-        public TaskState taskInfo = new TaskState();
+    public static class SshCommandTaskState extends TaskService.TaskServiceState {
 
         // Host address.
         public String host;

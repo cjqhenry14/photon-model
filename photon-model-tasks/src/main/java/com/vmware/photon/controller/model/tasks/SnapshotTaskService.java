@@ -26,15 +26,15 @@ import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
-import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
+import com.vmware.xenon.services.common.TaskService;
 
 /**
  * Snapshot Task Service.
  */
-public class SnapshotTaskService extends StatefulService {
+public class SnapshotTaskService extends TaskService<SnapshotTaskService.SnapshotTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/snapshot-tasks";
 
     public static FactoryService createFactory() {
@@ -44,15 +44,10 @@ public class SnapshotTaskService extends StatefulService {
     /**
      * Represents the state of a snapshot task.
      */
-    public static class SnapshotTaskState extends ServiceDocument {
+    public static class SnapshotTaskState extends TaskService.TaskServiceState {
 
         public static final long DEFAULT_EXPIRATION_MICROS = TimeUnit.MINUTES
                 .toMicros(10);
-
-        /**
-         * The state of the current task.
-         */
-        public TaskState taskInfo = new TaskState();
 
         /**
          * Link to the snapshot service.
@@ -155,6 +150,7 @@ public class SnapshotTaskService extends StatefulService {
         startPost.complete();
 
         SnapshotTaskState newState = new SnapshotTaskState();
+        newState.taskInfo = new TaskState();
         newState.taskInfo.stage = TaskState.TaskStage.STARTED;
         newState.snapshotLink = state.snapshotLink;
         newState.snapshotAdapterReference = state.snapshotAdapterReference;
@@ -165,6 +161,7 @@ public class SnapshotTaskService extends StatefulService {
 
     private void sendSelfPatch(TaskState.TaskStage nextStage, Throwable error) {
         SnapshotTaskState body = new SnapshotTaskState();
+        body.taskInfo = new TaskState();
         if (error != null) {
             body.taskInfo.stage = TaskState.TaskStage.FAILED;
             body.taskInfo.failure = Utils.toServiceErrorResponse(error);
@@ -172,10 +169,6 @@ public class SnapshotTaskService extends StatefulService {
             body.taskInfo.stage = nextStage;
         }
         sendSelfPatch(body);
-    }
-
-    private void sendSelfPatch(Object body) {
-        sendPatch(getUri(), body);
     }
 
     private void sendPatch(URI uri, Object body) {
@@ -253,6 +246,7 @@ public class SnapshotTaskService extends StatefulService {
     private void createSubTaskForSnapshotCallback(SnapshotTaskState currentState) {
         ComputeSubTaskService.ComputeSubTaskState subTaskInitState = new ComputeSubTaskService.ComputeSubTaskState();
         SnapshotTaskState subTaskPatchBody = new SnapshotTaskState();
+        subTaskPatchBody.taskInfo = new TaskState();
         subTaskPatchBody.taskInfo.stage = TaskState.TaskStage.FINISHED;
         // tell the sub task with what to patch us, on completion
         subTaskInitState.parentPatchBody = Utils.toJson(subTaskPatchBody);

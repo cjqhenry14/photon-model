@@ -17,10 +17,9 @@ import java.util.List;
 
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.StatefulService;
-import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.Utils;
+import com.vmware.xenon.services.common.TaskService;
 
 /**
  * Task tracking the progress of a single request to the host power or boot
@@ -28,17 +27,12 @@ import com.vmware.xenon.common.Utils;
  * this service with the taskInfo.stage set to FINISHED, or if the operation
  * fails, set to FAILED
  */
-public class ComputeSubTaskService extends StatefulService {
+public class ComputeSubTaskService extends TaskService<ComputeSubTaskService.ComputeSubTaskState> {
 
     /**
      * Represent the state of a compute subtask.
      */
-    public static class ComputeSubTaskState extends ServiceDocument {
-        /**
-         * Task state.
-         */
-        public TaskState taskInfo = new TaskState();
-
+    public static class ComputeSubTaskState extends TaskService.TaskServiceState {
         /**
          * Number of tasks to track.
          */

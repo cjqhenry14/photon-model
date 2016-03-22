@@ -17,7 +17,6 @@ package com.vmware.photon.controller.model.tasks;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -30,12 +29,14 @@ import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.common.test.VerificationHost;
+import com.vmware.xenon.services.common.TaskService.TaskServiceState;
 
 /**
  * Helper class for VM provisioning tests.
@@ -144,10 +145,15 @@ public class ProvisioningUtils {
 
     public static ServiceDocumentQueryResult queryComputeInstances(VerificationHost host, int desiredCount)
             throws Throwable {
+        return queryComputeInstances(host, host.getUri(), desiredCount);
+    }
+
+    public static ServiceDocumentQueryResult queryComputeInstances(VerificationHost host, URI remoteUri, int desiredCount)
+            throws Throwable {
         Date expiration = host.getTestExpiration();
         do {
             ServiceDocumentQueryResult res = host.getFactoryState(UriUtils
-                    .buildExpandLinksQueryUri(UriUtils.buildUri(host,
+                    .buildExpandLinksQueryUri(UriUtils.buildUri(remoteUri,
                             ComputeService.FACTORY_LINK)));
             if (res.documents.size() == desiredCount) {
                 return res;
@@ -157,28 +163,28 @@ public class ProvisioningUtils {
     }
 
     public static void waitForTaskCompletion(VerificationHost host,
-            Map<URI, ProvisionComputeTaskService.ProvisionComputeTaskState> provisioningTasks)
+            List<URI> provisioningTasks, Class<? extends TaskServiceState> clazz)
             throws Throwable, InterruptedException, TimeoutException {
         Date expiration = host.getTestExpiration();
-        Map<String, ProvisionComputeTaskService.ProvisionComputeTaskState> pendingTasks = new HashMap<>();
+        List<String> pendingTasks = new ArrayList<String>();
         do {
             pendingTasks.clear();
             // grab in parallel, all task state, from all running tasks
-            provisioningTasks = host.getServiceState(null,
-                    ProvisionComputeTaskService.ProvisionComputeTaskState.class,
-                    provisioningTasks.keySet());
+            Map<URI, ? extends TaskServiceState> taskStates = host.getServiceState(null,
+                    clazz,
+                    provisioningTasks);
 
             boolean isConverged = true;
-            for (Entry<URI, ProvisionComputeTaskService.ProvisionComputeTaskState> e : provisioningTasks
+            for (Entry<URI, ? extends TaskServiceState> e : taskStates
                     .entrySet()) {
-                ProvisionComputeTaskService.ProvisionComputeTaskState currentState = e.getValue();
+                TaskServiceState currentState = e.getValue();
 
                 if (currentState.taskInfo.stage == TaskState.TaskStage.FAILED) {
                     throw new IllegalStateException("Task failed:" + Utils.toJsonHtml(currentState));
                 }
 
                 if (currentState.taskInfo.stage != TaskState.TaskStage.FINISHED) {
-                    pendingTasks.put(currentState.documentSelfLink, currentState);
+                    pendingTasks.add(currentState.documentSelfLink);
                     isConverged = false;
                 }
             }
@@ -190,8 +196,8 @@ public class ProvisioningUtils {
             Thread.sleep(1000);
         } while (new Date().before(expiration));
 
-        for (ProvisionComputeTaskService.ProvisionComputeTaskState t : pendingTasks.values()) {
-            host.log("Pending task:\n%s", Utils.toJsonHtml(t));
+        for (String taskLink : pendingTasks) {
+            host.log("Pending task:\n%s", taskLink);
         }
 
         throw new TimeoutException("Some tasks never finished");

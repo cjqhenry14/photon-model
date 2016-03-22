@@ -27,17 +27,17 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
-import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.QueryTask;
 import com.vmware.xenon.services.common.ServiceUriPaths;
+import com.vmware.xenon.services.common.TaskService;
 
 /**
  * Task removes the compute service instances.
  */
-public class ResourceRemovalTaskService extends StatefulService {
+public class ResourceRemovalTaskService extends TaskService<ResourceRemovalTaskService.ResourceRemovalTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/resource-removal-tasks";
 
     public static FactoryService createFactory() {
@@ -57,12 +57,7 @@ public class ResourceRemovalTaskService extends StatefulService {
     /**
      * Represents the state of the removal task.
      */
-    public static class ResourceRemovalTaskState extends ServiceDocument {
-
-        /**
-         * Task state.
-         */
-        public TaskState taskInfo = new TaskState();
+    public static class ResourceRemovalTaskState extends TaskService.TaskServiceState {
 
         /**
          * Task sub stage.
@@ -208,6 +203,7 @@ public class ResourceRemovalTaskService extends StatefulService {
             if (TaskState.isFinished(queryTask.taskInfo)) {
 
                 ResourceRemovalTaskState newState = new ResourceRemovalTaskState();
+                newState.taskInfo = new TaskState();
                 if (queryTask.results.documentLinks.size() == 0) {
                     newState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                     newState.taskSubStage = SubStage.FINISHED;
@@ -291,6 +287,7 @@ public class ResourceRemovalTaskService extends StatefulService {
             QueryTask queryTask) {
         ComputeSubTaskService.ComputeSubTaskState subTaskInitState = new ComputeSubTaskService.ComputeSubTaskState();
         ResourceRemovalTaskState subTaskPatchBody = new ResourceRemovalTaskState();
+        subTaskPatchBody.taskInfo = new TaskState();
         subTaskPatchBody.taskInfo.stage = TaskState.TaskStage.FINISHED;
         subTaskPatchBody.taskSubStage = SubStage.FINISHED;
         // tell the sub task with what to patch us, on completion

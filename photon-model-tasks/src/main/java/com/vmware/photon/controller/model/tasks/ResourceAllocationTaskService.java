@@ -34,7 +34,6 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
-import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.UriUtils;
@@ -42,11 +41,12 @@ import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.QueryTask;
 import com.vmware.xenon.services.common.QueryTask.Query.Occurance;
 import com.vmware.xenon.services.common.ServiceUriPaths;
+import com.vmware.xenon.services.common.TaskService;
 
 /**
  * Resource allocation task service.
  */
-public class ResourceAllocationTaskService extends StatefulService {
+public class ResourceAllocationTaskService extends TaskService<ResourceAllocationTaskService.ResourceAllocationTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/resource-allocation-tasks";
 
     public static FactoryService createFactory() {
@@ -65,7 +65,7 @@ public class ResourceAllocationTaskService extends StatefulService {
     /**
      * Resource allocation task state.
      */
-    public static class ResourceAllocationTaskState extends ServiceDocument {
+    public static class ResourceAllocationTaskState extends TaskService.TaskServiceState {
 
         /**
          * Mock requests are used for testing. If set, the alloc task will set
@@ -124,11 +124,6 @@ public class ResourceAllocationTaskService extends StatefulService {
          * resource description.
          */
         public String resourceDescriptionLink;
-
-        /**
-         * Tracks the task's stages. Set and managed by the run-time.
-         */
-        public TaskState taskInfo = new TaskState();
 
         /**
          * Tracks the task's substage.
@@ -591,6 +586,7 @@ public class ResourceAllocationTaskService extends StatefulService {
             ComputeDescriptionService.ComputeDescription desc) {
         ComputeSubTaskService.ComputeSubTaskState subTaskInitState = new ComputeSubTaskService.ComputeSubTaskState();
         ResourceAllocationTaskState subTaskPatchBody = new ResourceAllocationTaskState();
+        subTaskPatchBody.taskInfo = new TaskState();
         subTaskPatchBody.taskSubStage = SubStage.FINISHED;
         subTaskPatchBody.taskInfo.stage = TaskStage.FINISHED;
         // tell the sub task with what to patch us, on completion
@@ -906,20 +902,6 @@ public class ResourceAllocationTaskService extends StatefulService {
         }
 
         sendSelfPatch(body);
-    }
-
-    private void sendSelfPatch(ResourceAllocationTaskState body) {
-        Operation patch = Operation
-                .createPatch(getUri())
-                .setBody(body)
-                .setCompletion(
-                        (o, ex) -> {
-                            if (ex != null) {
-                                logWarning("Self patch failed: %s",
-                                        Utils.toString(ex));
-                            }
-                        });
-        sendRequest(patch);
     }
 
     public static void validateState(ResourceAllocationTaskState state) {

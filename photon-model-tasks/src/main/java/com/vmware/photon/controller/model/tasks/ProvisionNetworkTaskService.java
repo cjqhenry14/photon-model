@@ -22,16 +22,15 @@ import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
+import com.vmware.xenon.services.common.TaskService;
 
 /**
  * Provision network task service.
  */
-public class ProvisionNetworkTaskService extends StatefulService {
+public class ProvisionNetworkTaskService extends TaskService<ProvisionNetworkTaskService.ProvisionNetworkTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/network-allocation-tasks";
 
     public static FactoryService createFactory() {
@@ -48,7 +47,7 @@ public class ProvisionNetworkTaskService extends StatefulService {
     /**
      * Represent state of a provision task.
      */
-    public static class ProvisionNetworkTaskState extends ServiceDocument {
+    public static class ProvisionNetworkTaskState extends TaskService.TaskServiceState {
 
         /**
          * The type of an instance request. Required
@@ -59,11 +58,6 @@ public class ProvisionNetworkTaskService extends StatefulService {
          * The description of the network instance being realized. Required
          */
         public String networkDescriptionLink;
-
-        /**
-         * Tracks the task state. Set by run-time.
-         */
-        public TaskState taskInfo = new TaskState();
 
         /**
          * Tracks the sub stage (creating network or firewall). Set by the
@@ -116,7 +110,7 @@ public class ProvisionNetworkTaskService extends StatefulService {
         } catch (Exception e) {
             start.fail(e);
         }
-
+        state.taskInfo = new TaskState();
         state.taskInfo.stage = TaskState.TaskStage.CREATED;
         state.taskSubStage = SubStage.CREATED;
         start.complete();
@@ -267,19 +261,5 @@ public class ProvisionNetworkTaskService extends StatefulService {
         }
 
         sendSelfPatch(body);
-    }
-
-    private void sendSelfPatch(ProvisionNetworkTaskState body) {
-        Operation patch = Operation
-                .createPatch(getUri())
-                .setBody(body)
-                .setCompletion(
-                        (o, ex) -> {
-                            if (ex != null) {
-                                logWarning("Self patch failed: %s",
-                                        Utils.toString(ex));
-                            }
-                        });
-        sendRequest(patch);
     }
 }

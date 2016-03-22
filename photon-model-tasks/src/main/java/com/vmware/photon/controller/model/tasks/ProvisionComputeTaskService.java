@@ -33,11 +33,11 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
-import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
+import com.vmware.xenon.services.common.TaskService;
 
 /**
  * Task implementing the provision compute resource work flow. Utilizes sub
@@ -50,7 +50,7 @@ import com.vmware.xenon.common.Utils;
  * operation.setTargetReplicated(true) to guard against services not yet
  * available on the current node.
  */
-public class ProvisionComputeTaskService extends StatefulService {
+public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTaskService.ProvisionComputeTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/compute-tasks";
 
     public static FactoryService createFactory() {
@@ -60,13 +60,11 @@ public class ProvisionComputeTaskService extends StatefulService {
     /**
      * Represent state of a provision task.
      */
-    public static class ProvisionComputeTaskState extends ServiceDocument {
+    public static class ProvisionComputeTaskState extends TaskService.TaskServiceState {
 
         public static final long DEFAULT_EXPIRATION_MICROS = TimeUnit.HOURS
                 .toMicros(1);
         public static final String FIELD_NAME_PARENT_TASK_LINK = "parentTaskLink";
-
-        public TaskState taskInfo = new TaskState();
 
         /**
          * SubStage.
@@ -423,6 +421,7 @@ public class ProvisionComputeTaskService extends StatefulService {
             ProvisionComputeTaskState.SubStage nextStage,
             ProvisionComputeTaskState currentState) {
         ProvisionComputeTaskState patchBody = new ProvisionComputeTaskState();
+        patchBody.taskInfo = new TaskState();
         patchBody.taskInfo.stage = TaskStage.STARTED;
         patchBody.taskSubStage = nextStage;
 

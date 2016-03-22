@@ -17,7 +17,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -167,12 +166,9 @@ public class TestAWSProvisionTask  {
                 UriUtils.buildUri(this.host,
                         ProvisionComputeTaskService.FACTORY_LINK));
 
-        URI[] uris = { UriUtils.buildUri(this.host, outTask.documentSelfLink) };
-
-        Map<URI, ProvisionComputeTaskService.ProvisionComputeTaskState> tasks =
-                    this.host.getServiceState(null,
-                        ProvisionComputeTaskService.ProvisionComputeTaskState.class, uris);
-        ProvisioningUtils.waitForTaskCompletion(this.host, tasks);
+        List<URI> uris = new ArrayList<URI>();
+        uris.add(UriUtils.buildUri(this.host, outTask.documentSelfLink));
+        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ProvisionComputeTaskState.class );
 
         // check that the VM has been created
         ProvisioningUtils.queryComputeInstances(this.host, 2);

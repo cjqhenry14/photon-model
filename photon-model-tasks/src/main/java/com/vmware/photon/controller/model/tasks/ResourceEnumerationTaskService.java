@@ -26,15 +26,15 @@ import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
-import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
+import com.vmware.xenon.services.common.TaskService;
 
 /**
  * Task used to Enumerate resources on a given compute host.
  */
-public class ResourceEnumerationTaskService extends StatefulService {
+public class ResourceEnumerationTaskService extends TaskService<ResourceEnumerationTaskService.ResourceEnumerationTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/resource-enumeration-tasks";
 
     public static FactoryService createFactory() {
@@ -48,12 +48,7 @@ public class ResourceEnumerationTaskService extends StatefulService {
      * This class defines the document state associated with a single
      * ResourceEnumerationTaskService instance.
      */
-    public static class ResourceEnumerationTaskState extends ServiceDocument {
-        /**
-         * The state of the current task.
-         */
-        public TaskState taskInfo = new TaskState();
-
+    public static class ResourceEnumerationTaskState extends TaskService.TaskServiceState {
         /**
          * Reference URI to the Compute Description that will be used for the
          * compute instances created by the adapter.

@@ -22,16 +22,15 @@ import com.vmware.photon.controller.model.resources.FirewallService.FirewallStat
 
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
+import com.vmware.xenon.services.common.TaskService;
 
 /**
  * Provision firewall task service.
  */
-public class ProvisionFirewallTaskService extends StatefulService {
+public class ProvisionFirewallTaskService extends TaskService<ProvisionFirewallTaskService.ProvisionFirewallTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/firewall-allocation-tasks";
 
     public static FactoryService createFactory() {
@@ -48,18 +47,13 @@ public class ProvisionFirewallTaskService extends StatefulService {
     /**
      * Represents state of a firewall task.
      */
-    public static class ProvisionFirewallTaskState extends ServiceDocument {
+    public static class ProvisionFirewallTaskState extends TaskService.TaskServiceState {
         public InstanceRequestType requestType;
 
         /**
          * The description of the firewall instance being realized.
          */
         public String firewallDescriptionLink;
-
-        /**
-         * Tracks the task state. Set by run-time.
-         */
-        public TaskState taskInfo = new TaskState();
 
         /**
          * Tracks the sub stage (creating network or firewall). Set by the
@@ -113,7 +107,7 @@ public class ProvisionFirewallTaskService extends StatefulService {
             start.fail(e);
             return;
         }
-
+        state.taskInfo = new TaskState();
         state.taskInfo.stage = TaskState.TaskStage.CREATED;
         state.taskSubStage = SubStage.CREATED;
         start.complete();
@@ -266,19 +260,5 @@ public class ProvisionFirewallTaskService extends StatefulService {
         }
 
         sendSelfPatch(body);
-    }
-
-    private void sendSelfPatch(ProvisionFirewallTaskState body) {
-        Operation patch = Operation
-                .createPatch(getUri())
-                .setBody(body)
-                .setCompletion(
-                        (o, ex) -> {
-                            if (ex != null) {
-                                logWarning("Self patch failed: %s",
-                                        Utils.toString(ex));
-                            }
-                        });
-        sendRequest(patch);
     }
 }
