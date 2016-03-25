@@ -1,0 +1,13 @@
+action: post
+
+path: /resources/resource-descriptions
+
+body:
+  id: t2.micro-us-west-1
+  documentSelfLink: t2.micro-us-west-1
+  diskDescriptionLinks:
+    - {{ .rootDiskLink }}
+  computeType: VM_GUEST
+  computeDescriptionLink: {{ .computeDescriptionLink }}
+
+select: .documentSelfLink

@@ -1,0 +1,12 @@
+action: post
+
+path: /resources/compute
+
+body:
+  id: default-compute-resource
+  documentSelfLink: default-compute-resource
+  adapterManagementReference: http://ec2.us-west-1.amazonaws.com
+  descriptionLink: {{ .descLink }}
+  resourcePoolLink: {{ .resourcePoolLink }}
+
+select: .documentSelfLink

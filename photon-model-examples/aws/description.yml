@@ -1,0 +1,18 @@
+action: post
+
+path: /resources/compute-descriptions
+
+body:
+  id: t2.micro-us-west-1
+  documentSelfLink: t2.micro-us-west-1
+  name: t2.micro
+  supportedChildren:
+    - DOCKER_CONTAINER
+  instanceAdapterReference: http://localhost:8000/provisioning/aws/instance-service
+  environmentName: Amazon Web Services
+  authCredentialsLink: {{ .credentialsLink }}
+  zoneId: us-west-1
+  customProperties:
+     awsSecurityGroup: cell-manager-security-group
+
+select: .documentSelfLink

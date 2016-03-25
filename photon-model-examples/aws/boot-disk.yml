@@ -1,0 +1,18 @@
+action: post
+
+path: /resources/disks
+
+body:
+  id: t2.micro-us-west-1-root-disk
+  documentSelfLink: t2.micro-us-west-1-root-disk
+  name: t2.micro-us-west-1-root-disk
+  type: HDD
+  sourceImageReference: ami-0eacc46e
+  bootConfig:
+    label: cidata
+    files:
+      - path: user-data
+        contents: |
+          {{ printf "cloud_config_coreos.yml" | include | indent 10 }}
+
+select: .documentSelfLink

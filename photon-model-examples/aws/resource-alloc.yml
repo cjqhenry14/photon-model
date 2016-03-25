@@ -1,0 +1,13 @@
+action: post
+
+path: /provisioning/resource-allocation-tasks
+
+body:
+  documentSelfLink: example-aws-guest-{{ uuid }}
+  isMockRequest: false
+  resourcePoolLink: {{ .pool }}
+  resourceCount: {{ .count }}
+  resourceDescriptionLink: {{ .resourceDescriptionLink }}
+  tenantLinks: [{{ or .tenantLinks "" }}]
+
+select: .documentSelfLink

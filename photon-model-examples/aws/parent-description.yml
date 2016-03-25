@@ -1,0 +1,17 @@
+action: post
+
+path: /resources/compute-descriptions
+
+body:
+  id: aws-host
+  documentSelfLink: aws-host
+  name: test-aws
+  regionId: us-west-1
+  zoneId: us-west-1
+  supportedChildren:
+    - VM_GUEST
+  instanceAdapterReference: http://localhost:8000/provisioning/aws/instance-service
+  environmentName: Amazon Web Services
+  authCredentialsLink: {{ .credentialsLink }}
+
+select: .documentSelfLink

@@ -1,0 +1,13 @@
+action: post
+
+path: /resources/pools
+
+body:
+  id: {{ uuid .id }}
+  name: xenonc-pool
+  projectName: {{ or .project ""}}
+  minCpuCount: {{ or .minCpuCount 1 }}
+  minMemoryBytes: {{ or .minMemoryBytes 1 }}
+  tenantLinks: [{{ or .tenantLinks "" }}]
+
+select: .documentSelfLink
