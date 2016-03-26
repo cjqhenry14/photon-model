@@ -414,10 +414,6 @@ public class ResourceRemovalTaskService extends TaskService<ResourceRemovalTaskS
         sendSelfPatch(body);
     }
 
-    private void sendSelfPatch(Object body) {
-        sendPatch(getUri(), body);
-    }
-
     private void sendPatch(URI uri, Object body) {
         Operation patch = Operation
                 .createPatch(uri)
