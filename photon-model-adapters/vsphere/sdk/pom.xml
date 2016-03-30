@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>photon-vsphere-adapter</artifactId>
+  <groupId>com.vmware.photon.controller</groupId>
+  <version>0.0.0</version>
+  <packaging>pom</packaging>
+
+  <properties>
+    <!-- must download manually and point sdk.location to the file !-->
+    <sdk.location>VMware-vSphere-SDK-6.0.0-3634981.zip</sdk.location>
+
+    <sdk.groupId>com.vmware.photon.vsphere</sdk.groupId>
+    <sdk.artifactPrefix>photon-vsphere</sdk.artifactPrefix>
+    <sdk.version>6.0.0-3634981</sdk.version>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>1.8</version>
+        <executions>
+          <execution>
+            <phase>generate-resources</phase>
+            <configuration>
+              <target>
+                <unzip dest="target" src="${sdk.location}"/>
+              </target>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-install-plugin</artifactId>
+        <configuration>
+          <generatePom>true</generatePom>
+          <packaging>jar</packaging>
+        </configuration>
+        <executions>
+          <execution>
+            <id>vim25</id>
+            <phase>package</phase>
+            <goals>
+              <goal>install-file</goal>
+            </goals>
+            <configuration>
+              <file>target/SDK/vsphere-ws/java/JAXWS/lib/vim25.jar</file>
+              <groupId>${sdk.groupId}</groupId>
+              <artifactId>${sdk.artifactPrefix}-vim25</artifactId>
+              <version>${sdk.version}</version>
+            </configuration>
+          </execution>
+          <execution>
+            <id>ssoclient</id>
+            <phase>package</phase>
+            <goals>
+              <goal>install-file</goal>
+            </goals>
+            <configuration>
+              <file>target/SDK/vsphere-ws/java/JAXWS/lib/ssoclient.jar</file>
+              <groupId>${sdk.groupId}</groupId>
+              <artifactId>${sdk.artifactPrefix}-ssoclient</artifactId>
+              <version>${sdk.version}</version>
+            </configuration>
+          </execution>
+          <execution>
+            <id>pbm</id>
+            <phase>package</phase>
+            <goals>
+              <goal>install-file</goal>
+            </goals>
+            <configuration>
+              <file>target/SDK/spbm/java/JAXWS/lib/pbm.jar</file>
+              <groupId>${sdk.groupId}</groupId>
+              <artifactId>${sdk.artifactPrefix}-pbm</artifactId>
+              <version>${sdk.version}</version>
+              <sources>target/SDK/spbm/java/JAXWS/lib/pbm-src.jar</sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>sms</id>
+            <phase>package</phase>
+            <goals>
+              <goal>install-file</goal>
+            </goals>
+            <configuration>
+              <file>target/SDK/sms-sdk/java/JAXWS/lib/sms.jar</file>
+              <groupId>${sdk.groupId}</groupId>
+              <artifactId>${sdk.artifactPrefix}-sms</artifactId>
+              <version>${sdk.version}</version>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

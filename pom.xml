@@ -61,6 +61,7 @@
     <module>photon-model</module>
     <module>photon-model-tasks</module>
     <module>photon-model-adapters/aws</module>
+    <module>photon-model-adapters/vsphere</module>
   </modules>
 
   <properties>
