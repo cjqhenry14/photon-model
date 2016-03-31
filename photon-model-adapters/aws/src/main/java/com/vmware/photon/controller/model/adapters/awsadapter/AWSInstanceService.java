@@ -419,6 +419,7 @@ public class AWSInstanceService extends StatelessService {
                     NetworkInterfaceState networkState = new NetworkInterfaceState();
                     networkState.address = instance.getPrivateIpAddress();
                     networkState.id = instance.getInstanceId();
+                    networkState.tenantLinks = computeDesc.tenantLinks;
                     ComputeStateWithDescription resultDesc = new ComputeStateWithDescription();
                     resultDesc.address = instance.getPublicIpAddress();
                     if (computeDesc.customProperties == null) {

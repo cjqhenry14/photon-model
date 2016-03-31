@@ -725,6 +725,7 @@ public class ResourceAllocationTaskService extends TaskService<ResourceAllocatio
                         // unique ID
                     templateDisk.id = UUID.randomUUID().toString();
                     templateDisk.documentSelfLink = templateDisk.id;
+                    templateDisk.tenantLinks = currentState.tenantLinks;
                     sendRequest(Operation
                             .createPost(this, DiskService.FACTORY_LINK)
                             .setBody(templateDisk)
@@ -781,6 +782,7 @@ public class ResourceAllocationTaskService extends TaskService<ResourceAllocatio
                                         .getBody(NetworkInterfaceService.NetworkInterfaceState.class);
                                 templateNetwork.id = UUID.randomUUID().toString();
                                 templateNetwork.documentSelfLink = templateNetwork.id;
+                                templateNetwork.tenantLinks = currentState.tenantLinks;
                                 // create a new network based off the template
                                 // but use a unique ID
                                 sendRequest(Operation
