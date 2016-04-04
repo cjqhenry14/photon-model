@@ -34,6 +34,7 @@ import com.amazonaws.services.ec2.model.SecurityGroup;
 import com.amazonaws.services.ec2.model.Subnet;
 
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest;
+import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState.Allow;
@@ -157,7 +158,7 @@ public class AWSFirewallService extends StatelessService {
             break;
         case FAILED:
             if (requestState.firewallRequest.provisioningTaskReference != null) {
-                AWSUtils.sendFailurePatchToTask(this,
+                AdapterUtils.sendFailurePatchToTask(this,
                         requestState.firewallRequest.provisioningTaskReference,
                         requestState.error);
             } else {
@@ -166,7 +167,7 @@ public class AWSFirewallService extends StatelessService {
             break;
         case FINISHED:
             requestState.fwOperation.complete();
-            AWSUtils.sendNetworkFinishPatch(this,
+            AdapterUtils.sendNetworkFinishPatch(this,
                     requestState.firewallRequest.provisioningTaskReference);
             return;
         default:

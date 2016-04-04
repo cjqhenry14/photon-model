@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>photon-model-parent</artifactId>
+        <groupId>com.vmware.photon.controller</groupId>
+        <version>0.3.3-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>photon-adapter-util</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.vmware.xenon</groupId>
+            <artifactId>xenon-common</artifactId>
+            <version>${xenon.common.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.vmware.photon.controller</groupId>
+            <artifactId>photon-model-tasks</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+</project>

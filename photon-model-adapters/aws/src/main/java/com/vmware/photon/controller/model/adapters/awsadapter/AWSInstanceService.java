@@ -33,6 +33,7 @@ import com.amazonaws.services.ec2.model.TerminateInstancesResult;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
+import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
@@ -66,34 +67,27 @@ public class AWSInstanceService extends StatelessService {
     private static final String AWS_TERMINATED_NAME = "terminated";
 
     @Override
-    public void handleRequest(Operation op) {
+    public void handlePatch(Operation op) {
         if (!op.hasBody()) {
             op.fail(new IllegalArgumentException("body is required"));
             return;
         }
-        switch (op.getAction()) {
-        case PATCH:
-            AWSAllocation aws = new AWSAllocation(
-                    op.getBody(ComputeInstanceRequest.class));
-            switch (aws.computeRequest.requestType) {
-            case VALIDATE_CREDENTIALS:
-                aws.stage = AWSStages.PARENTAUTH;
-                aws.awsOperation = op;
-                handleAllocation(aws);
-                break;
-            default:
-                op.complete();
-                if (aws.computeRequest.isMockRequest
-                        && aws.computeRequest.requestType == ComputeInstanceRequest.InstanceRequestType.CREATE) {
-                    AWSUtils.sendPatchToTask(this,
-                            aws.computeRequest.provisioningTaskReference);
-                    return;
-                }
-                handleAllocation(aws);
-            }
+        AWSAllocation aws = new AWSAllocation(
+                op.getBody(ComputeInstanceRequest.class));
+        switch (aws.computeRequest.requestType) {
+        case VALIDATE_CREDENTIALS:
+            aws.stage = AWSStages.PARENTAUTH;
+            aws.awsOperation = op;
+            handleAllocation(aws);
             break;
         default:
-            super.handleRequest(op);
+            op.complete();
+            if (aws.computeRequest.isMockRequest && aws.computeRequest.requestType
+                    == ComputeInstanceRequest.InstanceRequestType.CREATE) {
+                AdapterUtils.sendPatchToTask(this, aws.computeRequest.provisioningTaskReference);
+                return;
+            }
+            handleAllocation(aws);
         }
     }
 
@@ -167,7 +161,7 @@ public class AWSInstanceService extends StatelessService {
             break;
         case ERROR:
             if (aws.computeRequest.provisioningTaskReference != null) {
-                AWSUtils.sendFailurePatchToTask(this,
+                AdapterUtils.sendFailurePatchToTask(this,
                         aws.computeRequest.provisioningTaskReference, aws.error);
             } else {
                 aws.awsOperation.fail(aws.error);
@@ -194,7 +188,7 @@ public class AWSInstanceService extends StatelessService {
         URI computeUri = UriUtils.extendUriWithQuery(
                 aws.computeRequest.computeReference, UriUtils.URI_PARAM_ODATA_EXPAND,
                 Boolean.TRUE.toString());
-        AWSUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(aws));
+        AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(aws));
     }
 
     /*
@@ -208,7 +202,7 @@ public class AWSInstanceService extends StatelessService {
         };
         URI parentURI = UriUtils.buildExpandLinksQueryUri
                 (UriUtils.buildUri(this.getHost(), aws.child.parentLink));
-        AWSUtils.getServiceState(this, parentURI, onSuccess, getFailureConsumer(aws));
+        AdapterUtils.getServiceState(this, parentURI, onSuccess, getFailureConsumer(aws));
     }
 
     private void getParentAuth(AWSAllocation aws, AWSStages next) {
@@ -224,7 +218,7 @@ public class AWSInstanceService extends StatelessService {
             aws.stage = next;
             handleAllocation(aws);
         };
-        AWSUtils.getServiceState(this, authUri, onSuccess, getFailureConsumer(aws));
+        AdapterUtils.getServiceState(this, authUri, onSuccess, getFailureConsumer(aws));
     }
 
     private Consumer<Throwable> getFailureConsumer(AWSAllocation aws) {
@@ -277,21 +271,21 @@ public class AWSInstanceService extends StatelessService {
 
     private void createInstance(AWSAllocation aws) {
         if (aws.computeRequest.isMockRequest) {
-            AWSUtils.sendPatchToTask(this,
+            AdapterUtils.sendPatchToTask(this,
                     aws.computeRequest.provisioningTaskReference);
             return;
         }
 
         DiskState bootDisk = aws.childDisks.get(DiskType.HDD);
         if (bootDisk == null) {
-            AWSUtils.sendFailurePatchToTask(this,
+            AdapterUtils.sendFailurePatchToTask(this,
                     aws.computeRequest.provisioningTaskReference,
                     new IllegalStateException("AWS bootDisk not specified"));
             return;
         }
 
         if (aws.childDisks.get(DiskType.HDD).bootConfig.files.length > 1) {
-            AWSUtils.sendFailurePatchToTask(this,
+            AdapterUtils.sendFailurePatchToTask(this,
                     aws.computeRequest.provisioningTaskReference,
                     new IllegalStateException(
                             "Only 1 configuration file allowed"));
@@ -394,7 +388,7 @@ public class AWSInstanceService extends StatelessService {
         @Override
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(this.opContext);
-            AWSUtils.sendFailurePatchToTask(this.service,
+            AdapterUtils.sendFailurePatchToTask(this.service,
                     this.computeReq.provisioningTaskReference, exception);
         }
 
@@ -402,66 +396,62 @@ public class AWSInstanceService extends StatelessService {
         public void onSuccess(RunInstancesRequest request,
                 RunInstancesResult result) {
             // consumer to be invoked once a VM is in the running state
-            Consumer<Instance> consumer = new Consumer<Instance>() {
+            Consumer<Instance> consumer = instance -> {
+                OperationContext.restoreOperationContext(opContext);
+                if (instance == null) {
+                    AdapterUtils.sendFailurePatchToTask(service,
+                            computeReq.provisioningTaskReference,
+                            new IllegalStateException(
+                                    "Error getting instance EC2 instance"));
+                    return;
+                }
+                // TODO(CG): create a network interface for the public IP as
+                // well
+                NetworkInterfaceState networkState = new NetworkInterfaceState();
+                networkState.address = instance.getPrivateIpAddress();
+                networkState.id = instance.getInstanceId();
+                networkState.tenantLinks = computeDesc.tenantLinks;
+                ComputeStateWithDescription resultDesc = new ComputeStateWithDescription();
+                resultDesc.address = instance.getPublicIpAddress();
+                if (computeDesc.customProperties == null) {
+                    resultDesc.customProperties = new HashMap<String, String>();
+                } else {
+                    resultDesc.customProperties = computeDesc.customProperties;
+                }
+                resultDesc.customProperties.put(AWSConstants.AWS_INSTANCE_ID,
+                        instance.getInstanceId());
+                resultDesc.networkLinks = new ArrayList<String>();
+                resultDesc.networkLinks.add(UriUtils.buildUriPath(
+                        NetworkInterfaceService.FACTORY_LINK,
+                        instance.getInstanceId()));
 
-                @Override
-                public void accept(Instance instance) {
-                    OperationContext.restoreOperationContext(opContext);
-                    if (instance == null) {
-                        AWSUtils.sendFailurePatchToTask(service,
+                Operation patchState = Operation
+                        .createPatch(computeReq.computeReference)
+                        .setBody(resultDesc)
+                        .setReferer(service.getHost().getUri());
+                Operation postNetworkInterface = Operation
+                        .createPost(
+                                UriUtils.buildUri(
+                                        service.getHost(),
+                                        NetworkInterfaceService.FACTORY_LINK))
+                        .setBody(networkState)
+                        .setReferer(service.getHost().getUri());
+                OperationJoin.JoinedCompletionHandler joinCompletion = (ox,
+                        exc) -> {
+                    if (exc != null) {
+                        AdapterUtils.sendFailurePatchToTask(service,
                                 computeReq.provisioningTaskReference,
                                 new IllegalStateException(
-                                        "Error getting instance EC2 instance"));
+                                        "Error updating VM state"));
                         return;
                     }
-                    // TODO(CG): create a network interface for the public IP as
-                    // well
-                    NetworkInterfaceState networkState = new NetworkInterfaceState();
-                    networkState.address = instance.getPrivateIpAddress();
-                    networkState.id = instance.getInstanceId();
-                    networkState.tenantLinks = computeDesc.tenantLinks;
-                    ComputeStateWithDescription resultDesc = new ComputeStateWithDescription();
-                    resultDesc.address = instance.getPublicIpAddress();
-                    if (computeDesc.customProperties == null) {
-                        resultDesc.customProperties = new HashMap<String, String>();
-                    } else {
-                        resultDesc.customProperties = computeDesc.customProperties;
-                    }
-                    resultDesc.customProperties.put(AWSConstants.AWS_INSTANCE_ID,
-                            instance.getInstanceId());
-                    resultDesc.networkLinks = new ArrayList<String>();
-                    resultDesc.networkLinks.add(UriUtils.buildUriPath(
-                            NetworkInterfaceService.FACTORY_LINK,
-                            instance.getInstanceId()));
-
-                    Operation patchState = Operation
-                            .createPatch(computeReq.computeReference)
-                            .setBody(resultDesc)
-                            .setReferer(service.getHost().getUri());
-                    Operation postNetworkInterface = Operation
-                            .createPost(
-                                    UriUtils.buildUri(
-                                            service.getHost(),
-                                            NetworkInterfaceService.FACTORY_LINK))
-                            .setBody(networkState)
-                            .setReferer(service.getHost().getUri());
-                    OperationJoin.JoinedCompletionHandler joinCompletion = (ox,
-                            exc) -> {
-                        if (exc != null) {
-                            AWSUtils.sendFailurePatchToTask(service,
-                                    computeReq.provisioningTaskReference,
-                                    new IllegalStateException(
-                                            "Error updating VM state"));
-                            return;
-                        }
-                        AWSUtils.sendPatchToTask(service,
-                                computeReq.provisioningTaskReference);
-                    };
-                    OperationJoin joinOp = OperationJoin.create(patchState,
-                            postNetworkInterface);
-                    joinOp.setCompletion(joinCompletion);
-                    joinOp.sendWith(service.getHost());
-                }
+                    AdapterUtils.sendPatchToTask(service,
+                            computeReq.provisioningTaskReference);
+                };
+                OperationJoin joinOp = OperationJoin.create(patchState,
+                        postNetworkInterface);
+                joinOp.setCompletion(joinCompletion);
+                joinOp.sendWith(service.getHost());
             };
 
             String instanceId = result.getReservation().getInstances().get(0)
@@ -534,7 +524,7 @@ public class AWSInstanceService extends StatelessService {
         @Override
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(opContext);
-            AWSUtils.sendFailurePatchToTask(service,
+            AdapterUtils.sendFailurePatchToTask(service,
                     computeReq.provisioningTaskReference, exception);
         }
 
@@ -547,7 +537,7 @@ public class AWSInstanceService extends StatelessService {
                 public void accept(Instance instance) {
                     OperationContext.restoreOperationContext(opContext);
                     if (instance == null) {
-                        AWSUtils.sendFailurePatchToTask(service,
+                        AdapterUtils.sendFailurePatchToTask(service,
                                 computeReq.provisioningTaskReference,
                                 new IllegalStateException(
                                         "Error getting instance"));
@@ -583,13 +573,13 @@ public class AWSInstanceService extends StatelessService {
         CompletionHandler deletionKickoffCompletion = (sendDeleteOp,
                 sendDeleteEx) -> {
             if (sendDeleteEx != null) {
-                AWSUtils.sendFailurePatchToTask(this,
+                AdapterUtils.sendFailurePatchToTask(this,
                         computeReq.provisioningTaskReference, sendDeleteEx);
                 return;
             }
             if (deleteCallbackCount.incrementAndGet() == resourcesToDelete
                     .size()) {
-                AWSUtils.sendPatchToTask(this,
+                AdapterUtils.sendPatchToTask(this,
                         computeReq.provisioningTaskReference);
             }
         };

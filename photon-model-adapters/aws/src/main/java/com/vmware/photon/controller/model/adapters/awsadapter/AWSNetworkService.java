@@ -45,6 +45,7 @@ import com.amazonaws.services.ec2.model.Subnet;
 import com.amazonaws.services.ec2.model.Vpc;
 
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest;
+import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskService.ProvisionNetworkTaskState;
 
@@ -186,7 +187,7 @@ public class AWSNetworkService extends StatelessService {
             break;
         case FAILED:
             if (awsNet.networkRequest.provisioningTaskReference != null) {
-                AWSUtils.sendFailurePatchToTask(this,
+                AdapterUtils.sendFailurePatchToTask(this,
                         awsNet.networkRequest.provisioningTaskReference,
                         awsNet.error);
             } else {
@@ -195,7 +196,7 @@ public class AWSNetworkService extends StatelessService {
             break;
         case FINISHED:
             awsNet.netOps.complete();
-            AWSUtils.sendNetworkFinishPatch(this,
+            AdapterUtils.sendNetworkFinishPatch(this,
                     awsNet.networkRequest.provisioningTaskReference);
             return;
         default:

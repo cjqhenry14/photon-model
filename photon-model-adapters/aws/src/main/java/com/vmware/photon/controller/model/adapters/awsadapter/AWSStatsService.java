@@ -33,6 +33,7 @@ import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsResult;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
+import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 
 import com.vmware.xenon.common.Operation;
@@ -81,7 +82,7 @@ public class AWSStatsService extends StatelessService {
 
             if (statsRequest.isMockRequest) {
                 // patch status to parent task
-                AWSUtils.sendPatchToTask(this,
+                AdapterUtils.sendPatchToTask(this,
                         UriUtils.buildUri(getHost(), statsRequest.parentTaskLink));
                 return;
             }
@@ -103,7 +104,7 @@ public class AWSStatsService extends StatelessService {
         URI computeUri = UriUtils.extendUriWithQuery(
                 UriUtils.buildUri(getHost(), statsData.statsRequest.computeLink), UriUtils.URI_PARAM_ODATA_EXPAND,
                 Boolean.TRUE.toString());
-        AWSUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(statsData));
+        AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(statsData));
     }
 
     private void getParentVMDescription(AWSStatsDataHolder statsData) {
@@ -114,7 +115,7 @@ public class AWSStatsService extends StatelessService {
         URI computeUri = UriUtils.extendUriWithQuery(
                 UriUtils.buildUri(getHost(), statsData.computeDesc.parentLink), UriUtils.URI_PARAM_ODATA_EXPAND,
                 Boolean.TRUE.toString());
-        AWSUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(statsData));
+        AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(statsData));
     }
 
     private void getParentAuth(AWSStatsDataHolder statsData) {
@@ -124,12 +125,12 @@ public class AWSStatsService extends StatelessService {
         };
         URI parentAuthUri = UriUtils.buildUri(getHost(),
                 statsData.parentDesc.description.authCredentialsLink);
-        AWSUtils.getServiceState(this, parentAuthUri, onSuccess, getFailureConsumer(statsData));
+        AdapterUtils.getServiceState(this, parentAuthUri, onSuccess, getFailureConsumer(statsData));
     }
 
     private Consumer<Throwable> getFailureConsumer(AWSStatsDataHolder statsData) {
         return ((t) -> {
-            AWSUtils.sendFailurePatchToTask(this,
+            AdapterUtils.sendFailurePatchToTask(this,
                     UriUtils.buildUri(getHost(), statsData.statsRequest.parentTaskLink), t);
         });
     }
@@ -175,7 +176,7 @@ public class AWSStatsService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            AWSUtils.sendFailurePatchToTask(service,
+            AdapterUtils.sendFailurePatchToTask(service,
                     UriUtils.buildUri(service.getHost(), statsData.statsRequest.parentTaskLink),
                     exception);
         }

@@ -60,7 +60,9 @@
   <modules>
     <module>photon-model</module>
     <module>photon-model-tasks</module>
+    <module>photon-model-adapters/util</module>
     <module>photon-model-adapters/aws</module>
+    <module>photon-model-adapters/azure</module>
   </modules>
 
   <properties>
@@ -114,15 +116,6 @@
   </dependencyManagement>
 
   <profiles>
-    <profile>
-      <id>vsphere</id>
-      <activation>
-        <activeByDefault>false</activeByDefault>
-      </activation>
-      <modules>
-        <module>photon-model-adapters/vsphere</module>
-      </modules>
-    </profile>
     <profile>
       <id>coverage</id>
       <build>

@@ -13,12 +13,10 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Region;
@@ -32,14 +30,6 @@ import com.amazonaws.services.ec2.model.Filter;
 import com.amazonaws.services.ec2.model.Tag;
 import com.amazonaws.services.ec2.model.TagDescription;
 
-import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
-import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskService;
-
-import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.Service;
-import com.vmware.xenon.common.StatelessService;
-import com.vmware.xenon.common.TaskState;
-import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
@@ -50,42 +40,6 @@ public class AWSUtils {
     public static final String AWS_FILTER_RESOURCE_ID = "resource-id";
     public static final String AWS_FILTER_VPC_ID = "vpc-id";
     public static final String NO_VALUE = "no-value";
-
-    public static void sendFailurePatchToTask(StatelessService service,
-            URI taskLink, Throwable t) {
-        service.logWarning(Utils.toString(t));
-        sendPatchToTask(service, taskLink, t);
-    }
-
-    public static void sendPatchToTask(StatelessService service, URI taskLink) {
-        sendPatchToTask(service, taskLink, null);
-    }
-
-    public static void sendNetworkFinishPatch(StatelessService service,
-            URI taskLink) {
-
-        ProvisionNetworkTaskService.ProvisionNetworkTaskState pn = new ProvisionNetworkTaskService.ProvisionNetworkTaskState();
-        TaskState taskInfo = new TaskState();
-        taskInfo.stage = TaskState.TaskStage.FINISHED;
-        pn.taskInfo = taskInfo;
-        service.sendRequest(Operation.createPatch(taskLink).setBody(pn));
-
-    }
-
-    private static void sendPatchToTask(StatelessService service, URI taskLink,
-            Throwable t) {
-        ProvisionComputeTaskState provisioningTaskBody = new ProvisionComputeTaskState();
-        TaskState taskInfo = new TaskState();
-        if (t == null) {
-            taskInfo.stage = TaskState.TaskStage.FINISHED;
-        } else {
-            taskInfo.failure = Utils.toServiceErrorResponse(t);
-            taskInfo.stage = TaskState.TaskStage.FAILED;
-        }
-        provisioningTaskBody.taskInfo = taskInfo;
-        service.sendRequest(Operation.createPatch(taskLink).setBody(
-                provisioningTaskBody));
-    }
 
     public static AmazonEC2AsyncClient getAsyncClient(
             AuthCredentialsServiceState credentials, String region,
@@ -173,20 +127,4 @@ public class AWSUtils {
     public static Filter getFilter(String name, String value) {
         return new Filter().withName(name).withValues(value);
     }
-
-    /*
-     * method will be responsible for getting the service state for the
-     * requested resource and invoke Consumer callback for success and
-     * failure
-     */
-    public static void getServiceState(Service service, URI computeUri, Consumer<Operation> success, Consumer<Throwable> failure) {
-        service.sendRequest(Operation.createGet(computeUri).setCompletion((o, e) -> {
-            if (e != null) {
-                failure.accept(e);
-                return;
-            }
-            success.accept(o);
-        }));
-    }
-
 }

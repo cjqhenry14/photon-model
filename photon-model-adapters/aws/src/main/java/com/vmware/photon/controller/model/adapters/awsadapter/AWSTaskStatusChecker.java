@@ -26,6 +26,7 @@ import com.amazonaws.services.ec2.model.Instance;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 
+import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.xenon.common.StatelessService;
 
 /**
@@ -71,7 +72,7 @@ public class AWSTaskStatusChecker {
 
             @Override
             public void onError(Exception exception) {
-                AWSUtils.sendFailurePatchToTask(service,
+                AdapterUtils.sendFailurePatchToTask(service,
                         computeRequest.provisioningTaskReference, exception);
                 return;
             }
