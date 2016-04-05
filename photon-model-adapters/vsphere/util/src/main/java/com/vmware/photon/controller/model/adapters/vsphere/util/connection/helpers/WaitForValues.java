@@ -105,7 +105,7 @@ public class WaitForValues extends BaseHelper {
             for (PropertyFilterUpdate filtup : filtupary) {
                 objupary = filtup.getObjectSet();
                 for (ObjectUpdate objup : objupary) {
-                    // TODO: Handle all "kind"s of updates.
+                    // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-331
                     if (objup.getKind() == ObjectUpdateKind.MODIFY
                             || objup.getKind() == ObjectUpdateKind.ENTER
                             || objup.getKind() == ObjectUpdateKind.LEAVE) {
@@ -148,7 +148,6 @@ public class WaitForValues extends BaseHelper {
         try {
             vimPort.destroyPropertyFilter(filterSpecRef);
         } catch (RuntimeFaultFaultMsg e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
         if (stateVal != null) {

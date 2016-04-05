@@ -405,8 +405,7 @@ public class AWSInstanceService extends StatelessService {
                                     "Error getting instance EC2 instance"));
                     return;
                 }
-                // TODO(CG): create a network interface for the public IP as
-                // well
+                // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-329
                 NetworkInterfaceState networkState = new NetworkInterfaceState();
                 networkState.address = instance.getPrivateIpAddress();
                 networkState.id = instance.getInstanceId();

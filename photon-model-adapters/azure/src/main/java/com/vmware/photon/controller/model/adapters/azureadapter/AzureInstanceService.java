@@ -82,7 +82,7 @@ public class AzureInstanceService extends StatelessService {
 
     public static final String SELF_LINK = AzureUriPaths.AZURE_INSTANCE_SERVICE;
 
-    // TODO https://jira-hzn.eng.vmware.com/browse/VSYM-322
+    // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-322
     // Name prefixes
     public static final String STORAGE_NAME_PREFIX = "storage";
     public static final String SUBNET_NAME_PREFIX = "subnet";

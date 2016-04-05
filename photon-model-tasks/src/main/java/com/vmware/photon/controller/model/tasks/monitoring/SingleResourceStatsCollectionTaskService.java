@@ -231,8 +231,7 @@ public class SingleResourceStatsCollectionTaskService extends StatefulService {
         Collection<Operation> operations = new ArrayList<>();
         for (ComputeStats stats : currentState.statsList) {
             URI statsUri = UriUtils.buildStatsUri(getHost(), stats.computeLink);
-            // TODO: need a bulk update to the stats endpoint
-            // tracked in pivotal tracker story : 114961189
+            // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-330
             for (Entry<String, Double> entry : stats.statValues.entrySet()) {
                 ServiceStats.ServiceStat stat = new ServiceStats.ServiceStat();
                 stat.name = entry.getKey();
