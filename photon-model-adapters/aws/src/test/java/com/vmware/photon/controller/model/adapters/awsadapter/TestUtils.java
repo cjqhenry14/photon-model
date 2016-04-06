@@ -13,9 +13,14 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.zoneId;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
 
@@ -25,8 +30,10 @@ import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.common.test.VerificationHost;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
@@ -39,7 +46,7 @@ public class TestUtils {
         AuthCredentialsServiceState creds = new AuthCredentialsServiceState();
         creds.privateKey = privateKey;
         creds.privateKeyId = privateKeyId;
-        return AWSUtils.getAsyncClient(creds, region, isMockRequest);
+        return AWSUtils.getAsyncClient(creds, region, isMockRequest, getExecutor());
     }
 
     // validate that the passed items are not null
@@ -134,6 +141,7 @@ public class TestUtils {
         URI tenantFactoryURI = UriUtils.buildFactoryUri(host, TenantService.class);
 
         NetworkState network = new NetworkState();
+        network.regionID = zoneId;
         network.id = UUID.randomUUID().toString();
         network.subnetCIDR = "10.1.0.0/16";
         network.tenantLinks = new ArrayList<>();
@@ -200,6 +208,15 @@ public class TestUtils {
         host.send(startGet);
         host.testWait();
 
+    }
+
+    public static ExecutorService getExecutor() {
+        return Executors.newFixedThreadPool(Utils.DEFAULT_THREAD_COUNT, new ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable r) {
+                return new Thread(r, "test/" + Utils.getNowMicrosUtc());
+            }
+        });
     }
 
 }

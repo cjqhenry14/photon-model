@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,6 +60,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  * Adapter for provisioning a netwotk on AWS.
  */
 public class AWSNetworkService extends StatelessService {
+
     public static final String SELF_LINK = AWSUriPaths.AWS_NETWORK_SERVICE;
 
     public static final String MAIN_ROUTE_ASSOCIATION = "association.main";
@@ -79,13 +82,13 @@ public class AWSNetworkService extends StatelessService {
      */
     public static class AWSNetworkRequestState {
         transient Operation netOps;
-        public AmazonEC2AsyncClient client;
         public AuthCredentialsServiceState credentials;
         public NetworkInstanceRequest networkRequest;
         public NetworkState network;
         public NetworkStage stage;
         public ProvisionNetworkTaskState networkTaskState;
         public Throwable error;
+        public AmazonEC2AsyncClient client;
 
     }
 
@@ -121,12 +124,14 @@ public class AWSNetworkService extends StatelessService {
             getCredentials(awsNet, NetworkStage.AWS_CLIENT);
             break;
         case AWS_CLIENT:
-            try {
-                awsNet.client = AWSUtils.getAsyncClient(awsNet.credentials,
-                        awsNet.network.regionID, false);
-            } catch (Throwable e) {
-                handleFailure(awsNet, e);
-                break;
+            if (awsNet.client == null) {
+                try {
+                    awsNet.client = AWSUtils.getAsyncClient(awsNet.credentials,
+                            awsNet.network.regionID, false, getHost().allocateExecutor(this));
+                } catch (Throwable e) {
+                    handleFailure(awsNet, e);
+                    break;
+                }
             }
             if (awsNet.networkRequest.requestType == NetworkInstanceRequest.InstanceRequestType.CREATE) {
                 awsNet.stage = NetworkStage.PROVISION_VPC;
@@ -186,6 +191,7 @@ public class AWSNetworkService extends StatelessService {
                     NetworkStage.FINISHED);
             break;
         case FAILED:
+            cleanupEC2ClientResources(awsNet.client);
             if (awsNet.networkRequest.provisioningTaskReference != null) {
                 AdapterUtils.sendFailurePatchToTask(this,
                         awsNet.networkRequest.provisioningTaskReference,
@@ -195,6 +201,7 @@ public class AWSNetworkService extends StatelessService {
             }
             break;
         case FINISHED:
+            cleanupEC2ClientResources(awsNet.client);
             awsNet.netOps.complete();
             AdapterUtils.sendNetworkFinishPatch(this,
                     awsNet.networkRequest.provisioningTaskReference);
@@ -433,8 +440,7 @@ public class AWSNetworkService extends StatelessService {
     }
 
     /*
-     * Create a route from a specified CIDR Subnet to a specific GW / Route
-     * Table
+     * Create a route from a specified CIDR Subnet to a specific GW / Route Table
      */
     public void createInternetRoute(String gatewayID, String routeTableID,
             String subnet, AmazonEC2AsyncClient client) {

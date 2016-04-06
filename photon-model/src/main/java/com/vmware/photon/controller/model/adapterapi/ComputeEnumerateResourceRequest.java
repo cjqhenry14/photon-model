@@ -50,4 +50,11 @@ public class ComputeEnumerateResourceRequest {
      * URI reference to the enumeration task, making the enumeration request.
      */
     public URI enumerationTaskReference;
+
+    /**
+     * Value indicating whether the service should treat this as a mock request
+     * and complete the work flow without involving the underlying compute host
+     * infrastructure.
+     */
+    public boolean isMockRequest;
 }

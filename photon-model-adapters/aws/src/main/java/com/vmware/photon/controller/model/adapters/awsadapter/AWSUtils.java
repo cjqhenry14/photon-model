@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Region;
@@ -43,33 +44,38 @@ public class AWSUtils {
 
     public static AmazonEC2AsyncClient getAsyncClient(
             AuthCredentialsServiceState credentials, String region,
-            boolean isMockRequest) {
-        AmazonEC2AsyncClient client = new AmazonEC2AsyncClient(
+            boolean isMockRequest, ExecutorService executorService) {
+        AmazonEC2AsyncClient ec2AsyncClient = new AmazonEC2AsyncClient(
                 new BasicAWSCredentials(credentials.privateKeyId,
-                        credentials.privateKey));
+                        credentials.privateKey),
+                executorService);
 
-        client.setRegion(Region.getRegion(Regions.fromName(region)));
+        ec2AsyncClient.setRegion(Region.getRegion(Regions.fromName(region)));
 
         // make a call to validate credentials
         if (!isMockRequest) {
-            client.describeAvailabilityZones();
+            ec2AsyncClient.describeAvailabilityZones();
+
         }
-        return client;
+        return ec2AsyncClient;
+
     }
 
     public static AmazonCloudWatchAsyncClient getStatsAsyncClient(
-            AuthCredentialsServiceState credentials, String region) {
+            AuthCredentialsServiceState credentials, String region,
+            ExecutorService executorService) {
         AmazonCloudWatchAsyncClient client = new AmazonCloudWatchAsyncClient(
                 new BasicAWSCredentials(credentials.privateKeyId,
-                        credentials.privateKey));
+                        credentials.privateKey),
+                executorService);
 
         client.setRegion(Region.getRegion(Regions.fromName(region)));
         return client;
     }
 
     /*
-     * Synchronous call to AWS to create tags for the specified resources The
-     * list of tags will be applied to all provided resources
+     * Synchronous call to AWS to create tags for the specified resources The list of tags will be
+     * applied to all provided resources
      */
     public static void createTags(Collection<String> resources,
             Collection<Tag> tags, AmazonEC2AsyncClient client) {
@@ -97,9 +103,8 @@ public class AWSUtils {
     }
 
     /*
-     * An AWS Resource name is actually a Tag that must be applied to a
-     * resource. This helper method will take an AWS resourceID and Name and
-     * apply that as a tag
+     * An AWS Resource name is actually a Tag that must be applied to a resource. This helper method
+     * will take an AWS resourceID and Name and apply that as a tag
      */
     public static void setResourceName(String resourceID, String name,
             AmazonEC2AsyncClient client) {
@@ -127,4 +132,17 @@ public class AWSUtils {
     public static Filter getFilter(String name, String value) {
         return new Filter().withName(name).withValues(value);
     }
+
+    /**
+     * Releases all the resources allocated for the use of the AWS EC2 client.
+     */
+    public static void cleanupEC2ClientResources(AmazonEC2AsyncClient client) {
+        if (client != null) {
+            client.shutdown();
+            // To ensure that no requests are made on a client on which shutdown has already been
+            // invoked.
+            client = null;
+        }
+    }
+
 }

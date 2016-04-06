@@ -15,6 +15,8 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 
 import static org.junit.Assert.assertTrue;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.getExecutor;
+
 import java.util.List;
 
 import com.amazonaws.AmazonServiceException;
@@ -90,7 +92,7 @@ public class TestAWSUtils {
         AuthCredentialsServiceState creds = new AuthCredentialsServiceState();
         creds.privateKey = this.privateKey;
         creds.privateKeyId = this.privateKeyId;
-        AWSUtils.getAsyncClient(creds, this.region, false);
+        AWSUtils.getAsyncClient(creds, this.region, false, getExecutor());
     }
 
     @Test
@@ -99,7 +101,7 @@ public class TestAWSUtils {
         AuthCredentialsServiceState creds = new AuthCredentialsServiceState();
         creds.privateKey = "bar";
         creds.privateKeyId = "foo";
-        AWSUtils.getAsyncClient(creds, this.region, false);
+        AWSUtils.getAsyncClient(creds, this.region, false, getExecutor());
     }
 
     @Test
@@ -125,5 +127,4 @@ public class TestAWSUtils {
         svc.deleteVPC(vpcID,client);
 
     }
-
 }

@@ -47,8 +47,9 @@ public class AWSStatsService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_STATS_SERVICE;
 
-    private static final String [] METRIC_NAMES = {"CPUUtilization", "DiskReadBytes", "DiskWriteBytes", "NetworkIn", "NetworkOut"};
-    private static final String [] STATISTICS = {"Average"};
+    private static final String[] METRIC_NAMES = { "CPUUtilization", "DiskReadBytes",
+            "DiskWriteBytes", "NetworkIn", "NetworkOut" };
+    private static final String[] STATISTICS = { "Average" };
     private static final String NAMESPACE = "AWS/EC2";
     private static final String DIMENSION_INSTANCE_ID = "InstanceId";
 
@@ -57,9 +58,9 @@ public class AWSStatsService extends StatelessService {
         public ComputeStateWithDescription parentDesc;
         public AuthCredentialsService.AuthCredentialsServiceState parentAuth;
         public ComputeStatsRequest statsRequest;
-        public AmazonCloudWatchAsyncClient statsClient;
         public ComputeStats statsResponse;
         public AtomicInteger numResponses = new AtomicInteger(0);
+        public AmazonCloudWatchAsyncClient statsClient;
 
         public AWSStatsDataHolder() {
             statsResponse = new ComputeStats();
@@ -77,8 +78,7 @@ public class AWSStatsService extends StatelessService {
         op.complete();
         switch (op.getAction()) {
         case PATCH:
-            ComputeStatsRequest statsRequest =
-                    op.getBody(ComputeStatsRequest.class);
+            ComputeStatsRequest statsRequest = op.getBody(ComputeStatsRequest.class);
 
             if (statsRequest.isMockRequest) {
                 // patch status to parent task
@@ -102,7 +102,8 @@ public class AWSStatsService extends StatelessService {
             getParentVMDescription(statsData);
         };
         URI computeUri = UriUtils.extendUriWithQuery(
-                UriUtils.buildUri(getHost(), statsData.statsRequest.computeLink), UriUtils.URI_PARAM_ODATA_EXPAND,
+                UriUtils.buildUri(getHost(), statsData.statsRequest.computeLink),
+                UriUtils.URI_PARAM_ODATA_EXPAND,
                 Boolean.TRUE.toString());
         AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(statsData));
     }
@@ -113,7 +114,8 @@ public class AWSStatsService extends StatelessService {
             getParentAuth(statsData);
         };
         URI computeUri = UriUtils.extendUriWithQuery(
-                UriUtils.buildUri(getHost(), statsData.computeDesc.parentLink), UriUtils.URI_PARAM_ODATA_EXPAND,
+                UriUtils.buildUri(getHost(), statsData.computeDesc.parentLink),
+                UriUtils.URI_PARAM_ODATA_EXPAND,
                 Boolean.TRUE.toString());
         AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(statsData));
     }
@@ -136,29 +138,41 @@ public class AWSStatsService extends StatelessService {
     }
 
     private void getStats(AWSStatsDataHolder statsData) {
-        statsData.statsClient = AWSUtils.getStatsAsyncClient(statsData.parentAuth,
-                statsData.computeDesc.description.zoneId);
+        getAWSAsyncStatsClient(statsData);
         long endTimeMicros = Utils.getNowMicrosUtc();
 
         for (String metricName : METRIC_NAMES) {
             GetMetricStatisticsRequest metricRequest = new GetMetricStatisticsRequest();
             // get one minute averages for the last 5 minutes
             metricRequest.setEndTime(new Date(TimeUnit.MICROSECONDS.toMillis(endTimeMicros)));
-            metricRequest.setStartTime(new Date(TimeUnit.MICROSECONDS.toMillis(endTimeMicros) - TimeUnit.MINUTES.toMillis(5)));
+            metricRequest.setStartTime(new Date(
+                    TimeUnit.MICROSECONDS.toMillis(endTimeMicros) - TimeUnit.MINUTES.toMillis(5)));
             metricRequest.setPeriod(60);
             metricRequest.setStatistics(Arrays.asList(STATISTICS));
             metricRequest.setNamespace(NAMESPACE);
             List<Dimension> dimensions = new ArrayList<Dimension>();
             Dimension dimension = new Dimension();
             dimension.setName(DIMENSION_INSTANCE_ID);
-            String instanceId = statsData.computeDesc.customProperties.get(AWSConstants.AWS_INSTANCE_ID);
+            String instanceId = statsData.computeDesc.customProperties
+                    .get(AWSConstants.AWS_INSTANCE_ID);
             dimension.setValue(instanceId);
             dimensions.add(dimension);
             metricRequest.setDimensions(dimensions);
             metricRequest.setMetricName(metricName);
-            AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler =
-                    new AWSStatsHandler(this, statsData);
+            AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler = new AWSStatsHandler(
+                    this, statsData);
             statsData.statsClient.getMetricStatisticsAsync(metricRequest, resultHandler);
+        }
+    }
+
+    private void getAWSAsyncStatsClient(AWSStatsDataHolder statsData) {
+        if (statsData.statsClient == null) {
+            try {
+                statsData.statsClient = AWSUtils.getStatsAsyncClient(statsData.parentAuth,
+                        statsData.computeDesc.description.zoneId, getHost().allocateExecutor(this));
+            } catch (Exception e) {
+                logSevere(e);
+            }
         }
     }
 
@@ -182,7 +196,8 @@ public class AWSStatsService extends StatelessService {
         }
 
         @Override
-        public void onSuccess(GetMetricStatisticsRequest request, GetMetricStatisticsResult result) {
+        public void onSuccess(GetMetricStatisticsRequest request,
+                GetMetricStatisticsResult result) {
             List<Datapoint> dpList = result.getDatapoints();
             Double sum = new Double(0);
             if (dpList != null && dpList.size() != 0) {
@@ -200,10 +215,11 @@ public class AWSStatsService extends StatelessService {
                 respBody.statsList.add(statsData.statsResponse);
                 service.sendRequest(Operation
                         .createPatch(
-                            UriUtils.buildUri(service.getHost(),
-                                    statsData.statsRequest.parentTaskLink))
+                                UriUtils.buildUri(service.getHost(),
+                                        statsData.statsRequest.parentTaskLink))
                         .setBody(respBody));
             }
         }
+
     }
 }

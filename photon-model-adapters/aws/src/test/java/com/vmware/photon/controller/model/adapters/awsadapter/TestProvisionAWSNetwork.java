@@ -16,6 +16,8 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.getExecutor;
+
 import java.net.URI;
 import java.util.Date;
 import java.util.concurrent.TimeoutException;
@@ -89,7 +91,6 @@ public class TestProvisionAWSNetwork {
         if (this.host == null) {
             return;
         }
-
         this.host.tearDownInProcessPeers();
         this.host.toggleNegativeTestMode(false);
         this.host.tearDown();
@@ -186,7 +187,8 @@ public class TestProvisionAWSNetwork {
         NetworkState net = getNetworkState(networkDescriptionLink);
 
         AWSNetworkService netSVC = new AWSNetworkService();
-        AmazonEC2AsyncClient client = AWSUtils.getAsyncClient(creds,this.region,false);
+        AmazonEC2AsyncClient client = AWSUtils.getAsyncClient(creds, this.region, false,
+                getExecutor());
         // if any artifact is not present then an error will be thrown
         assertNotNull(netSVC.getVPC(net.customProperties.get(AWSNetworkService.VPC_ID), client));
         assertNotNull(netSVC.getInternetGateway(net.customProperties.get(AWSNetworkService.GATEWAY_ID), client));

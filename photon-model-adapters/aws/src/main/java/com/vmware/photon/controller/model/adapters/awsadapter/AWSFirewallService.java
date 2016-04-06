@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,9 +73,8 @@ public class AWSFirewallService extends StatelessService {
      * Firewall request stages.
      */
     public static class AWSFirewallRequestState {
-
-        transient Operation fwOperation;
         public AmazonEC2AsyncClient client;
+        transient Operation fwOperation;
         public AuthCredentialsServiceState credentials;
         public FirewallInstanceRequest firewallRequest;
         public FirewallState firewall;
@@ -118,13 +119,16 @@ public class AWSFirewallService extends StatelessService {
             getCredentials(requestState, FirewallStage.AWS_CLIENT);
             break;
         case AWS_CLIENT:
-            try {
-                requestState.client = AWSUtils.getAsyncClient(
-                        requestState.credentials,
-                        requestState.firewall.regionID, false);
-            } catch (Throwable e) {
-                handleFailure(requestState, e);
-                break;
+            if (requestState.client == null) {
+                try {
+                    requestState.client = AWSUtils.getAsyncClient(
+                            requestState.credentials,
+                            requestState.firewall.regionID, false,
+                            getHost().allocateExecutor(this));
+                } catch (Throwable e) {
+                    handleFailure(requestState, e);
+                    break;
+                }
             }
             if (requestState.firewallRequest.requestType == FirewallInstanceRequest.InstanceRequestType.CREATE) {
                 requestState.stage = FirewallStage.PROVISION_SECURITY_GROUP;
@@ -157,6 +161,7 @@ public class AWSFirewallService extends StatelessService {
                     requestState, FirewallStage.FINISHED);
             break;
         case FAILED:
+            cleanupEC2ClientResources(requestState.client);
             if (requestState.firewallRequest.provisioningTaskReference != null) {
                 AdapterUtils.sendFailurePatchToTask(this,
                         requestState.firewallRequest.provisioningTaskReference,
@@ -166,6 +171,7 @@ public class AWSFirewallService extends StatelessService {
             }
             break;
         case FINISHED:
+            cleanupEC2ClientResources(requestState.client);
             requestState.fwOperation.complete();
             AdapterUtils.sendNetworkFinishPatch(this,
                     requestState.firewallRequest.provisioningTaskReference);
@@ -255,30 +261,31 @@ public class AWSFirewallService extends StatelessService {
             FirewallStage next) {
         sendRequest(Operation.createGet(
                 requestState.firewallRequest.firewallReference).setCompletion(
-                    (o, e) -> {
-                        if (e != null) {
-                            requestState.stage = FirewallStage.FAILED;
-                            requestState.error = e;
+                        (o, e) -> {
+                            if (e != null) {
+                                requestState.stage = FirewallStage.FAILED;
+                                requestState.error = e;
+                                handleStages(requestState);
+                                return;
+                            }
+                            requestState.firewall = o.getBody(FirewallState.class);
+                            requestState.stage = next;
                             handleStages(requestState);
-                            return;
-                        }
-                        requestState.firewall = o.getBody(FirewallState.class);
-                        requestState.stage = next;
-                        handleStages(requestState);
-                    }));
+                        }));
     }
 
     /*
-     * method will create new or validate existing security group has the
-     * necessary settings for CM to function. It will return the security group
-     * id that is required during instance provisioning.
+     * method will create new or validate existing security group has the necessary settings for CM
+     * to function. It will return the security group id that is required during instance
+     * provisioning.
      */
     public String allocateSecurityGroup(AWSAllocation aws) {
         String groupId;
         SecurityGroup group;
 
         // use the security group provided in the description properties
-        String sgId = getFromCustomProperties(aws.child.description, AWSConstants.AWS_SECURITY_GROUP_ID);
+        String sgId = getFromCustomProperties(aws.child.description,
+                AWSConstants.AWS_SECURITY_GROUP_ID);
         if (sgId != null) {
             return sgId;
         }
@@ -333,7 +340,8 @@ public class AWSFirewallService extends StatelessService {
     }
 
     private String getSubnetFromDescription(AWSAllocation aws) {
-        String subnetId = getFromCustomProperties(aws.child.description, AWSConstants.AWS_SUBNET_ID);
+        String subnetId = getFromCustomProperties(aws.child.description,
+                AWSConstants.AWS_SUBNET_ID);
 
         if (subnetId != null) {
             AWSNetworkService netSvc = new AWSNetworkService();
@@ -344,7 +352,8 @@ public class AWSFirewallService extends StatelessService {
         return null;
     }
 
-    private String getFromCustomProperties(ComputeDescriptionService.ComputeDescription description, String key) {
+    private String getFromCustomProperties(ComputeDescriptionService.ComputeDescription description,
+            String key) {
         if (description == null || description.customProperties == null) {
             return null;
         }
@@ -391,7 +400,7 @@ public class AWSFirewallService extends StatelessService {
     }
 
     public String createSecurityGroup(AmazonEC2AsyncClient client, String name,
-                                      String description, String vpcId) {
+            String description, String vpcId) {
 
         CreateSecurityGroupRequest req = new CreateSecurityGroupRequest()
                 .withDescription(description)

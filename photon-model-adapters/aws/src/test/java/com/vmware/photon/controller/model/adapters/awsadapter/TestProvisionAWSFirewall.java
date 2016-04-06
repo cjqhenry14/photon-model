@@ -16,6 +16,8 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.getExecutor;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
@@ -36,6 +38,7 @@ import com.vmware.photon.controller.model.resources.ResourcePoolService.Resource
 import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskService.ProvisionFirewallTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
+
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceHost;
@@ -46,18 +49,16 @@ import com.vmware.xenon.common.test.VerificationHost;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 import com.vmware.xenon.services.common.TenantService;
 
-public class TestProvisionAWSFirewall  {
+public class TestProvisionAWSFirewall {
 
     /*
-    * This test requires the following 3 command line variables.
-    * If they are not present the tests will be ignored.
-    * Pass them into the test with the -Dxenon.variable=value syntax
-    * i.e -Dxenon.subnet="10.1.0.0/16"
-    *
-    * privateKey & privateKeyId are credentials to an AWS VPC account
-    * region is the ec2 region where the tests should be run (us-east-1)
-    * subnet is the RFC-1918 subnet of the default VPC
-    */
+     * This test requires the following 3 command line variables. If they are not present the tests
+     * will be ignored. Pass them into the test with the -Dxenon.variable=value syntax i.e
+     * -Dxenon.subnet="10.1.0.0/16"
+     *
+     * privateKey & privateKeyId are credentials to an AWS VPC account region is the ec2 region
+     * where the tests should be run (us-east-1) subnet is the RFC-1918 subnet of the default VPC
+     */
     public String privateKey;
     public String privateKeyId;
     public String region;
@@ -66,13 +67,13 @@ public class TestProvisionAWSFirewall  {
     private VerificationHost host;
     private URI provisionFirewallFactory;
 
-
     @Before
     public void setUp() throws Exception {
         CommandLineArgumentParser.parseFromProperties(this);
 
         // ignore if any of the required properties are missing
-        org.junit.Assume.assumeTrue(TestUtils.isNull(this.privateKey, this.privateKeyId, this.region, this.subnet));
+        org.junit.Assume.assumeTrue(
+                TestUtils.isNull(this.privateKey, this.privateKeyId, this.region, this.subnet));
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
@@ -82,7 +83,8 @@ public class TestProvisionAWSFirewall  {
                     Operation.createPost(UriUtils.buildUri(host, AWSFirewallService.class)),
                     new AWSFirewallService());
 
-            this.provisionFirewallFactory = UriUtils.buildUri(this.host,ProvisionFirewallTaskService.FACTORY_LINK);
+            this.provisionFirewallFactory = UriUtils.buildUri(this.host,
+                    ProvisionFirewallTaskService.FACTORY_LINK);
         } catch (Throwable e) {
             throw new Exception(e);
         }
@@ -93,7 +95,6 @@ public class TestProvisionAWSFirewall  {
         if (this.host == null) {
             return;
         }
-
         this.host.tearDownInProcessPeers();
         this.host.toggleNegativeTestMode(false);
         this.host.tearDown();
@@ -101,21 +102,27 @@ public class TestProvisionAWSFirewall  {
 
     @Test
     public void testProvisionAWSFirewall() throws Throwable {
-        // first create network service
-        Operation response = new Operation();
-        NetworkState initialState = TestUtils.buildNetworkState(this.host);
-        TestUtils.postNetwork(this.host, initialState, response);
-        NetworkState networkState = response.getBody(NetworkState.class);
-
         // create credentials
         Operation authResponse = new Operation();
-        TestUtils.postCredentials(this.host,authResponse,this.privateKey,this.privateKeyId);
+        TestUtils.postCredentials(this.host, authResponse, this.privateKey, this.privateKeyId);
         AuthCredentialsServiceState creds = authResponse.getBody(AuthCredentialsServiceState.class);
 
         // create resource pool
         Operation poolResponse = new Operation();
-        TestUtils.postResourcePool(this.host,poolResponse);
+        TestUtils.postResourcePool(this.host, poolResponse);
         ResourcePoolState pool = poolResponse.getBody(ResourcePoolState.class);
+
+        // first create network service
+        Operation response = new Operation();
+        NetworkState initialState = TestUtils.buildNetworkState(this.host);
+        initialState.authCredentialsLink = creds.documentSelfLink;
+        initialState.resourcePoolLink = pool.documentSelfLink;
+        initialState.instanceAdapterReference = UriUtils.buildUri(ServiceHost.LOCAL_HOST,
+                this.host.getPort(),
+                AWSUriPaths.AWS_FIREWALL_SERVICE,
+                null);
+        TestUtils.postNetwork(this.host, initialState, response);
+        NetworkState networkState = response.getBody(NetworkState.class);
 
         // create fw service
         Operation fwResponse = new Operation();
@@ -133,9 +140,8 @@ public class TestProvisionAWSFirewall  {
                 AWSUriPaths.AWS_FIREWALL_SERVICE,
                 null);
 
-        TestUtils.postFirewall(this.host,fwInitialState,fwResponse);
+        TestUtils.postFirewall(this.host, fwInitialState, fwResponse);
         FirewallState firewallState = fwResponse.getBody(FirewallState.class);
-
 
         // set up firewall task state
         ProvisionFirewallTaskState task = new ProvisionFirewallTaskState();
@@ -148,7 +154,6 @@ public class TestProvisionAWSFirewall  {
         waitForTaskCompletion(this.host, UriUtils.buildUri(this.host, ps.documentSelfLink));
         validateAWSArtifacts(firewallState.documentSelfLink, creds);
 
-
         // reuse previous task, but switch to a delete
         task.requestType = FirewallInstanceRequest.InstanceRequestType.DELETE;
         Operation remove = new Operation();
@@ -158,29 +163,34 @@ public class TestProvisionAWSFirewall  {
 
         // verify custom property is now set to no value
         FirewallState removedFW = getFirewallState(firewallState.documentSelfLink);
-        assertTrue(removedFW.customProperties.get(AWSFirewallService.SECURITY_GROUP_ID).equalsIgnoreCase(AWSUtils.NO_VALUE));
+        assertTrue(removedFW.customProperties.get(AWSFirewallService.SECURITY_GROUP_ID)
+                .equalsIgnoreCase(AWSUtils.NO_VALUE));
 
     }
 
-
     @Test
     public void testInvalidAuthAWSFirewall() throws Throwable {
-        // first create network service
-        Operation response = new Operation();
-        NetworkState initialState = TestUtils.buildNetworkState(this.host);
-        TestUtils.postNetwork(this.host, initialState, response);
-        NetworkState networkState = response.getBody(NetworkState.class);
-
-
         // create credentials
         Operation authResponse = new Operation();
-        TestUtils.postCredentials(this.host,authResponse,this.privateKey,"invalid");
+        TestUtils.postCredentials(this.host, authResponse, this.privateKey, "invalid");
         AuthCredentialsServiceState creds = authResponse.getBody(AuthCredentialsServiceState.class);
 
         // create resource pool
         Operation poolResponse = new Operation();
-        TestUtils.postResourcePool(this.host,poolResponse);
+        TestUtils.postResourcePool(this.host, poolResponse);
         ResourcePoolState pool = poolResponse.getBody(ResourcePoolState.class);
+
+        // first create network service
+        Operation response = new Operation();
+        NetworkState initialState = TestUtils.buildNetworkState(this.host);
+        initialState.authCredentialsLink = creds.documentSelfLink;
+        initialState.resourcePoolLink = pool.documentSelfLink;
+        initialState.instanceAdapterReference = UriUtils.buildUri(ServiceHost.LOCAL_HOST,
+                this.host.getPort(),
+                AWSUriPaths.AWS_FIREWALL_SERVICE,
+                null);
+        TestUtils.postNetwork(this.host, initialState, response);
+        NetworkState networkState = response.getBody(NetworkState.class);
 
         // create fw service
         Operation fwResponse = new Operation();
@@ -196,9 +206,8 @@ public class TestProvisionAWSFirewall  {
                 AWSUriPaths.AWS_FIREWALL_SERVICE,
                 null);
 
-        TestUtils.postFirewall(this.host,fwInitialState,fwResponse);
+        TestUtils.postFirewall(this.host, fwInitialState, fwResponse);
         FirewallState firewallState = fwResponse.getBody(FirewallState.class);
-
 
         // set up firewall task state
         ProvisionFirewallTaskState task = new ProvisionFirewallTaskState();
@@ -208,18 +217,21 @@ public class TestProvisionAWSFirewall  {
         Operation provision = new Operation();
         provisionFirewall(task, provision);
         ProvisionFirewallTaskState ps = provision.getBody(ProvisionFirewallTaskState.class);
-        waitForTaskFailure(this.host,UriUtils.buildUri(this.host, ps.documentSelfLink));
+        waitForTaskFailure(this.host, UriUtils.buildUri(this.host, ps.documentSelfLink));
 
     }
 
-    private void validateAWSArtifacts(String firewallDescriptionLink, AuthCredentialsServiceState creds) throws Throwable {
+    private void validateAWSArtifacts(String firewallDescriptionLink,
+            AuthCredentialsServiceState creds) throws Throwable {
 
         FirewallState fw = getFirewallState(firewallDescriptionLink);
 
         AWSFirewallService fwSVC = new AWSFirewallService();
-        AmazonEC2AsyncClient client = AWSUtils.getAsyncClient(creds,this.region,false);
+        AmazonEC2AsyncClient client = AWSUtils.getAsyncClient(creds, this.region, false,
+                getExecutor());
         // if any artifact is not present then an error will be thrown
-        assertNotNull(fwSVC.getSecurityGroupByID(client, fw.customProperties.get(AWSFirewallService.SECURITY_GROUP_ID)));
+        assertNotNull(fwSVC.getSecurityGroupByID(client,
+                fw.customProperties.get(AWSFirewallService.SECURITY_GROUP_ID)));
     }
 
     private FirewallState getFirewallState(String firewallLink) throws Throwable {
@@ -228,7 +240,8 @@ public class TestProvisionAWSFirewall  {
         return response.getBody(FirewallState.class);
     }
 
-    private void provisionFirewall(ProvisionFirewallTaskState ps, Operation response) throws Throwable {
+    private void provisionFirewall(ProvisionFirewallTaskState ps, Operation response)
+            throws Throwable {
         host.testStart(1);
         Operation startPost = Operation.createPost(this.provisionFirewallFactory)
                 .setBody(ps)
@@ -245,10 +258,10 @@ public class TestProvisionAWSFirewall  {
 
     }
 
-    private void getFirewallState(String firewallLink,Operation response) throws Throwable {
+    private void getFirewallState(String firewallLink, Operation response) throws Throwable {
 
         host.testStart(1);
-        URI firewallURI = UriUtils.buildUri(this.host,firewallLink);
+        URI firewallURI = UriUtils.buildUri(this.host, firewallLink);
         Operation startGet = Operation.createGet(firewallURI)
                 .setCompletion((o, e) -> {
                     if (e != null) {
@@ -286,7 +299,8 @@ public class TestProvisionAWSFirewall  {
                     provisioningTaskUri);
 
             if (provisioningTask.taskInfo.stage == TaskState.TaskStage.FAILED) {
-                throw new IllegalStateException("Task failed:" + Utils.toJsonHtml(provisioningTask));
+                throw new IllegalStateException(
+                        "Task failed:" + Utils.toJsonHtml(provisioningTask));
             }
 
             if (provisioningTask.taskInfo.stage == TaskState.TaskStage.FINISHED) {
@@ -340,4 +354,3 @@ public class TestProvisionAWSFirewall  {
     }
 
 }
-

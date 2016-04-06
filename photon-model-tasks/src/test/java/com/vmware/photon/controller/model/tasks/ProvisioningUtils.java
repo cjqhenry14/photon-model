@@ -13,7 +13,6 @@
 
 package com.vmware.photon.controller.model.tasks;
 
-
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
@@ -25,7 +24,9 @@ import java.util.concurrent.TimeoutException;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.DiskService;
+import com.vmware.photon.controller.model.resources.FirewallService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
+import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
@@ -53,6 +54,16 @@ public class ProvisioningUtils {
                 Operation.createPost(host, ComputeService.FACTORY_LINK),
                 ComputeService.createFactory());
         serviceSelfLinks.add(ComputeService.FACTORY_LINK);
+
+        host.startService(
+                Operation.createPost(host, NetworkService.FACTORY_LINK),
+                NetworkService.createFactory());
+        serviceSelfLinks.add(NetworkService.FACTORY_LINK);
+
+        host.startService(
+                Operation.createPost(host, FirewallService.FACTORY_LINK),
+                FirewallService.createFactory());
+        serviceSelfLinks.add(FirewallService.FACTORY_LINK);
 
         host.startService(
                 Operation.createPost(host, ResourcePoolService.FACTORY_LINK),
@@ -124,42 +135,59 @@ public class ProvisioningUtils {
                 ResourceDescriptionService.createFactory());
         serviceSelfLinks.add(ResourceDescriptionService.FACTORY_LINK);
 
-
         host.startService(
                 Operation.createPost(host,
                         ProvisionFirewallTaskService.FACTORY_LINK),
                 ProvisionFirewallTaskService.createFactory());
         serviceSelfLinks.add(ProvisionFirewallTaskService.FACTORY_LINK);
 
-        waitForServiceStart(host, serviceSelfLinks.toArray(new String[]{}));
+        waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
 
         host.resetSystemAuthorizationContext();
     }
 
-    public static void waitForServiceStart(VerificationHost host, String... selfLinks) throws Throwable {
+    public static void waitForServiceStart(VerificationHost host, String... selfLinks)
+            throws Throwable {
         host.testStart(selfLinks.length);
         host.registerForServiceAvailability(host.getCompletion(),
                 selfLinks);
         host.testWait();
     }
 
-    public static ServiceDocumentQueryResult queryComputeInstances(VerificationHost host, int desiredCount)
+    public static ServiceDocumentQueryResult queryComputeInstances(VerificationHost host,
+            int desiredCount)
             throws Throwable {
         return queryComputeInstances(host, host.getUri(), desiredCount);
     }
 
-    public static ServiceDocumentQueryResult queryComputeInstances(VerificationHost host, URI remoteUri, int desiredCount)
+    public static ServiceDocumentQueryResult queryComputeInstances(VerificationHost host,
+            URI remoteUri, int desiredCount)
             throws Throwable {
         Date expiration = host.getTestExpiration();
+        ServiceDocumentQueryResult res;
         do {
-            ServiceDocumentQueryResult res = host.getFactoryState(UriUtils
+            res = host.getFactoryState(UriUtils
                     .buildExpandLinksQueryUri(UriUtils.buildUri(remoteUri,
                             ComputeService.FACTORY_LINK)));
             if (res.documents.size() == desiredCount) {
                 return res;
             }
         } while (new Date().before(expiration));
-        throw new TimeoutException();
+        throw new TimeoutException("Desired number of compute states not found. Expected "
+                + desiredCount + "Found " + res.documents.size());
+    }
+
+    public static ServiceDocumentQueryResult queryComputeDescriptions(VerificationHost host,
+            int desiredCount) throws Throwable {
+        ServiceDocumentQueryResult res;
+        res = host.getFactoryState(UriUtils
+                .buildExpandLinksQueryUri(UriUtils.buildUri(host.getUri(),
+                        ComputeDescriptionService.FACTORY_LINK)));
+        if (res.documents.size() == desiredCount) {
+            return res;
+        }
+        throw new Exception("Desired number of compute descriptions not found. Expected "
+                + desiredCount + "Found " + res.documents.size());
     }
 
     public static void waitForTaskCompletion(VerificationHost host,
@@ -180,7 +208,8 @@ public class ProvisioningUtils {
                 TaskServiceState currentState = e.getValue();
 
                 if (currentState.taskInfo.stage == TaskState.TaskStage.FAILED) {
-                    throw new IllegalStateException("Task failed:" + Utils.toJsonHtml(currentState));
+                    throw new IllegalStateException(
+                            "Task failed:" + Utils.toJsonHtml(currentState));
                 }
 
                 if (currentState.taskInfo.stage != TaskState.TaskStage.FINISHED) {
@@ -202,4 +231,5 @@ public class ProvisioningUtils {
 
         throw new TimeoutException("Some tasks never finished");
     }
+
 }

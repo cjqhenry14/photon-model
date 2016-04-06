@@ -79,6 +79,12 @@ public class ResourceEnumerationTaskService extends TaskService<ResourceEnumerat
          * A list of tenant links which can access this task.
          */
         public List<String> tenantLinks;
+        /**
+         * Value indicating whether the service should treat this as a mock request
+         * and complete the work flow without involving the underlying compute host
+         * infrastructure.
+         */
+        public boolean isMockRequest;
     }
 
     public ResourceEnumerationTaskService() {
@@ -109,6 +115,7 @@ public class ResourceEnumerationTaskService extends TaskService<ResourceEnumerat
             req.enumerationAction = state.enumerationAction;
             req.enumerationTaskReference = UriUtils.buildUri(getHost(),
                     state.documentSelfLink);
+            req.isMockRequest = state.isMockRequest;
 
             // Patch the enumerate service URI from the CHD
             Operation.CompletionHandler descriptionCompletion = (o, ex) -> {

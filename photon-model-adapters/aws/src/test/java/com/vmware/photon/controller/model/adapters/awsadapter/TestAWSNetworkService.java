@@ -106,19 +106,22 @@ public class TestAWSNetworkService {
      */
     @Test
     public void testVPCAndSubnet() throws Throwable {
-        String vpcID = this.netSvc.createVPC(this.subnet,this.aws.amazonEC2Client);
+        String vpcID = this.netSvc.createVPC(this.subnet, this.aws.amazonEC2Client);
         assertTrue(vpcID != null);
 
-        String subnetID = this.netSvc.createSubnet(this.subnet,vpcID,this.aws.amazonEC2Client);
+        String subnetID = this.netSvc.createSubnet(this.subnet, vpcID, this.aws.amazonEC2Client);
         assertTrue(subnetID != null);
 
         // ensure getters works..
-        assertTrue(this.netSvc.getVPC(vpcID,this.aws.amazonEC2Client).getVpcId().equalsIgnoreCase(vpcID));
-        assertTrue(this.netSvc.getSubnet(subnetID, this.aws.amazonEC2Client).getSubnetId().equalsIgnoreCase(subnetID));
+        assertTrue(this.netSvc.getVPC(vpcID, this.aws.amazonEC2Client).getVpcId()
+                .equalsIgnoreCase(vpcID));
+        assertTrue(
+                this.netSvc.getSubnet(subnetID, this.aws.amazonEC2Client).getSubnetId()
+                        .equalsIgnoreCase(subnetID));
 
         // delete subnet / vpc
-        this.netSvc.deleteSubnet(subnetID,this.aws.amazonEC2Client);
-        this.netSvc.deleteVPC(vpcID,this.aws.amazonEC2Client);
+        this.netSvc.deleteSubnet(subnetID, this.aws.amazonEC2Client);
+        this.netSvc.deleteVPC(vpcID, this.aws.amazonEC2Client);
 
         // verify vpc deletion
         // Since only one exception can be thrown in a test we will only verify the removal
@@ -126,22 +129,25 @@ public class TestAWSNetworkService {
         // is gone then it's safe to say the subnet is as well
         expectedEx.expect(AmazonServiceException.class);
         expectedEx.expectMessage("InvalidVpcID.NotFound");
-        this.netSvc.getVPC(vpcID,this.aws.amazonEC2Client);
+        this.netSvc.getVPC(vpcID, this.aws.amazonEC2Client);
     }
 
     @Test
     public void testCreateInternetGateway() throws Throwable {
         String gatewayID = this.netSvc.createInternetGateway(this.aws.amazonEC2Client);
         assertTrue(gatewayID != null);
-        assertTrue(this.netSvc.getInternetGateway(gatewayID, this.aws.amazonEC2Client).getInternetGatewayId().equalsIgnoreCase(gatewayID));
-        this.netSvc.deleteInternetGateway(gatewayID,this.aws.amazonEC2Client);
+        assertTrue(this.netSvc.getInternetGateway(gatewayID, this.aws.amazonEC2Client)
+                .getInternetGatewayId()
+                .equalsIgnoreCase(gatewayID));
+        this.netSvc.deleteInternetGateway(gatewayID, this.aws.amazonEC2Client);
     }
 
     @Test
     public void testGetMainRouteTable() throws Throwable {
         Vpc defVPC = this.netSvc.getDefaultVPC(this.aws.amazonEC2Client);
         assertTrue(defVPC != null);
-        RouteTable routeTable = this.netSvc.getMainRouteTable(defVPC.getVpcId(), this.aws.amazonEC2Client);
+        RouteTable routeTable = this.netSvc.getMainRouteTable(defVPC.getVpcId(),
+                this.aws.amazonEC2Client);
         assertTrue(routeTable != null);
     }
 
@@ -162,12 +168,12 @@ public class TestAWSNetworkService {
 
         String gatewayID = this.netSvc.createInternetGateway(this.aws.amazonEC2Client);
         assertTrue(gatewayID != null);
-        String vpcID = this.netSvc.createVPC(this.subnet,this.aws.amazonEC2Client);
+        String vpcID = this.netSvc.createVPC(this.subnet, this.aws.amazonEC2Client);
         assertTrue(vpcID != null);
-        String subnetID = this.netSvc.createSubnet(this.subnet,vpcID,this.aws.amazonEC2Client);
+        String subnetID = this.netSvc.createSubnet(this.subnet, vpcID, this.aws.amazonEC2Client);
 
         this.netSvc.attachInternetGateway(vpcID, gatewayID, this.aws.amazonEC2Client);
-        InternetGateway gw = this.netSvc.getInternetGateway(gatewayID,this.aws.amazonEC2Client);
+        InternetGateway gw = this.netSvc.getInternetGateway(gatewayID, this.aws.amazonEC2Client);
         List<InternetGatewayAttachment> attachments = gw.getAttachments();
         // ensure we are attached to newly created vpc
         for (InternetGatewayAttachment attachment : attachments) {
@@ -177,14 +183,15 @@ public class TestAWSNetworkService {
             }
         }
         assertTrue(attached);
-        RouteTable routeTable = this.netSvc.getMainRouteTable(vpcID,this.aws.amazonEC2Client);
-        this.netSvc.createInternetRoute(gatewayID, routeTable.getRouteTableId(), "0.0.0.0/0", this.aws.amazonEC2Client);
+        RouteTable routeTable = this.netSvc.getMainRouteTable(vpcID, this.aws.amazonEC2Client);
+        this.netSvc.createInternetRoute(gatewayID, routeTable.getRouteTableId(), "0.0.0.0/0",
+                this.aws.amazonEC2Client);
 
         //remove resources
         this.netSvc.detachInternetGateway(vpcID, gatewayID, this.aws.amazonEC2Client);
-        this.netSvc.deleteInternetGateway(gatewayID,this.aws.amazonEC2Client);
-        this.netSvc.deleteSubnet(subnetID,this.aws.amazonEC2Client);
-        this.netSvc.deleteVPC(vpcID,this.aws.amazonEC2Client);
+        this.netSvc.deleteInternetGateway(gatewayID, this.aws.amazonEC2Client);
+        this.netSvc.deleteSubnet(subnetID, this.aws.amazonEC2Client);
+        this.netSvc.deleteVPC(vpcID, this.aws.amazonEC2Client);
     }
 
 
@@ -192,7 +199,7 @@ public class TestAWSNetworkService {
     public void TestGetInvalidVPC() throws Throwable {
         expectedEx.expect(AmazonServiceException.class);
         expectedEx.expectMessage("InvalidVpcID.NotFound");
-        this.netSvc.getVPC("1234",this.aws.amazonEC2Client);
+        this.netSvc.getVPC("1234", this.aws.amazonEC2Client);
     }
 
     @Test

@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -39,6 +41,7 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.OperationContext;
@@ -82,22 +85,20 @@ public class AWSInstanceService extends StatelessService {
             break;
         default:
             op.complete();
-            if (aws.computeRequest.isMockRequest && aws.computeRequest.requestType
-                    == ComputeInstanceRequest.InstanceRequestType.CREATE) {
+            if (aws.computeRequest.isMockRequest
+                    && aws.computeRequest.requestType == ComputeInstanceRequest.InstanceRequestType.CREATE) {
                 AdapterUtils.sendPatchToTask(this, aws.computeRequest.provisioningTaskReference);
                 return;
             }
             handleAllocation(aws);
         }
     }
-
     /*
-     * method will act much like handlePatch, but without persistence as this is
-     * a stateless service. Each call to the service will result in a
-     * synchronous execution of the stages below
+     * method will act much like handlePatch, but without persistence as this is a stateless
+     * service. Each call to the service will result in a synchronous execution of the stages below
      *
-     * Each stage is responsible for setting the next stage on success -- the
-     * next stage is passed into action methods
+     * Each stage is responsible for setting the next stage on success -- the next stage is passed
+     * into action methods
      */
     private void handleAllocation(AWSAllocation aws) {
         switch (aws.stage) {
@@ -115,7 +116,7 @@ public class AWSInstanceService extends StatelessService {
                 try {
                     aws.amazonEC2Client = AWSUtils.getAsyncClient(
                             aws.parentAuth, getRequestRegionId(aws),
-                            aws.computeRequest.isMockRequest);
+                            aws.computeRequest.isMockRequest, getHost().allocateExecutor(this));
                 } catch (Throwable e) {
                     logSevere(e);
                     aws.error = e;
@@ -160,6 +161,7 @@ public class AWSInstanceService extends StatelessService {
             createInstance(aws);
             break;
         case ERROR:
+            cleanupEC2ClientResources(aws.amazonEC2Client);
             if (aws.computeRequest.provisioningTaskReference != null) {
                 AdapterUtils.sendFailurePatchToTask(this,
                         aws.computeRequest.provisioningTaskReference, aws.error);
@@ -168,19 +170,19 @@ public class AWSInstanceService extends StatelessService {
             }
             break;
         case DONE:
+            cleanupEC2ClientResources(aws.amazonEC2Client);
             break;
         default:
             logSevere("Unhandled stage: %s", aws.stage.toString());
             break;
         }
     }
-
     /*
-     * method will be responsible for getting the compute description for the
-     * requested resource and then passing to the next step
+     * method will be responsible for getting the compute description for the requested resource and
+     * then passing to the next step
      */
     private void getVMDescription(AWSAllocation aws, AWSStages next) {
-        Consumer<Operation> onSuccess =  (op) -> {
+        Consumer<Operation> onSuccess = (op) -> {
             aws.child = op.getBody(ComputeStateWithDescription.class);
             aws.stage = next;
             handleAllocation(aws);
@@ -195,13 +197,13 @@ public class AWSInstanceService extends StatelessService {
      * Method will get the service for the identified link
      */
     private void getParentDescription(AWSAllocation aws, AWSStages next) {
-        Consumer<Operation> onSuccess =  (op) -> {
+        Consumer<Operation> onSuccess = (op) -> {
             aws.parent = op.getBody(ComputeStateWithDescription.class);
             aws.stage = next;
             handleAllocation(aws);
         };
-        URI parentURI = UriUtils.buildExpandLinksQueryUri
-                (UriUtils.buildUri(this.getHost(), aws.child.parentLink));
+        URI parentURI = UriUtils
+                .buildExpandLinksQueryUri(UriUtils.buildUri(this.getHost(), aws.child.parentLink));
         AdapterUtils.getServiceState(this, parentURI, onSuccess, getFailureConsumer(aws));
     }
 
@@ -213,7 +215,7 @@ public class AWSInstanceService extends StatelessService {
             parentAuthLink = aws.parent.description.authCredentialsLink;
         }
         URI authUri = UriUtils.buildUri(this.getHost(), parentAuthLink);
-        Consumer<Operation> onSuccess =  (op) -> {
+        Consumer<Operation> onSuccess = (op) -> {
             aws.parentAuth = op.getBody(AuthCredentialsServiceState.class);
             aws.stage = next;
             handleAllocation(aws);
@@ -222,7 +224,7 @@ public class AWSInstanceService extends StatelessService {
     }
 
     private Consumer<Throwable> getFailureConsumer(AWSAllocation aws) {
-        return  (t) -> {
+        return (t) -> {
             aws.stage = AWSStages.ERROR;
             aws.error = t;
             handleAllocation(aws);
@@ -593,11 +595,10 @@ public class AWSInstanceService extends StatelessService {
     }
 
     /*
-     * Simple helper method to get the region id from either the compute request
-     * or the child description.
+     * Simple helper method to get the region id from either the compute request or the child
+     * description.
      *
-     * The child description will be null during a credential validation
-     * operation.
+     * The child description will be null during a credential validation operation.
      */
     private String getRequestRegionId(AWSAllocation aws) {
         String regionId;
@@ -609,9 +610,9 @@ public class AWSInstanceService extends StatelessService {
         return regionId;
     }
 
-   /*
-    * Helper method to get amazon subnet id provided in the description custom properties
-    */
+    /*
+     * Helper method to get amazon subnet id provided in the description custom properties
+     */
     private String getSubnetId(AWSAllocation aws) {
         if (aws.child != null
                 && aws.child.description != null

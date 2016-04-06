@@ -13,14 +13,14 @@
 
 package com.vmware.photon.controller.model.tasks;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.UUID;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +35,6 @@ import com.vmware.photon.controller.model.helpers.BaseModelTest;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionServiceTest;
 import com.vmware.photon.controller.model.resources.ComputeService;
-
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
@@ -65,7 +64,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
         state.adapterManagementReference = new URI(
                 "http://adapterManagementReference");
         state.resourcePoolLink = "http://resourcePoolLink";
-        state.enumerationAction = EnumerationAction.RERESH;
+        state.enumerationAction = EnumerationAction.REFRESH;
         if (computeStateWithDescription != null) {
             state.computeDescriptionLink = computeStateWithDescription.descriptionLink;
             state.parentComputeLink = computeStateWithDescription.documentSelfLink;

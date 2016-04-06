@@ -31,5 +31,5 @@ public enum EnumerationAction {
     /**
      * Just refresh the resources once.
      */
-    RERESH
+    REFRESH
 }
