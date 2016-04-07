@@ -66,8 +66,8 @@ public class WaitForValues extends BaseHelper {
         ServiceContent serviceContent;
 
         try {
-            vimPort = this.connection.connect().getVimPort();
-            serviceContent = this.connection.connect().getServiceContent();
+            vimPort = this.connection.getVimPort();
+            serviceContent = this.connection.getServiceContent();
         } catch (Throwable cause) {
             throw new BaseHelper.HelperException(cause);
         }

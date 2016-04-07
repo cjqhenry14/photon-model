@@ -54,8 +54,8 @@ public class GetMoRef extends BaseHelper {
      */
     private void init() {
         try {
-            this.vimPort = this.connection.connect().getVimPort();
-            this.serviceContent = this.connection.connect().getServiceContent();
+            this.vimPort = this.connection.getVimPort();
+            this.serviceContent = this.connection.getServiceContent();
         } catch (Throwable cause) {
             throw new HelperException(cause);
         }

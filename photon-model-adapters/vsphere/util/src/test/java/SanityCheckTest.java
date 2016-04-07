@@ -11,6 +11,9 @@
  * specific language governing permissions and limitations under the License.
  */
 
+import java.net.URI;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -32,11 +35,12 @@ public class SanityCheckTest {
         String username = System.getProperty("vsphere.username");
         String password = System.getProperty("vsphere.password");
 
-        conn.setUrl(url);
+        conn.setURI(URI.create(url));
         conn.setUsername(username);
         conn.setPassword(password);
         conn.setIgnoreSslErrors(true);
 
+        conn.setRequestTimeout(30, TimeUnit.SECONDS);
         conn.connect();
 
         AboutInfo about = conn.getServiceContent().getAbout();

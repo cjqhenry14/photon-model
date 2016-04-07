@@ -20,7 +20,7 @@ public abstract class BaseHelper {
 
     public BaseHelper(final Connection connection) {
         try {
-            this.connection = connection.connect();
+            this.connection = connection;
         } catch (Throwable t) {
             throw new HelperException(t);
         }

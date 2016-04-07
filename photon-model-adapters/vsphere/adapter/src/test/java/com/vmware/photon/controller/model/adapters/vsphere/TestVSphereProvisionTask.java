@@ -1,0 +1,186 @@
+/*
+ * Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License.  You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed
+ * under the License is distributed on an "AS IS" BASIS, without warranties or
+ * conditions of any kind, EITHER EXPRESS OR IMPLIED.  See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
+package com.vmware.photon.controller.model.adapters.vsphere;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
+import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
+import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
+import com.vmware.photon.controller.model.resources.ResourcePoolService;
+import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
+import com.vmware.photon.controller.model.tasks.TestUtils;
+import com.vmware.xenon.common.BasicReusableHostTestCase;
+import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.services.common.AuthCredentialsService;
+import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
+
+/**
+ * Test to provision a VM instance and tear it down.
+ * The test exercises the vSphere instance adapter to create the VM.
+ *
+ * All public fields below can be specified via command line arguments
+ *
+ * If the 'isMock' flag is set to true the test runs the adapter in mock
+ * mode and does not actually create a VM. isMock is set to true if no {@link #vpshereUrl}
+ * is defined.
+
+ */
+public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
+
+    private static final String DEFAULT_AUTH_TYPE = "Username/Password";
+    public String vpshereUrl = "";
+    public String vpshereUsername = "";
+    public String vpsherePassword = "";
+
+    public boolean isMock = true;
+    // fields that are used across method calls, stash them as private fields
+    private ResourcePoolState resourcePool;
+
+    private AuthCredentialsServiceState auth;
+    private ComputeDescription computeDesc;
+    private ComputeState computeHost;
+
+    @Before
+    public void setUp() throws Throwable {
+        ProvisioningUtils.startProvisioningServices(this.host);
+        this.host.setTimeoutSeconds(600);
+        List<String> serviceSelfLinks = new ArrayList<>();
+
+        host.startService(
+                Operation.createPost(UriUtils.buildUri(host,
+                        VSphereAdapterInstanceService.class)),
+                new VSphereAdapterInstanceService());
+        serviceSelfLinks.add(VSphereAdapterInstanceService.SELF_LINK);
+
+        ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
+    }
+
+    @After
+    public void tearDown() throws InterruptedException {
+        if (this.host == null) {
+            return;
+        }
+
+        this.host.tearDownInProcessPeers();
+        this.host.toggleNegativeTestMode(false);
+        this.host.tearDown();
+    }
+
+    private ResourcePoolState createResourcePool()
+            throws Throwable {
+        ResourcePoolState inPool = new ResourcePoolState();
+        inPool.name = UUID.randomUUID().toString();
+        inPool.id = inPool.name;
+
+        inPool.minCpuCount = 1;
+        inPool.minMemoryBytes = 1024;
+
+        ResourcePoolState returnPool =
+                TestUtils.doPost(this.host, inPool, ResourcePoolState.class,
+                        UriUtils.buildUri(this.host, ResourcePoolService.FACTORY_LINK));
+
+        return returnPool;
+    }
+
+    @Test
+    public void testValidateCredentials() throws Throwable {
+        // Create a resource pool where the VM will be housed
+        resourcePool = createResourcePool();
+
+        auth = createAuth();
+        computeDesc = createComputeDescription();
+        computeHost = createComputeHost();
+
+        ComputeInstanceRequest request = new ComputeInstanceRequest();
+        request.authCredentialsLink = this.auth.documentSelfLink;
+        request.computeReference = computeHost.adapterManagementReference;
+        request.requestType = InstanceRequestType.VALIDATE_CREDENTIALS;
+
+        request.isMockRequest = vpshereUrl.equals("");
+
+        this.host.testStart(1);
+        Operation op = Operation
+                .createPatch(this.host, VSphereAdapterInstanceService.SELF_LINK)
+                .setBody(request)
+                .setCompletion((o, e) -> {
+                    if (e != null) {
+                        this.host.failIteration(e);
+                    } else {
+                        this.host.completeIteration();
+                    }
+                });
+
+        this.host.send(op);
+        this.host.testWait();
+    }
+
+    /**
+     * Create a compute host representing a vcenter server
+     */
+    private ComputeService.ComputeState createComputeHost() throws Throwable {
+        ComputeState computeState = new ComputeState();
+        computeState.id = UUID.randomUUID().toString();
+        computeState.documentSelfLink = computeState.id;
+        computeState.descriptionLink = computeDesc.documentSelfLink;
+        computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
+        computeState.adapterManagementReference = UriUtils.buildUri(vpshereUrl);
+
+        ComputeService.ComputeState returnState = TestUtils.doPost(this.host, computeState,
+                ComputeService.ComputeState.class,
+                UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
+        return returnState;
+    }
+
+    private AuthCredentialsServiceState createAuth() throws Throwable {
+        AuthCredentialsServiceState auth = new AuthCredentialsServiceState();
+        auth.type = DEFAULT_AUTH_TYPE;
+        auth.privateKeyId = vpshereUsername;
+        auth.privateKey = vpsherePassword;
+        auth.documentSelfLink = UUID.randomUUID().toString();
+
+        AuthCredentialsServiceState result = TestUtils
+                .doPost(this.host, auth, AuthCredentialsServiceState.class,
+                        UriUtils.buildUri(this.host, AuthCredentialsService.FACTORY_LINK));
+        return result;
+    }
+
+    private ComputeDescription createComputeDescription() throws Throwable {
+        ComputeDescription computeDesc = new ComputeDescription();
+
+        computeDesc.id = UUID.randomUUID().toString();
+        computeDesc.documentSelfLink = computeDesc.id;
+        computeDesc.supportedChildren = new ArrayList<>();
+        computeDesc.supportedChildren.add(ComputeType.VM_GUEST.name());
+        computeDesc.instanceAdapterReference = UriUtils
+                .buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
+        computeDesc.authCredentialsLink = this.auth.documentSelfLink;
+
+        return TestUtils.doPost(this.host, computeDesc,
+                ComputeDescription.class,
+                UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
+    }
+}

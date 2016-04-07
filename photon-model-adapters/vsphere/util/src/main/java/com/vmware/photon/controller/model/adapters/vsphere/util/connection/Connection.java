@@ -13,9 +13,10 @@
 
 package com.vmware.photon.controller.model.adapters.vsphere.util.connection;
 
-import java.net.URL;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.ServiceContent;
@@ -30,21 +31,9 @@ import com.vmware.vim25.VimService;
  *
  */
 public interface Connection {
-    String getUrl();
-
-    void setUrl(String url);
-
-    String getHost();
-
-    Integer getPort();
-
     String getUsername();
 
-    void setUsername(String username);
-
     String getPassword();
-
-    void setPassword(String password);
 
     VimService getVimService();
 
@@ -60,11 +49,20 @@ public interface Connection {
 
     ManagedObjectReference getServiceInstanceReference();
 
-    Connection connect();
+    URI getURI();
 
-    boolean isConnected();
+    /**
+     * 0 means no timeout. Default it JAX-WS provider specific.
+     * @param time
+     * @param unit
+     */
+    void setRequestTimeout(long time, TimeUnit unit);
 
-    Connection disconnect();
-
-    URL getURL();
+    /**
+     * Return request timeout.
+     * @param unit
+     * @return return -1 if timeout is not set, otherwise the value
+     * set by {@link #setRequestTimeout}
+     */
+    long getRequestTimeout(TimeUnit unit);
 }

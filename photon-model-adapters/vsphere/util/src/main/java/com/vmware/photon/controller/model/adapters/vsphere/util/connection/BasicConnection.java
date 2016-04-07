@@ -13,12 +13,11 @@
 
 package com.vmware.photon.controller.model.adapters.vsphere.util.connection;
 
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
-import javax.xml.datatype.XMLGregorianCalendar;
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.handler.MessageContext;
 
@@ -45,6 +44,7 @@ import com.vmware.vim25.VimService;
  */
 public class BasicConnection implements Connection {
     public static final String SERVICE_INSTANCE = "ServiceInstance";
+    private static final String REQUEST_TIMEOUT = "com.sun.xml.internal.ws.request.timeout";
     private VimService vimService;
     private VimPortType vimPort;
     private ServiceContent serviceContent;
@@ -53,31 +53,17 @@ public class BasicConnection implements Connection {
 
     private boolean ignoreSslErrors;
 
-    private URL url;
+    private URI uri;
     private String username;
     private String password = ""; // default password is empty since on rare occasion passwords are not set
     private Map<String, List<String>> headers;
+    private long requestTimeoutMillis = -1;
 
-    public String getUrl() {
-        return this.url.toString();
+    public void setURI(URI uri) {
+        this.uri = uri;
     }
 
-    public void setUrl(String url) {
-        try {
-            this.url = new URL(url);
-        } catch (MalformedURLException e) {
-            throw new IllegalArgumentException(e);
-        }
-    }
-
-    public String getHost() {
-        return this.url.getHost();
-    }
-
-    public Integer getPort() {
-        return this.url.getPort();
-    }
-
+    @Override
     public String getUsername() {
         return this.username;
     }
@@ -86,6 +72,7 @@ public class BasicConnection implements Connection {
         this.username = username;
     }
 
+    @Override
     public String getPassword() {
         return this.password;
     }
@@ -94,30 +81,37 @@ public class BasicConnection implements Connection {
         this.password = password;
     }
 
+    @Override
     public VimService getVimService() {
         return this.vimService;
     }
 
+    @Override
     public VimPortType getVimPort() {
         return this.vimPort;
     }
 
+    @Override
     public ServiceContent getServiceContent() {
         return this.serviceContent;
     }
 
+    @Override
     public UserSession getUserSession() {
         return this.userSession;
     }
 
+    @Override
     public String getServiceInstanceName() {
         return SERVICE_INSTANCE;
     }
 
+    @Override
     public Map<String, List<String>> getHeaders() {
         return this.headers;
     }
 
+    @Override
     public ManagedObjectReference getServiceInstanceReference() {
         if (this.svcInstRef == null) {
             ManagedObjectReference ref = new ManagedObjectReference();
@@ -128,30 +122,27 @@ public class BasicConnection implements Connection {
         return this.svcInstRef;
     }
 
-    public Connection connect() {
-        if (!isConnected()) {
-            try {
-                _connect();
-            } catch (Exception e) {
-                Throwable cause = (e.getCause() != null) ? e.getCause() : e;
-                throw new BasicConnectionException(
-                        "failed to connect: " + e.getMessage() + " : " + cause.getMessage(),
-                        cause);
-            }
+    public void connect() {
+        try {
+            _connect();
+        } catch (Exception e) {
+            Throwable cause = (e.getCause() != null) ? e.getCause() : e;
+            throw new BasicConnectionException(
+                    "failed to connect: " + e.getMessage() + " : " + cause.getMessage(), cause);
         }
-        return this;
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private void _connect() throws
-            RuntimeFaultFaultMsg, InvalidLocaleFaultMsg, InvalidLoginFaultMsg {
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private void _connect() throws RuntimeFaultFaultMsg, InvalidLocaleFaultMsg, InvalidLoginFaultMsg {
         this.vimService = new VimService();
         this.vimPort = this.vimService.getVimPort();
-        BindingProvider bindingProvider = (BindingProvider) this.vimPort;
+        BindingProvider bindingProvider = getBindingsProvider();
         Map<String, Object> requestContext = bindingProvider.getRequestContext();
 
-        requestContext.put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, this.url.toString());
+        requestContext.put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, this.uri.toString());
         requestContext.put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
+
+        updateRequestTimeout();
 
         if (this.ignoreSslErrors) {
             IgnoreSslErrors.ignoreErrors(bindingProvider);
@@ -170,43 +161,40 @@ public class BasicConnection implements Connection {
                 .getResponseContext().get(MessageContext.HTTP_RESPONSE_HEADERS);
     }
 
-    public boolean isConnected() {
-        if (this.userSession == null) {
-            return false;
+    private void updateRequestTimeout() {
+        if (this.requestTimeoutMillis > 0 && getBindingsProvider() != null) {
+            getBindingsProvider().getRequestContext().put(REQUEST_TIMEOUT, this.requestTimeoutMillis);
         }
-
-        XMLGregorianCalendar startedCalendar = this.userSession.getLastActiveTime();
-        long startTime = startedCalendar.toGregorianCalendar().getTimeInMillis();
-
-        // 30 minutes in milliseconds = 30 minutes * 60 seconds * 1000 milliseconds
-        return System.currentTimeMillis() < startTime + 30 * 60 * 1000;
     }
 
-    public Connection disconnect() {
-        if (this.isConnected()) {
-            try {
-                this.vimPort.logout(this.serviceContent.getSessionManager());
-            } catch (Exception e) {
-                Throwable cause = e.getCause();
-                throw new BasicConnectionException(
-                        "failed to disconnect properly: " + e.getMessage() + " : " + cause
-                                .getMessage(),
-                        cause
-                );
-            } finally {
-                // A connection is very memory intensive, I'm helping the garbage collector here
-                this.userSession = null;
-                this.serviceContent = null;
-                this.vimPort = null;
-                this.vimService = null;
-            }
+    private BindingProvider getBindingsProvider() {
+        return (BindingProvider) this.vimPort;
+    }
+
+    public void disconnect() {
+        if (this.userSession == null) {
+            return;
         }
-        return this;
+
+        try {
+            this.vimPort.logout(this.serviceContent.getSessionManager());
+        } catch (Exception e) {
+            Throwable cause = e.getCause();
+            throw new BasicConnectionException(
+                    "failed to disconnect properly: " + e.getMessage() + " : " + cause
+                            .getMessage(), cause);
+        } finally {
+            // A connection is very memory intensive, I'm helping the garbage collector here
+            this.userSession = null;
+            this.serviceContent = null;
+            this.vimPort = null;
+            this.vimService = null;
+        }
     }
 
     @Override
-    public URL getURL() {
-        return this.url;
+    public URI getURI() {
+        return this.uri;
     }
 
     public boolean isIgnoreSslErrors() {
@@ -215,6 +203,18 @@ public class BasicConnection implements Connection {
 
     public void setIgnoreSslErrors(boolean ignoreSslErrors) {
         this.ignoreSslErrors = ignoreSslErrors;
+    }
+
+    @Override
+    public void setRequestTimeout(long time, TimeUnit unit) {
+        requestTimeoutMillis = TimeUnit.MILLISECONDS.convert(time, unit);
+
+        updateRequestTimeout();
+    }
+
+    @Override
+    public long getRequestTimeout(TimeUnit unit) {
+        return requestTimeoutMillis;
     }
 
     private class BasicConnectionException extends ConnectionException {

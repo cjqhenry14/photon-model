@@ -29,7 +29,7 @@ public class ApiValidator extends BaseHelper {
     }
 
     public String getApiType() {
-        return this.connection.connect().getServiceContent().getAbout().getApiType();
+        return this.connection.getServiceContent().getAbout().getApiType();
     }
 
     public boolean assertVCenter() {
