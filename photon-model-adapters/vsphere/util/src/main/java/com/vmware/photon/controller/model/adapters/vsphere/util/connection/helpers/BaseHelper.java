@@ -16,7 +16,7 @@ package com.vmware.photon.controller.model.adapters.vsphere.util.connection.help
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
 
 public abstract class BaseHelper {
-    final Connection connection;
+    protected final Connection connection;
 
     public BaseHelper(final Connection connection) {
         try {

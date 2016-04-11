@@ -46,6 +46,11 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>photon-adapter-util</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.vmware.xenon</groupId>
       <artifactId>xenon-common</artifactId>
       <version>${xenon.common.version}</version>

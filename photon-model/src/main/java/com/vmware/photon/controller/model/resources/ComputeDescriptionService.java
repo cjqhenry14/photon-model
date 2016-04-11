@@ -48,7 +48,7 @@ public class ComputeDescriptionService extends StatefulService {
      * This class represents the document state associated with a
      * {@link ComputeDescriptionService} task.
      */
-    public static class ComputeDescription extends ServiceDocument {
+    public static class     ComputeDescription extends ServiceDocument {
 
         public static final String CUSTOM_PROPERTY_KEY_TEMPLATE = "Template";
         public static final String FIELD_NAME_RESOURCE_POOL_ID = "resourcePoolId";

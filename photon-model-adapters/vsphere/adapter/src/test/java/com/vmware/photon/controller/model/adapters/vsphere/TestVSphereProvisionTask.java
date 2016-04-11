@@ -13,6 +13,7 @@
 
 package com.vmware.photon.controller.model.adapters.vsphere;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -21,8 +22,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
-import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
@@ -30,6 +29,8 @@ import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
+import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.xenon.common.BasicReusableHostTestCase;
@@ -61,8 +62,10 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
     private ResourcePoolState resourcePool;
 
     private AuthCredentialsServiceState auth;
-    private ComputeDescription computeDesc;
+    private ComputeDescription computeHostDescription;
     private ComputeState computeHost;
+    private ComputeDescription vmDescription;
+    private ComputeState vm;
 
     @Before
     public void setUp() throws Throwable {
@@ -93,7 +96,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
     private ResourcePoolState createResourcePool()
             throws Throwable {
         ResourcePoolState inPool = new ResourcePoolState();
-        inPool.name = UUID.randomUUID().toString();
+        inPool.name = "resourcePool-" + UUID.randomUUID().toString();
         inPool.id = inPool.name;
 
         inPool.minCpuCount = 1;
@@ -112,30 +115,61 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         resourcePool = createResourcePool();
 
         auth = createAuth();
-        computeDesc = createComputeDescription();
+
+        computeHostDescription = createComputeDescription();
         computeHost = createComputeHost();
 
-        ComputeInstanceRequest request = new ComputeInstanceRequest();
-        request.authCredentialsLink = this.auth.documentSelfLink;
-        request.computeReference = computeHost.adapterManagementReference;
-        request.requestType = InstanceRequestType.VALIDATE_CREDENTIALS;
+        vmDescription = createVmDescription();
+        vm = createVmState();
 
-        request.isMockRequest = vpshereUrl.equals("");
 
-        this.host.testStart(1);
-        Operation op = Operation
-                .createPatch(this.host, VSphereAdapterInstanceService.SELF_LINK)
-                .setBody(request)
-                .setCompletion((o, e) -> {
-                    if (e != null) {
-                        this.host.failIteration(e);
-                    } else {
-                        this.host.completeIteration();
-                    }
-                });
+        // kick off a provision task to do the actual VM creation
+        ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskService.ProvisionComputeTaskState();
 
-        this.host.send(op);
-        this.host.testWait();
+        provisionTask.computeLink = vm.documentSelfLink;
+        provisionTask.isMockRequest = isMock;
+        provisionTask.taskSubStage = ProvisionComputeTaskState.SubStage.CREATING_HOST;
+
+        ProvisionComputeTaskService.ProvisionComputeTaskState outTask = TestUtils.doPost(this.host,
+                provisionTask,
+                ProvisionComputeTaskState.class,
+                UriUtils.buildUri(this.host,
+                        ProvisionComputeTaskService.FACTORY_LINK));
+
+        List<URI> uris = new ArrayList<>();
+        uris.add(UriUtils.buildUri(this.host, outTask.documentSelfLink));
+        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ProvisionComputeTaskState.class );
+    }
+
+    private ComputeState createVmState() throws Throwable {
+        ComputeState computeState = new ComputeState();
+        computeState.id = UUID.randomUUID().toString();
+        computeState.documentSelfLink = computeState.id;
+        computeState.descriptionLink = vmDescription.documentSelfLink;
+        computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
+        computeState.adapterManagementReference = UriUtils.buildUri(vpshereUrl);
+
+        computeState.parentLink = computeHost.documentSelfLink;
+
+        ComputeService.ComputeState returnState = TestUtils.doPost(this.host, computeState,
+                ComputeService.ComputeState.class,
+                UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
+        return returnState;
+    }
+
+    private ComputeDescription createVmDescription() throws Throwable {
+        ComputeDescription computeDesc = new ComputeDescription();
+
+        computeDesc.id = UUID.randomUUID().toString();
+        computeDesc.documentSelfLink = computeDesc.id;
+        computeDesc.supportedChildren = new ArrayList<>();
+        computeDesc.instanceAdapterReference = UriUtils.buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
+        computeDesc.authCredentialsLink = this.auth.documentSelfLink;
+
+
+        return TestUtils.doPost(this.host, computeDesc,
+                ComputeDescription.class,
+                UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
     }
 
     /**
@@ -145,7 +179,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         ComputeState computeState = new ComputeState();
         computeState.id = UUID.randomUUID().toString();
         computeState.documentSelfLink = computeState.id;
-        computeState.descriptionLink = computeDesc.documentSelfLink;
+        computeState.descriptionLink = computeHostDescription.documentSelfLink;
         computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
         computeState.adapterManagementReference = UriUtils.buildUri(vpshereUrl);
 
@@ -175,9 +209,9 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         computeDesc.documentSelfLink = computeDesc.id;
         computeDesc.supportedChildren = new ArrayList<>();
         computeDesc.supportedChildren.add(ComputeType.VM_GUEST.name());
-        computeDesc.instanceAdapterReference = UriUtils
-                .buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
+        computeDesc.instanceAdapterReference = UriUtils.buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
         computeDesc.authCredentialsLink = this.auth.documentSelfLink;
+
 
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,
