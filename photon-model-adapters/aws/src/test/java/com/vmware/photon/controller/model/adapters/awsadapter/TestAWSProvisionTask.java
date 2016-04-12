@@ -186,8 +186,6 @@ public class TestAWSProvisionTask  {
         // delete vm
         deleteVMs(vmState.documentSelfLink);
         vmState  = null;
-        // check that the VMs are gone
-        ProvisioningUtils.queryComputeInstances(this.host, 1);
     }
 
 
@@ -391,5 +389,7 @@ public class TestAWSProvisionTask  {
                 .setCompletion(this.host.getCompletion()));
 
         this.host.testWait();
+        // check that the VMs are gone
+        ProvisioningUtils.queryComputeInstances(this.host, 1);
     }
 }
