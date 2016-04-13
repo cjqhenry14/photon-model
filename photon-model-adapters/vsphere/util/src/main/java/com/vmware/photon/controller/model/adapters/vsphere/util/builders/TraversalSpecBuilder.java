@@ -11,36 +11,45 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers.builders;
+package com.vmware.photon.controller.model.adapters.vsphere.util.builders;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.vmware.vim25.ManagedObjectReference;
-import com.vmware.vim25.ObjectSpec;
 import com.vmware.vim25.SelectionSpec;
+import com.vmware.vim25.TraversalSpec;
 
 /**
  *
  */
-public class ObjectSpecBuilder extends ObjectSpec {
+public class TraversalSpecBuilder extends TraversalSpec {
     private void init() {
         if (this.selectSet == null) {
             this.selectSet = new ArrayList<SelectionSpec>();
         }
     }
 
-    public ObjectSpecBuilder obj(final ManagedObjectReference objectReference) {
-        this.setObj(objectReference);
+    public TraversalSpecBuilder name(final String name) {
+        this.setName(name);
         return this;
     }
 
-    public ObjectSpecBuilder skip(final Boolean skip) {
+    public TraversalSpecBuilder path(final String path) {
+        this.setPath(path);
+        return this;
+    }
+
+    public TraversalSpecBuilder skip(final Boolean skip) {
         this.setSkip(skip);
         return this;
     }
 
-    public ObjectSpecBuilder selectSet(final SelectionSpec... selectionSpecs) {
+    public TraversalSpecBuilder type(final String type) {
+        this.setType(type);
+        return this;
+    }
+
+    public TraversalSpecBuilder selectSet(final SelectionSpec... selectionSpecs) {
         init();
         this.selectSet.addAll(Arrays.asList(selectionSpecs));
         return this;

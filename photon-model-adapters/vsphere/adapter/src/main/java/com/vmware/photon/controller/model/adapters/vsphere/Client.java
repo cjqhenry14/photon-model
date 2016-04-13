@@ -15,9 +15,9 @@ package com.vmware.photon.controller.model.adapters.vsphere;
 
 import java.util.Map;
 
+import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BaseHelper;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers.BaseHelper;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers.GetMoRef;
+import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.vim25.InvalidPropertyFaultMsg;
 import com.vmware.vim25.ManagedObjectReference;

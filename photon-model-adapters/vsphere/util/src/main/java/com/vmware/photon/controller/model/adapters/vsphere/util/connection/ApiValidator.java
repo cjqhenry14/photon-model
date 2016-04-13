@@ -11,9 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers;
-
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
+package com.vmware.photon.controller.model.adapters.vsphere.util.connection;
 
 /**
  * Some samples make use of API only found on vCenter. Other samples

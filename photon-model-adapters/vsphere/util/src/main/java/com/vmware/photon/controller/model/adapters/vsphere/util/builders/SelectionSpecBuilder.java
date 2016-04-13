@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers.builders;
+package com.vmware.photon.controller.model.adapters.vsphere.util.builders;
 
 import com.vmware.vim25.SelectionSpec;
 

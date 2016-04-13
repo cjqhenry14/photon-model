@@ -11,42 +11,43 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers.builders;
+package com.vmware.photon.controller.model.adapters.vsphere.util.builders;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 
-import com.vmware.vim25.ObjectSpec;
-import com.vmware.vim25.PropertyFilterSpec;
 import com.vmware.vim25.PropertySpec;
 
 /**
- *
+ * a simple builder that creates a property spec
  */
-public class PropertyFilterSpecBuilder extends PropertyFilterSpec {
+public class PropertySpecBuilder extends PropertySpec {
     private void init() {
-        if (this.propSet == null) {
-            this.propSet = new ArrayList<PropertySpec>();
-        }
-        if (this.objectSet == null) {
-            this.objectSet = new ArrayList<ObjectSpec>();
+        if (this.pathSet == null) {
+            this.pathSet = new ArrayList<String>();
         }
     }
 
-    public PropertyFilterSpecBuilder reportMissingObjectsInResults(final Boolean value) {
-        this.setReportMissingObjectsInResults(value);
+    public PropertySpecBuilder all(final Boolean all) {
+        this.setAll(all);
         return this;
     }
 
-    public PropertyFilterSpecBuilder propSet(final PropertySpec... propertySpecs) {
-        init();
-        this.propSet.addAll(Arrays.asList(propertySpecs));
+    public PropertySpecBuilder type(final String type) {
+        this.setType(type);
         return this;
     }
 
-    public PropertyFilterSpecBuilder objectSet(final ObjectSpec... objectSpecs) {
+    public PropertySpecBuilder pathSet(final String... paths) {
         init();
-        this.objectSet.addAll(Arrays.asList(objectSpecs));
+        this.pathSet.addAll(Arrays.asList(paths));
+        return this;
+    }
+
+    public PropertySpecBuilder addToPathSet(final Collection<String> paths) {
+        init();
+        this.pathSet.addAll(paths);
         return this;
     }
 }

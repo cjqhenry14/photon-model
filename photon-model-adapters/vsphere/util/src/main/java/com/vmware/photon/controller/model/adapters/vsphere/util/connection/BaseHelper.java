@@ -11,9 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers;
-
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
+package com.vmware.photon.controller.model.adapters.vsphere.util.connection;
 
 public abstract class BaseHelper {
     protected final Connection connection;
@@ -26,7 +24,7 @@ public abstract class BaseHelper {
         }
     }
 
-    public class HelperException extends RuntimeException {
+    public static class HelperException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
         public HelperException(Throwable cause) {

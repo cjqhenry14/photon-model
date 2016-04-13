@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers;
+package com.vmware.photon.controller.model.adapters.vsphere.util.connection;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,12 +19,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers.builders.ObjectSpecBuilder;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers.builders.PropertyFilterSpecBuilder;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers.builders.PropertySpecBuilder;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers.builders.SelectionSpecBuilder;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers.builders.TraversalSpecBuilder;
+import com.vmware.photon.controller.model.adapters.vsphere.util.builders.ObjectSpecBuilder;
+import com.vmware.photon.controller.model.adapters.vsphere.util.builders.PropertyFilterSpecBuilder;
+import com.vmware.photon.controller.model.adapters.vsphere.util.builders.PropertySpecBuilder;
+import com.vmware.photon.controller.model.adapters.vsphere.util.builders.SelectionSpecBuilder;
+import com.vmware.photon.controller.model.adapters.vsphere.util.builders.TraversalSpecBuilder;
 import com.vmware.vim25.DynamicProperty;
 import com.vmware.vim25.InvalidPropertyFaultMsg;
 import com.vmware.vim25.ManagedObjectReference;

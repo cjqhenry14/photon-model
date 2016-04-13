@@ -11,14 +11,13 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.vsphere.util.connection.helpers;
+package com.vmware.photon.controller.model.adapters.vsphere.util.connection;
 
 import java.util.Arrays;
 import java.util.List;
 
 import org.w3c.dom.Element;
 
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
 import com.vmware.vim25.HttpNfcLeaseState;
 import com.vmware.vim25.InvalidCollectorVersionFaultMsg;
 import com.vmware.vim25.InvalidPropertyFaultMsg;
