@@ -41,6 +41,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 import com.vmware.xenon.services.common.QueryTask;
 import com.vmware.xenon.services.common.QueryTask.Query;
+import com.vmware.xenon.services.common.QueryTask.Query.Occurance;
 import com.vmware.xenon.services.common.QueryTask.QuerySpecification;
 
 public class TestAWSSetupUtils {
@@ -94,7 +95,6 @@ public class TestAWSSetupUtils {
         TestUtils.doPost(host, awshostDescription,
                 ComputeDescriptionService.ComputeDescription.class,
                 UriUtils.buildUri(host, ComputeDescriptionService.FACTORY_LINK));
-
 
         ComputeService.ComputeState awsComputeHost = new ComputeService.ComputeState();
 
@@ -232,20 +232,46 @@ public class TestAWSSetupUtils {
     }
 
     /**
-     * A utility method that deletes all the VMs that exist in the system
+     * A utility method that deletes the VMs on the specified endpoint filtered by the instanceIds that are passed in.
      * @throws Throwable
      */
-    public static void deleteAllVMsOnThisEndpoint(VerificationHost host, boolean isMock, String parentComputeLink)
+    public static void deleteAllVMsOnThisEndpoint(VerificationHost host, boolean isMock,
+            String parentComputeLink, List<String> instanceIdsToDelete)
             throws Throwable {
         host.testStart(1);
         ResourceRemovalTaskState deletionState = new ResourceRemovalTaskState();
-        QuerySpecification querySpec = new QueryTask.QuerySpecification();
-        querySpec.query = Query.Builder.create()
+
+        // All AWS Compute States AND Ids in (Ids to delete)
+        QuerySpecification compositeQuery = new QueryTask.QuerySpecification();
+
+        // Document Kind = Compute State AND Parent Compute Link = AWS
+        QueryTask.Query awsComputeStatesQuery = new QueryTask.Query();
+        awsComputeStatesQuery = Query.Builder.create()
                 .addKindFieldClause(ComputeService.ComputeState.class)
                 .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,
                         parentComputeLink)
                 .build();
-        deletionState.resourceQuerySpec = querySpec;
+        compositeQuery.query.addBooleanClause(awsComputeStatesQuery);
+
+        if (instanceIdsToDelete != null && instanceIdsToDelete.size() > 0) {
+            // Instance Ids in List of instance Ids to delete
+            QueryTask.Query instanceIdFilterParentQuery = new QueryTask.Query();
+            for (String instanceId : instanceIdsToDelete) {
+                QueryTask.Query instanceIdFilter = new QueryTask.Query()
+                        .setTermPropertyName(
+                                QueryTask.QuerySpecification
+                                        .buildCompositeFieldName(
+                                                ComputeState.FIELD_NAME_CUSTOM_PROPERTIES,
+                                                AWSConstants.AWS_INSTANCE_ID))
+                        .setTermMatchValue(instanceId);
+                instanceIdFilter.occurance = QueryTask.Query.Occurance.SHOULD_OCCUR;
+                instanceIdFilterParentQuery.addBooleanClause(instanceIdFilter);
+            }
+            instanceIdFilterParentQuery.occurance = Occurance.MUST_OCCUR;
+            compositeQuery.query.addBooleanClause(instanceIdFilterParentQuery);
+        }
+
+        deletionState.resourceQuerySpec = compositeQuery;
         deletionState.isMockRequest = isMock;
         host.send(Operation
                 .createPost(

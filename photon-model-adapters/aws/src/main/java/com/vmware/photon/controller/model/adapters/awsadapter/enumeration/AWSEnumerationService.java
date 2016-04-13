@@ -55,6 +55,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 import com.vmware.xenon.services.common.QueryTask;
 import com.vmware.xenon.services.common.QueryTask.Query;
+import com.vmware.xenon.services.common.QueryTask.Query.Occurance;
 import com.vmware.xenon.services.common.QueryTask.QuerySpecification.QueryOption;
 import com.vmware.xenon.services.common.ServiceUriPaths;
 
@@ -376,7 +377,7 @@ public class AWSEnumerationService extends StatelessService {
                     }
                 }
             }
-            service.logFine("Successfully enumerated %d instances on the AWS host",
+            service.logInfo("Successfully enumerated %d instances on the AWS host",
                     totalNumberOfInstances);
             handleReceivedEnumerationData();
         }
@@ -423,19 +424,8 @@ public class AWSEnumerationService extends StatelessService {
          * endpoint and fires off a query task to get the results.
          */
         public void fireQueryToGetLocalResources(AWSEnumerationSubStage next) {
-            // query all ComputeState resources for the cluster
-            List<Query> instanceIdFilters = new ArrayList<Query>();
-            for (String instanceId : aws.remoteAWSInstances.keySet()) {
-                QueryTask.Query instanceIdFilter = new QueryTask.Query()
-                        .setTermPropertyName(
-                                QueryTask.QuerySpecification
-                                        .buildCompositeFieldName(
-                                                ComputeState.FIELD_NAME_CUSTOM_PROPERTIES,
-                                                AWSConstants.AWS_INSTANCE_ID))
-                        .setTermMatchValue(instanceId);
-                instanceIdFilters.add(instanceIdFilter);
-            }
-
+            // query all ComputeState resources for the cluster filtered by the received set of
+            // instance Ids
             QueryTask q = new QueryTask();
             q.setDirect(true);
             q.querySpec = new QueryTask.QuerySpecification();
@@ -445,6 +435,9 @@ public class AWSEnumerationService extends StatelessService {
                     .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,
                             aws.computeEnumerationRequest.parentComputeLink)
                     .build();
+
+            QueryTask.Query instanceIdFilterParentQuery = new QueryTask.Query();
+            instanceIdFilterParentQuery.occurance = Occurance.MUST_OCCUR;
             for (String instanceId : aws.remoteAWSInstances.keySet()) {
                 QueryTask.Query instanceIdFilter = new QueryTask.Query()
                         .setTermPropertyName(
@@ -454,8 +447,9 @@ public class AWSEnumerationService extends StatelessService {
                                                 AWSConstants.AWS_INSTANCE_ID))
                         .setTermMatchValue(instanceId);
                 instanceIdFilter.occurance = QueryTask.Query.Occurance.SHOULD_OCCUR;
-                q.querySpec.query.addBooleanClause(instanceIdFilter);
+                instanceIdFilterParentQuery.addBooleanClause(instanceIdFilter);
             }
+            q.querySpec.query.addBooleanClause(instanceIdFilterParentQuery);
             q.documentSelfLink = UUID.randomUUID().toString();
             // create the query to find resources
             service.sendRequest(Operation

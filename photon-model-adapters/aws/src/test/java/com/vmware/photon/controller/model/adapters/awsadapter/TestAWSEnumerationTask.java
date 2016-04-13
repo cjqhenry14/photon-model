@@ -40,6 +40,7 @@ import org.junit.Test;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationService;
 import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
@@ -73,15 +74,15 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public static final String EC2_IMAGEID = "ami-0d4cfd66";
     public static final String T2_NANO_INSTANCE_TYPE = "t2.nano";
     public static final String DEFAULT_SECURITY_GROUP_NAME = "cell-manager-security-group";
+    public static List<String> instancesToCleanUp = new ArrayList<String>();
     public static List<String> instanceIds = new ArrayList<String>();
-    List<String> instanceIdsToDelete = new ArrayList<String>();
+    public List<String> instanceIdsToDelete = new ArrayList<String>();
     public AmazonEC2AsyncClient client;
     public static List<Boolean> provisioningFlags;
     public static List<Boolean> deletionFlags = new ArrayList<Boolean>();
     public boolean isMock = true;
     public String accessKey = "accessKey";
     public String secretKey = "secretKey";
-
 
     @Before
     public void setUp() throws Exception {
@@ -131,7 +132,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             try {
                 // Delete all vms from the endpoint
                 TestAWSSetupUtils.deleteAllVMsOnThisEndpoint(host, isMock,
-                        outComputeHost.documentSelfLink);
+                        outComputeHost.documentSelfLink, instancesToCleanUp);
                 ProvisioningUtils.queryComputeInstances(this.host, 1);
 
                 if (client != null) {
@@ -257,7 +258,6 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         // create a AWS VM compute resource
         vmState = TestAWSSetupUtils.createAWSVMResource(this.host, outComputeHost.documentSelfLink,
                 outPool.documentSelfLink, this.getClass());
-
     }
 
     /**
@@ -270,6 +270,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     private void provisionMachine()
             throws Throwable, InterruptedException, TimeoutException {
         // kick off a provision task to do the actual VM creation
+        ComputeState computeStateToCleanup = null;
         ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskService.ProvisionComputeTaskState();
 
         provisionTask.computeLink = vmState.documentSelfLink;
@@ -287,6 +288,19 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         host.log("Sucessflly provisioned a machine %s ", vmState.id);
         // check that the VM has been created
         ProvisioningUtils.queryComputeInstances(this.host, 2);
+        // Get instance Id of the provisioned machine and save that for cleanup
+        URI[] computeURIs = { UriUtils.buildUri(this.host, vmState.documentSelfLink) };
+        Map<URI, ComputeState> computeStateMap = host.getServiceState(null,
+                ComputeState.class, computeURIs);
+        if (computeStateMap != null) {
+            computeStateToCleanup = computeStateMap.get(computeURIs[0]);
+            if (computeStateToCleanup != null && computeStateToCleanup.customProperties != null) {
+                instancesToCleanUp
+                        .add(computeStateToCleanup.customProperties
+                                .get(AWSConstants.AWS_INSTANCE_ID));
+            }
+        }
+
     }
 
     /**
@@ -325,7 +339,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
 
     /**
      * Method to directly provision instances on the AWS endpoint without the knowledge of the local system. This is to test
-     * that the discovery for items not provisioned by Xenon happens correctly.
+     * that the discovery of items not provisioned by Xenon happens correctly.
      * @throws Throwable
      */
     private void provisionAWSVMWithEC2Client(int numberOfInstance, String instanceType)
@@ -374,7 +388,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
                 instanceIds.add(i.getInstanceId());
                 host.log("Successfully created instances on AWS endpoint %s", i.getInstanceId());
             }
-
+            instancesToCleanUp.addAll(instanceIds);
         }
     }
 
