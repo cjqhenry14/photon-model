@@ -13,13 +13,18 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.instanceType_t2_micro;
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.zoneId;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.getExecutor;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
@@ -28,6 +33,7 @@ import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
 import com.amazonaws.services.ec2.model.DescribeInstancesResult;
 import com.amazonaws.services.ec2.model.Instance;
+import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
 import com.amazonaws.services.ec2.model.RunInstancesResult;
 import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
@@ -83,6 +89,11 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public boolean isMock = true;
     public String accessKey = "accessKey";
     public String secretKey = "secretKey";
+    public static int baseLineInstanceCount = 0;
+    public static int baseLineComputeDescriptionCount = 0;
+    public static List<String> testComputeDescriptions = new ArrayList<String>(
+            Arrays.asList(zoneId + "~" + T2_NANO_INSTANCE_TYPE,
+                    zoneId + "~" + instanceType_t2_micro));
 
     @Before
     public void setUp() throws Exception {
@@ -133,7 +144,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
                 // Delete all vms from the endpoint
                 TestAWSSetupUtils.deleteAllVMsOnThisEndpoint(host, isMock,
                         outComputeHost.documentSelfLink, instancesToCleanUp);
-                ProvisioningUtils.queryComputeInstances(this.host, 1);
+                // Leave the system in the same state as when the test started.
+                ProvisioningUtils.queryComputeInstances(this.host, 1 + baseLineInstanceCount);
 
                 if (client != null) {
                     client.shutdown();
@@ -151,6 +163,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public void testEnumeration() throws Throwable {
         if (!isMock) {
             host.setTimeoutSeconds(600);
+            getInstanceCount();
             // Provision a single VM . Check initial state.
             provisionSingleVMUsingInstanceService();
             ProvisioningUtils.queryComputeInstances(this.host, 2);
@@ -164,16 +177,18 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
 
             enumerateResources();
             // 2 new resources should be discovered.
-            ProvisioningUtils.queryComputeDescriptions(this.host, 3);
-            ProvisioningUtils.queryComputeInstances(this.host, 4);
+            ProvisioningUtils.queryComputeDescriptions(this.host,
+                    3 + baseLineComputeDescriptionCount);
+            ProvisioningUtils.queryComputeInstances(this.host, 4 + baseLineInstanceCount);
 
             // Provision an additional VM that has a compute description already present in the
             // system.
             provisionAWSVMWithEC2Client(1, TestAWSSetupUtils.instanceType_t2_micro);
             enumerateResources();
             // One additional compute state and no new compute descriptions should be created.
-            ProvisioningUtils.queryComputeDescriptions(this.host, 3);
-            ProvisioningUtils.queryComputeInstances(this.host, 5);
+            ProvisioningUtils.queryComputeDescriptions(this.host,
+                    3 + baseLineComputeDescriptionCount);
+            ProvisioningUtils.queryComputeInstances(this.host, 5 + baseLineInstanceCount);
         } else {
             // Create basic state for kicking off enumeration
             createResourcePoolComputeHostAndVMState();
@@ -480,7 +495,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
      */
     private void checkInstancesStarted() {
         AWSEnumerationAsyncHandler enumerationHandler = new AWSEnumerationAsyncHandler(this.host,
-                true);
+                AWSEnumerationAsyncHandler.MODE.CHECK_START);
         DescribeInstancesRequest request = new DescribeInstancesRequest()
                 .withInstanceIds(instanceIds);
         client.describeInstancesAsync(request, enumerationHandler);
@@ -492,9 +507,20 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
      */
     private void checkInstancesDeleted() {
         AWSEnumerationAsyncHandler enumerationHandler = new AWSEnumerationAsyncHandler(this.host,
-                false);
+                AWSEnumerationAsyncHandler.MODE.CHECK_TERMINATION);
         DescribeInstancesRequest request = new DescribeInstancesRequest()
                 .withInstanceIds(instanceIdsToDelete);
+        client.describeInstancesAsync(request, enumerationHandler);
+    }
+
+    /**
+     * Checks if a newly deleted instance has its status set to terminated.
+     * @return
+     */
+    private void getInstanceCount() {
+        AWSEnumerationAsyncHandler enumerationHandler = new AWSEnumerationAsyncHandler(this.host,
+                AWSEnumerationAsyncHandler.MODE.GET_COUNT);
+        DescribeInstancesRequest request = new DescribeInstancesRequest();
         client.describeInstancesAsync(request, enumerationHandler);
     }
 
@@ -508,12 +534,16 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         private static final int AWS_TERMINATED_CODE = 48;
         private static final int AWS_STARTED_CODE = 16;
         VerificationHost host;
-        // Flag to indicate whether you want to check if instance has started or stopped.
-        boolean checkStart;
+        MODE mode;
 
-        AWSEnumerationAsyncHandler(VerificationHost host, boolean checkStart) {
+        // Flag to indicate whether you want to check if instance has started or stopped.
+        public static enum MODE {
+            CHECK_START, CHECK_TERMINATION, GET_COUNT
+        }
+
+        AWSEnumerationAsyncHandler(VerificationHost host, MODE mode) {
             this.host = host;
-            this.checkStart = checkStart;
+            this.mode = mode;
         }
 
         @Override
@@ -525,14 +555,17 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         public void onSuccess(DescribeInstancesRequest request,
                 DescribeInstancesResult result) {
             int counter = 0;
-            if (checkStart) {
+            switch (mode) {
+            case CHECK_START:
                 for (Instance i : result.getReservations().get(0).getInstances()) {
                     if (i.getState().getCode() == AWS_STARTED_CODE) {
                         provisioningFlags.set(counter, Boolean.TRUE);
                         counter++;
                     }
                 }
-            } else { // checking that the instance has been turned OFF
+                break;
+            case CHECK_TERMINATION:
+
                 for (Instance i : result.getReservations().get(0).getInstances()) {
                     if (i.getState().getCode() == AWS_TERMINATED_CODE) {
                         host.log("Instance has stopped %d", counter);
@@ -540,8 +573,42 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
                         counter++;
                     }
                 }
+                break;
+            case GET_COUNT:
+                Set<String> computeDescriptionSet = new HashSet<String>();
+                for (Reservation r : result.getReservations()) {
+                    for (Instance i : r.getInstances()) {
+                        // Do not add information about terminated instances to the local system.
+                        if (i.getState().getCode() != AWS_TERMINATED_CODE) {
+                            computeDescriptionSet
+                                    .add(getRegionId(i).concat("~").concat(i.getInstanceType()));
+                            baseLineInstanceCount++;
+                        }
+                    }
+                }
+                // If the discovered resources on the endpoint already map to a test compute
+                // description then we will not be creating a new CD for it.
+                for (String testCD : testComputeDescriptions) {
+                    if (computeDescriptionSet.contains(testCD)) {
+                        computeDescriptionSet.remove(testCD);
+                    }
+                    baseLineComputeDescriptionCount = computeDescriptionSet.size();
+                }
+                host.log("The baseline instance count on AWS is %d ", baseLineInstanceCount);
+                host.log(
+                        "These instances will be represented by %d additional compute descriptions ",
+                        baseLineComputeDescriptionCount);
+                break;
+            default:
+                host.log("Invalid stage %s for describing AWS instances", mode);
             }
         }
-    }
 
+        private String getRegionId(Instance i) {
+            // Drop the zone suffix "a" ,"b" etc to get the region Id.
+            String zoneId = i.getPlacement().getAvailabilityZone();
+            String regiondId = zoneId.substring(0, zoneId.length() - 1);
+            return regiondId;
+        }
+    }
 }
