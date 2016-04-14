@@ -44,7 +44,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     public String clientKey = "clientKey";
     public String subscriptionId = "subscriptionId";
     public String tenantId = "tenantId";
-    public String azureAdminUsername = "admin";
+    public String azureAdminUsername = "azureuser";
     public String azureAdminPassword = "Pa$$word1";
     public String azureResourceGroupLocation = "EastUS";
     public boolean isMock = true;
@@ -164,7 +164,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
 
         azureHostDescription.id = UUID.randomUUID().toString();
         azureHostDescription.documentSelfLink = azureHostDescription.id;
-        azureHostDescription.supportedChildren = new ArrayList<String>();
+        azureHostDescription.supportedChildren = new ArrayList<>();
         azureHostDescription.supportedChildren.add(
                 ComputeDescriptionService.ComputeDescription.ComputeType.VM_GUEST.name());
         azureHostDescription.instanceAdapterReference = UriUtils.buildUri(this.host,

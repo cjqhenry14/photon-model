@@ -27,4 +27,16 @@ public class AzureConstants {
     public static final String AZURE_IMAGE_OFFER = "azureImageOffer";
     public static final String AZURE_IMAGE_SKU = "azureImageSKU";
     public static final String AZURE_IMAGE_VERSION = "azureImageVersion";
+
+    // Azure Namespace
+    public static final String COMPUTE_NAMESPACE = "Microsoft.Compute";
+    public static final String STORAGE_NAMESPACE = "Microsoft.Storage";
+    public static final String NETWORK_NAMESPACE = "Microsoft.Network";
+
+    // Azure error code
+    public static final String MISSING_SUBSCRIPTION_CODE = "MissingSubscriptionRegistration";
+
+    // Azure constants
+    public static final String PROVIDER_REGISTRED_STATE = "REGISTERED";
+
 }

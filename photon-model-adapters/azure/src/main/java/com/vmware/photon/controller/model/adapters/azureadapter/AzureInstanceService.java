@@ -20,14 +20,22 @@ import static com.vmware.photon.controller.model.adapters.azureadapter.AzureCons
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_RESOURCE_GROUP_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_ADMIN_PASSWORD;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_ADMIN_USERNAME;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.COMPUTE_NAMESPACE;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.MISSING_SUBSCRIPTION_CODE;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.NETWORK_NAMESPACE;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.PROVIDER_REGISTRED_STATE;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.STORAGE_NAMESPACE;
 
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import com.microsoft.azure.CloudError;
+import com.microsoft.azure.CloudException;
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
 import com.microsoft.azure.credentials.AzureEnvironment;
 import com.microsoft.azure.management.compute.ComputeManagementClient;
@@ -54,6 +62,7 @@ import com.microsoft.azure.management.network.models.Subnet;
 import com.microsoft.azure.management.network.models.VirtualNetwork;
 import com.microsoft.azure.management.resources.ResourceManagementClient;
 import com.microsoft.azure.management.resources.ResourceManagementClientImpl;
+import com.microsoft.azure.management.resources.models.Provider;
 import com.microsoft.azure.management.resources.models.ResourceGroup;
 import com.microsoft.azure.management.storage.StorageManagementClient;
 import com.microsoft.azure.management.storage.StorageManagementClientImpl;
@@ -73,6 +82,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 
 /**
@@ -113,6 +123,9 @@ public class AzureInstanceService extends StatelessService {
     public static final String DEFAULT_IMAGE_SKU = "14.04.3-LTS";
     public static final String DEFAULT_IMAGE_VERSION = "latest";
 
+    private static final long DEFAULT_EXPIRATION_INTERVAL_MICROS = TimeUnit.MINUTES.toMicros(5);
+    private static final int RETRY_INTERVAL_SECONDS = 30;
+
     @Override
     public void handlePatch(Operation op) {
         if (!op.hasBody()) {
@@ -127,7 +140,15 @@ public class AzureInstanceService extends StatelessService {
             AdapterUtils.sendPatchToTask(this, ctx.computeRequest.provisioningTaskReference);
             return;
         }
-        handleAllocation(ctx);
+        try {
+            handleAllocation(ctx);
+        } catch (Exception e) {
+            logSevere(e);
+            if (ctx.computeRequest.provisioningTaskReference != null) {
+                AdapterUtils.sendFailurePatchToTask(this,
+                        ctx.computeRequest.provisioningTaskReference, e);
+            }
+        }
     }
 
     /**
@@ -313,10 +334,7 @@ public class AzureInstanceService extends StatelessService {
                 new ServiceCallback<StorageAccount>() {
                     @Override
                     public void failure(Throwable e) {
-                        logSevere(e);
-                        ctx.error = e;
-                        ctx.stage = AzureStages.ERROR;
-                        handleAllocation(ctx);
+                        handleSubscriptionError(ctx, STORAGE_NAMESPACE, e);
                     }
 
                     @Override
@@ -360,10 +378,7 @@ public class AzureInstanceService extends StatelessService {
                 new ServiceCallback<VirtualNetwork>() {
                     @Override
                     public void failure(Throwable e) {
-                        logSevere(e);
-                        ctx.error = e;
-                        ctx.stage = AzureStages.ERROR;
-                        handleAllocation(ctx);
+                        handleSubscriptionError(ctx, NETWORK_NAMESPACE, e);
                     }
 
                     @Override
@@ -541,10 +556,7 @@ public class AzureInstanceService extends StatelessService {
                 new ServiceCallback<VirtualMachine>() {
                     @Override
                     public void failure(Throwable e) {
-                        logSevere(e);
-                        ctx.error = e;
-                        ctx.stage = AzureStages.ERROR;
-                        handleAllocation(ctx);
+                        handleSubscriptionError(ctx, COMPUTE_NAMESPACE, e);
                     }
 
                     @Override
@@ -581,6 +593,100 @@ public class AzureInstanceService extends StatelessService {
                                         .setReferer(getHost().getUri()));
                     }
                 });
+    }
+
+    /**
+     * This method tries to detect a subscription registration error and register subscription for
+     * given namespace. Otherwise the fallback is to transition to error state.
+     */
+    private void handleSubscriptionError(AzureAllocationContext ctx, String namespace,
+            Throwable e) {
+        if (e instanceof CloudException) {
+            CloudException ce = (CloudException) e;
+            CloudError body = ce.getBody();
+            if (body != null) {
+                String code = body.getCode();
+                if (MISSING_SUBSCRIPTION_CODE.equals(code)) {
+                    registerSubscription(ctx, namespace);
+                    return;
+                }
+            }
+        }
+        logSevere(e);
+        ctx.error = e;
+        ctx.stage = AzureStages.ERROR;
+        handleAllocation(ctx);
+    }
+
+    private void registerSubscription(AzureAllocationContext ctx, String namespace) {
+        ResourceManagementClient client = new ResourceManagementClientImpl(AzureConstants.BASE_URI,
+                ctx.credentials, new OkHttpClient.Builder(), getRetrofitBuilder());
+        client.setSubscriptionId(ctx.parentAuth.userLink);
+        client.getProvidersOperations().registerAsync(namespace, new ServiceCallback<Provider>() {
+            @Override
+            public void failure(Throwable e) {
+                logSevere(e);
+                ctx.error = e;
+                ctx.stage = AzureStages.ERROR;
+                handleAllocation(ctx);
+            }
+
+            @Override
+            public void success(ServiceResponse<Provider> result) {
+                Provider provider = result.getBody();
+                String registrationState = provider.getRegistrationState();
+                if (!PROVIDER_REGISTRED_STATE.equalsIgnoreCase(registrationState)) {
+                    logInfo("%s namespace registration in %s state", namespace, registrationState);
+                    long retryExpiration =
+                            Utils.getNowMicrosUtc() + DEFAULT_EXPIRATION_INTERVAL_MICROS;
+                    getSubscriptionState(client, ctx, namespace, retryExpiration);
+                    return;
+                }
+                logInfo("Successfully registered namespace [%s]", provider.getNamespace());
+                handleAllocation(ctx);
+            }
+        });
+    }
+
+    private void getSubscriptionState(ResourceManagementClient client, AzureAllocationContext ctx,
+            String namespace, long retryExpiration) {
+        if (Utils.getNowMicrosUtc() > retryExpiration) {
+            String msg = String
+                    .format("Subscription for %s namespace did not reach %s state", namespace,
+                            PROVIDER_REGISTRED_STATE);
+            logSevere(msg);
+            ctx.error = new RuntimeException(msg);
+            ctx.stage = AzureStages.ERROR;
+            handleAllocation(ctx);
+            return;
+        }
+
+        getHost().schedule(
+                () -> client.getProvidersOperations().getAsync(namespace,
+                        new ServiceCallback<Provider>() {
+                            @Override
+                            public void failure(Throwable e) {
+                                logSevere(e);
+                                ctx.error = e;
+                                ctx.stage = AzureStages.ERROR;
+                                handleAllocation(ctx);
+                            }
+
+                            @Override
+                            public void success(ServiceResponse<Provider> result) {
+                                Provider provider = result.getBody();
+                                String registrationState = provider.getRegistrationState();
+                                if (!PROVIDER_REGISTRED_STATE.equalsIgnoreCase(registrationState)) {
+                                    logInfo("%s namespace registration in %s state",
+                                            namespace, registrationState);
+                                    getSubscriptionState(client, ctx, namespace, retryExpiration);
+                                    return;
+                                }
+                                logInfo("Successfully registered namespace [%s]",
+                                        provider.getNamespace());
+                                handleAllocation(ctx);
+                            }
+                        }), RETRY_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 
     private void getParentAuth(AzureAllocationContext ctx, AzureStages next) {
