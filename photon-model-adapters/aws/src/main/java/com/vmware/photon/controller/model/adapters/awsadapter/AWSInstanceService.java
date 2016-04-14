@@ -286,7 +286,7 @@ public class AWSInstanceService extends StatelessService {
             return;
         }
 
-        if (aws.childDisks.get(DiskType.HDD).bootConfig.files.length > 1) {
+        if (bootDisk.bootConfig != null && bootDisk.bootConfig.files.length > 1) {
             AdapterUtils.sendFailurePatchToTask(this,
                     aws.computeRequest.provisioningTaskReference,
                     new IllegalStateException(
