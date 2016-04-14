@@ -98,6 +98,7 @@ public class AWSEnumerationService extends StatelessService {
         // Synchronized map to keep track if an enumeration service has been started in listening
         // mode for a host
         public Map<String, Boolean> enumerationHostMap;
+        public String computeSubTaskLink;
 
         public EnumerationContext(ComputeEnumerateResourceRequest request) {
             computeEnumerationRequest = request;
@@ -526,7 +527,7 @@ public class AWSEnumerationService extends StatelessService {
                     cd.instanceType = key.substring(key.indexOf("~") + 1);
                     cd.authCredentiaslLink = aws.parentAuth.documentSelfLink;
                     cd.enumerationTaskLink = aws.computeEnumerationRequest.enumerationTaskReference;
-                    doPatchComputeDescription(cd, null);
+                    doPatchComputeDescription(cd, aws.computeSubTaskLink);
                 }
                 service.logInfo("These resources are represented by %d new compute descriptions ",
                         aws.computeDescriptionSet.size());
@@ -566,13 +567,15 @@ public class AWSEnumerationService extends StatelessService {
                                             e);
                                     return;
                                 }
+                                service.logInfo(
+                                        "Created a sub task for compute description creation");
                                 ComputeSubTaskService.ComputeSubTaskState body = o
                                         .getBody(ComputeSubTaskService.ComputeSubTaskState.class);
+                                aws.computeSubTaskLink = body.documentSelfLink;
                                 // continue, passing the sub task link
                                 doPatchComputeDescription(cd,
-                                        body.documentSelfLink);
+                                        aws.computeSubTaskLink);
                             });
-            service.logInfo("Created a sub task for compute description creation");
             service.getHost().startService(startPost, new ComputeSubTaskService());
         }
 
@@ -592,6 +595,8 @@ public class AWSEnumerationService extends StatelessService {
                     .setBody(cd)
                     .setCompletion((o, e) -> {
                         if (e == null) {
+                            service.logInfo(
+                                    "Processing next compute description in the enumeration service.");
                             return;
                         }
                         service.logSevere(

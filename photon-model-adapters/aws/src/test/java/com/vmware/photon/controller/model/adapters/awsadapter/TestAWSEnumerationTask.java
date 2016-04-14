@@ -73,6 +73,10 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  *
  */
 public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
+    public static final int instanceCount2 = 2;
+    public static final int instanceCount3 = 3;
+    public static final int instanceCount4 = 4;
+    public static final int instanceCount5 = 5;
     public ComputeService.ComputeState vmState;
     public ResourcePoolState outPool;
     public ComputeService.ComputeState outComputeHost;
@@ -142,6 +146,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         if (vmState != null) {
             try {
                 // Delete all vms from the endpoint
+                host.log("Deleting %d instance created from the test ", instancesToCleanUp.size());
                 TestAWSSetupUtils.deleteAllVMsOnThisEndpoint(host, isMock,
                         outComputeHost.documentSelfLink, instancesToCleanUp);
                 // Leave the system in the same state as when the test started.
@@ -166,20 +171,22 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             getInstanceCount();
             // Provision a single VM . Check initial state.
             provisionSingleVMUsingInstanceService();
-            ProvisioningUtils.queryComputeInstances(this.host, 2);
-            ProvisioningUtils.queryComputeDescriptions(this.host, 2);
+            ProvisioningUtils.queryComputeInstances(this.host, instanceCount2);
+            ProvisioningUtils.queryComputeDescriptions(this.host, instanceCount2);
 
             // CREATION directly on AWS
-            provisionAWSVMWithEC2Client(2, T2_NANO_INSTANCE_TYPE);
+            provisionAWSVMWithEC2Client(instanceCount2, T2_NANO_INSTANCE_TYPE);
 
             // Xenon does not know about the new instances.
-            ProvisioningUtils.queryComputeInstances(this.host, 2);
+            ProvisioningUtils.queryComputeInstances(this.host, instanceCount2);
 
             enumerateResources();
-            // 2 new resources should be discovered.
+            // 2 new resources should be discovered. Mapping to 1 compute description and 2 new
+            // compute states.
             ProvisioningUtils.queryComputeDescriptions(this.host,
-                    3 + baseLineComputeDescriptionCount);
-            ProvisioningUtils.queryComputeInstances(this.host, 4 + baseLineInstanceCount);
+                    instanceCount3 + baseLineComputeDescriptionCount);
+            ProvisioningUtils.queryComputeInstances(this.host,
+                    instanceCount4 + baseLineInstanceCount);
 
             // Provision an additional VM that has a compute description already present in the
             // system.
@@ -187,8 +194,9 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             enumerateResources();
             // One additional compute state and no new compute descriptions should be created.
             ProvisioningUtils.queryComputeDescriptions(this.host,
-                    3 + baseLineComputeDescriptionCount);
-            ProvisioningUtils.queryComputeInstances(this.host, 5 + baseLineInstanceCount);
+                    instanceCount3 + baseLineComputeDescriptionCount);
+            ProvisioningUtils.queryComputeInstances(this.host,
+                    instanceCount5 + baseLineInstanceCount);
         } else {
             // Create basic state for kicking off enumeration
             createResourcePoolComputeHostAndVMState();
