@@ -193,7 +193,7 @@ public class AWSNetworkService extends StatelessService {
         case FAILED:
             cleanupEC2ClientResources(awsNet.client);
             if (awsNet.networkRequest.provisioningTaskReference != null) {
-                AdapterUtils.sendFailurePatchToTask(this,
+                AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         awsNet.networkRequest.provisioningTaskReference,
                         awsNet.error);
             } else {

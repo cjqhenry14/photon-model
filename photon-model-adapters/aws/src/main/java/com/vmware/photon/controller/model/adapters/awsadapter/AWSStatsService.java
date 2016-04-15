@@ -82,7 +82,7 @@ public class AWSStatsService extends StatelessService {
 
             if (statsRequest.isMockRequest) {
                 // patch status to parent task
-                AdapterUtils.sendPatchToTask(this,
+                AdapterUtils.sendPatchToProvisioningTask(this,
                         UriUtils.buildUri(getHost(), statsRequest.parentTaskLink));
                 return;
             }
@@ -132,7 +132,7 @@ public class AWSStatsService extends StatelessService {
 
     private Consumer<Throwable> getFailureConsumer(AWSStatsDataHolder statsData) {
         return ((t) -> {
-            AdapterUtils.sendFailurePatchToTask(this,
+            AdapterUtils.sendFailurePatchToProvisioningTask(this,
                     UriUtils.buildUri(getHost(), statsData.statsRequest.parentTaskLink), t);
         });
     }
@@ -190,7 +190,7 @@ public class AWSStatsService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            AdapterUtils.sendFailurePatchToTask(service,
+            AdapterUtils.sendFailurePatchToProvisioningTask(service,
                     UriUtils.buildUri(service.getHost(), statsData.statsRequest.parentTaskLink),
                     exception);
         }

@@ -13,10 +13,18 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_PENDING;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_RUNNING;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_SHUTTING_DOWN;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_STOPPED;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_STOPPING;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
+import static com.vmware.photon.controller.model.adapters.util.AdapterUtils.updateDurationStats;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +37,7 @@ import com.amazonaws.handlers.AsyncHandler;
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
 import com.amazonaws.services.ec2.model.DescribeInstancesResult;
+import com.amazonaws.services.ec2.model.Filter;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.Reservation;
 
@@ -37,14 +46,12 @@ import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils;
-import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeDescriptionCreationService.AWSComputeDescriptionState;
-import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeDescriptionCreationService.ComputeDescCreationStage;
-import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeStateCreationService.AWSComputeState;
+import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeDescriptionCreationAdapterService.AWSComputeDescriptionState;
+import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeStateCreationAdapterService.AWSComputeState;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-import com.vmware.photon.controller.model.tasks.ComputeSubTaskService;
 import com.vmware.photon.controller.model.util.PhotonModelUtils;
 
 import com.vmware.xenon.common.Operation;
@@ -64,23 +71,28 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  * and reconciles the local state with the state on the remote system.
  *
  */
-public class AWSEnumerationService extends StatelessService {
+public class AWSEnumerationAdapterService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_SERVICE;
+    public static Integer AWS_PAGE_SIZE = 50;
 
     public static enum AWSEnumerationStages {
         HOSTDESC, PARENTAUTH, CLIENT, ENUMERATE, ERROR
     }
 
     public static enum AWSEnumerationSubStage {
-        QUERY_LOCAL_RESOURCES, COMPARE, CREATE_COMPUTE_DESCRIPTIONS, PATCH_COMPLETION
+        QUERY_LOCAL_RESOURCES, COMPARE, CREATE_COMPUTE_DESCRIPTIONS, CREATE_COMPUTE_STATES, GET_NEXT_PAGE, ENUMERATION_STOP
+    }
+
+    public AWSEnumerationAdapterService() {
+        super.toggleOption(ServiceOption.INSTRUMENTATION, true);
     }
 
     /**
-     * Enumeration request state.
+     * The enuemeration service context that holds all the information needed to determine the list of instances
+     * that need to be represented in the system.
      */
     public static class EnumerationContext {
-
         public AmazonEC2AsyncClient amazonEC2Client;
         public ComputeEnumerateResourceRequest computeEnumerationRequest;
         public AuthCredentialsService.AuthCredentialsServiceState parentAuth;
@@ -89,16 +101,25 @@ public class AWSEnumerationService extends StatelessService {
         public AWSEnumerationStages stage;
         public AWSEnumerationSubStage subStage;
         public Throwable error;
+        public int pageNo;
+        public long startTime;
         // Mapping of instance Id and the compute state Id in the local system.
         public Map<String, String> localAWSInstanceIds;
         public Map<String, Instance> remoteAWSInstances;
         List<Instance> instancesToBeCreated;
-        // Set to hold the representative set of compute descriptions to be created in the system.
-        Set<String> computeDescriptionSet;
         // Synchronized map to keep track if an enumeration service has been started in listening
         // mode for a host
         public Map<String, Boolean> enumerationHostMap;
-        public String computeSubTaskLink;
+        // The request object that is populated and sent to AWS to get the list of instances.
+        public DescribeInstancesRequest describeInstancesRequest;
+        // The async handler that works with the response received from AWS
+        public AsyncHandler<DescribeInstancesRequest, DescribeInstancesResult> resultHandler;
+        // The token to use to retrieve the next page of results from AWS. This value is null when
+        // there are no more results to return.
+        public String nextToken;
+        // The maximum number of results to return for the request in a single page from AWS. This
+        // value can be between 5 and 1000.
+        public Integer maxResults;
 
         public EnumerationContext(ComputeEnumerateResourceRequest request) {
             computeEnumerationRequest = request;
@@ -108,7 +129,9 @@ public class AWSEnumerationService extends StatelessService {
             instancesToBeCreated = new ArrayList<Instance>();
             stage = AWSEnumerationStages.HOSTDESC;
             subStage = AWSEnumerationSubStage.QUERY_LOCAL_RESOURCES;
-            computeDescriptionSet = new HashSet<String>();
+            maxResults = AWS_PAGE_SIZE;
+            pageNo = 1;
+            startTime = Utils.getNowMicrosUtc();
         }
     }
 
@@ -125,35 +148,36 @@ public class AWSEnumerationService extends StatelessService {
             return;
         }
         op.complete();
-        EnumerationContext awsEnumerationData = new EnumerationContext(
+        EnumerationContext awsEnumerationContext = new EnumerationContext(
                 op.getBody(ComputeEnumerateResourceRequest.class));
-        validateState(awsEnumerationData);
-        if (awsEnumerationData.computeEnumerationRequest.isMockRequest) {
+        validateState(awsEnumerationContext);
+        if (awsEnumerationContext.computeEnumerationRequest.isMockRequest) {
             // patch status to parent task
-            AdapterUtils.sendPatchToTask(this,
-                    awsEnumerationData.computeEnumerationRequest.enumerationTaskReference);
+            AdapterUtils.sendPatchToEnumerationTask(this,
+                    awsEnumerationContext.computeEnumerationRequest.enumerationTaskReference);
             return;
         }
-        handleEnumerationRequest(awsEnumerationData);
+        handleEnumerationRequest(awsEnumerationContext);
     }
+
     /**
      * Starts the related services for the Enumeration Service
      */
     private void startHelperServices(Operation startPost) {
         Operation postAWScomputeDescriptionService = Operation
                 .createPost(UriUtils.buildUri(this.getHost(),
-                        AWSComputeDescriptionCreationService.SELF_LINK))
+                        AWSComputeDescriptionCreationAdapterService.SELF_LINK))
                 .setReferer(this.getUri());
 
         Operation postAWscomputeStateService = Operation.createPost(
                 UriUtils.buildUri(this.getHost(),
-                        AWSComputeStateCreationService.SELF_LINK))
+                        AWSComputeStateCreationAdapterService.SELF_LINK))
                 .setReferer(this.getUri());
 
         this.getHost().startService(postAWScomputeDescriptionService,
-                new AWSComputeDescriptionCreationService());
+                new AWSComputeDescriptionCreationAdapterService());
         this.getHost().startService(postAWscomputeStateService,
-                new AWSComputeStateCreationService());
+                new AWSComputeStateCreationAdapterService());
 
         Consumer<Operation> onSuccess = (o) -> {
             this.logInfo(
@@ -162,9 +186,11 @@ public class AWSEnumerationService extends StatelessService {
         };
         Set<URI> serviceURLS = new HashSet<URI>();
         serviceURLS.add(
-                UriUtils.buildUri(this.getHost(), AWSComputeDescriptionCreationService.SELF_LINK));
+                UriUtils.buildUri(this.getHost(),
+                        AWSComputeDescriptionCreationAdapterService.SELF_LINK));
         serviceURLS
-                .add(UriUtils.buildUri(this.getHost(), AWSComputeStateCreationService.SELF_LINK));
+                .add(UriUtils.buildUri(this.getHost(),
+                        AWSComputeStateCreationAdapterService.SELF_LINK));
         PhotonModelUtils.checkFactoryAvailability(this, startPost, serviceURLS, onSuccess);
     }
 
@@ -187,20 +213,28 @@ public class AWSEnumerationService extends StatelessService {
         case ENUMERATE:
             switch (aws.computeEnumerationRequest.enumerationAction) {
             case START:
-                if (!aws.enumerationHostMap
+                if (aws.enumerationHostMap
                         .containsKey(getHostEnumKey(aws.computeHostDescription))) {
-                    logInfo("Enumeration already started for %s", aws.computeHostDescription);
+                    logInfo("Enumeration already started for %s", aws.computeHostDescription.name);
                 } else {
                     aws.enumerationHostMap.put(getHostEnumKey(aws.computeHostDescription), true);
                     logInfo("Started enumeration for %s", aws.computeHostDescription.name);
                 }
+                aws.computeEnumerationRequest.enumerationAction = EnumerationAction.REFRESH;
+                handleEnumerationRequest(aws);
                 break;
             case REFRESH:
-                logInfo("Running enumeration service in refresh mode for %s",
-                        aws.computeHostDescription.name);
-                AsyncHandler<DescribeInstancesRequest, DescribeInstancesResult> resultHandler = new AWSEnumerationAsyncHandler(
-                        this, aws);
-                aws.amazonEC2Client.describeInstancesAsync(resultHandler);
+                if (aws.pageNo == 1) {
+                    logInfo("Running enumeration service in refresh mode for %s",
+                            aws.computeHostDescription.name);
+                }
+                logInfo("Processing page %d ", aws.pageNo);
+                aws.pageNo++;
+                if (aws.describeInstancesRequest == null) {
+                    creatAWSRequestAndAsyncHandler(aws);
+                }
+                aws.amazonEC2Client.describeInstancesAsync(aws.describeInstancesRequest,
+                        aws.resultHandler);
                 break;
             case STOP:
                 if (!aws.enumerationHostMap
@@ -208,22 +242,30 @@ public class AWSEnumerationService extends StatelessService {
                     logInfo("Enumeration is not running or has already been stopped for %s",
                             aws.computeHostDescription.name);
                 } else {
-                    logInfo("Stopping enumeration service for %s", aws.computeHostDescription);
+                    aws.enumerationHostMap.remove(getHostEnumKey(aws.computeHostDescription));
+                    logInfo("Stopping enumeration service for %s",
+                            aws.computeHostDescription.name);
                 }
                 cleanupEC2ClientResources(aws.amazonEC2Client);
+                updateDurationStats(this, aws.startTime);
+                AdapterUtils.sendPatchToEnumerationTask(this,
+                        aws.computeEnumerationRequest.enumerationTaskReference);
                 break;
             default:
                 break;
             }
             break;
         case ERROR:
-            patchErrorToParentTask(aws);
             cleanupEC2ClientResources(aws.amazonEC2Client);
+            AdapterUtils.sendFailurePatchToEnumerationTask(this,
+                    aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
             break;
         default:
             cleanupEC2ClientResources(aws.amazonEC2Client);
-            aws.error = new Exception("Unknown AWS enumeration stage");
-            patchErrorToParentTask(aws);
+            logSevere("Unknown AWS enumeration stage %s ", aws.stage.toString());
+            aws.error = new Exception("Unknown AWS enumeration stage %s");
+            AdapterUtils.sendFailurePatchToEnumerationTask(this,
+                    aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
             break;
         }
     }
@@ -273,7 +315,8 @@ public class AWSEnumerationService extends StatelessService {
             } catch (Throwable e) {
                 logSevere(e);
                 aws.error = e;
-                patchErrorToParentTask(aws);
+                aws.stage = AWSEnumerationStages.ERROR;
+                handleEnumerationRequest(aws);
             }
         }
         aws.stage = next;
@@ -291,17 +334,6 @@ public class AWSEnumerationService extends StatelessService {
             aws.stage = AWSEnumerationStages.ERROR;
             handleEnumerationRequest(aws);
         };
-    }
-
-    /**
-     * Method to patch back the error to the parent task that was running this.
-     * @param aws The enumeration context
-     */
-    private void patchErrorToParentTask(EnumerationContext aws) {
-        if (aws.computeEnumerationRequest.enumerationTaskReference != null) {
-            AdapterUtils.sendFailurePatchToTask(this,
-                    aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
-        }
     }
 
     /**
@@ -335,8 +367,31 @@ public class AWSEnumerationService extends StatelessService {
                     "parentComputeLink is required.");
         }
         if (AWSstate.computeEnumerationRequest.enumerationAction == null) {
-            AWSstate.computeEnumerationRequest.enumerationAction = EnumerationAction.REFRESH;
+            AWSstate.computeEnumerationRequest.enumerationAction = EnumerationAction.START;
         }
+    }
+
+    /**
+     * Initializes and saves a reference to the request object that is sent to AWS to get a page of instances. Also saves an instance
+     * to the async handler that will be used to handle the responses received from AWS. It sets the nextToken value in the request
+     * object sent to AWS for getting the next page of results from AWS.
+     * @param aws
+     */
+    private void creatAWSRequestAndAsyncHandler(EnumerationContext aws) {
+        DescribeInstancesRequest request = new DescribeInstancesRequest();
+        List<String> stateValues = new ArrayList<String>(Arrays.asList(INSTANCE_STATE_RUNNING,
+                INSTANCE_STATE_PENDING, INSTANCE_STATE_STOPPING, INSTANCE_STATE_STOPPED,
+                INSTANCE_STATE_SHUTTING_DOWN));
+        Filter runningInstanceFilter = new Filter();
+        runningInstanceFilter.setName(INSTANCE_STATE);
+        runningInstanceFilter.setValues(stateValues);
+        request.getFilters().add(runningInstanceFilter);
+        request.setMaxResults(AWS_PAGE_SIZE);
+        request.setNextToken(aws.nextToken);
+        aws.describeInstancesRequest = request;
+        AsyncHandler<DescribeInstancesRequest, DescribeInstancesResult> resultHandler = new AWSEnumerationAsyncHandler(
+                this, aws);
+        aws.resultHandler = resultHandler;
     }
 
     /**
@@ -346,11 +401,10 @@ public class AWSEnumerationService extends StatelessService {
     public static class AWSEnumerationAsyncHandler implements
             AsyncHandler<DescribeInstancesRequest, DescribeInstancesResult> {
 
-        private static final int AWS_TERMINATED_CODE = 48;
-        private StatelessService service;
+        private AWSEnumerationAdapterService service;
         private EnumerationContext aws;
 
-        private AWSEnumerationAsyncHandler(StatelessService service,
+        private AWSEnumerationAsyncHandler(AWSEnumerationAdapterService service,
                 EnumerationContext aws) {
             this.service = service;
             this.aws = aws;
@@ -358,8 +412,10 @@ public class AWSEnumerationService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            AdapterUtils.sendFailurePatchToTask(this.service,
-                    aws.computeEnumerationRequest.enumerationTaskReference, exception);
+            AdapterUtils.sendFailurePatchToEnumerationTask(service,
+                    aws.computeEnumerationRequest.enumerationTaskReference,
+                    exception);
+
         }
 
         @Override
@@ -369,17 +425,28 @@ public class AWSEnumerationService extends StatelessService {
             // Print the details of the instances discovered on the AWS endpoint
             for (Reservation r : result.getReservations()) {
                 for (Instance i : r.getInstances()) {
-                    // Do not add information about terminated instances to the local system.
-                    if (i.getState().getCode() != AWS_TERMINATED_CODE) {
-                        service.logInfo("%d=====Instance details %s =====",
-                                ++totalNumberOfInstances,
-                                i.toString());
-                        aws.remoteAWSInstances.put(i.getInstanceId(), i);
-                    }
+                    service.logInfo("%d=====Instance details %s =====",
+                            ++totalNumberOfInstances,
+                            i.getInstanceId());
+                    aws.remoteAWSInstances.put(i.getInstanceId(), i);
                 }
             }
             service.logInfo("Successfully enumerated %d instances on the AWS host",
                     totalNumberOfInstances);
+            // Save the reference to the next token that will be used to retrieve the next page of
+            // results from AWS.
+            aws.nextToken = result.getNextToken();
+            service.logInfo("Next token value is %s",
+                    aws.nextToken);
+            // Since there is filtering of resources at source, there can be a case when no
+            // resources are returned from AWS.
+            if (aws.remoteAWSInstances.size() == 0) {
+                if (aws.nextToken != null) {
+                    aws.subStage = AWSEnumerationSubStage.GET_NEXT_PAGE;
+                } else {
+                    aws.subStage = AWSEnumerationSubStage.ENUMERATION_STOP;
+                }
+            }
             handleReceivedEnumerationData();
         }
 
@@ -387,15 +454,16 @@ public class AWSEnumerationService extends StatelessService {
          * Uses the received enumeration information and compares it against it the state of the local system and then tries to
          * find and fix the gaps. At a high level this is the sequence of steps that is followed:
          * 1) Create a query to get the list of local compute states
-         * 2) Get the result of the above query.
-         * 3) For each link in the result set get the complete compute state with the description.
-         * 4) Compare the list of local resources against the list received from the AWS endpoint.
-         * 5) Create the instances not know to the local system.
+         * 2) Compare the list of local resources against the list received from the AWS endpoint.
+         * 3) Create the instances not know to the local system. These are represented using a combination
+         * of compute descriptions and compute states.
+         * 4) Find and create a representative list of compute descriptions.
+         * 5) Create compute states to represent each and every VM that was discovered on the AWS endpoint.
          */
         private void handleReceivedEnumerationData() {
             switch (aws.subStage) {
             case QUERY_LOCAL_RESOURCES:
-                fireQueryToGetLocalResources(
+                getLocalResources(
                         AWSEnumerationSubStage.COMPARE);
                 break;
             case COMPARE:
@@ -404,27 +472,42 @@ public class AWSEnumerationService extends StatelessService {
                 break;
             case CREATE_COMPUTE_DESCRIPTIONS:
                 if (aws.instancesToBeCreated.size() > 0) {
-                    createComputeDescriptions();
+                    createComputeDescriptions(AWSEnumerationSubStage.CREATE_COMPUTE_STATES);
                 } else {
-                    aws.subStage = AWSEnumerationSubStage.PATCH_COMPLETION;
+                    if (aws.nextToken == null) {
+                        aws.subStage = AWSEnumerationSubStage.ENUMERATION_STOP;
+                    } else {
+                        aws.subStage = AWSEnumerationSubStage.GET_NEXT_PAGE;
+                    }
                     handleReceivedEnumerationData();
                 }
                 break;
-            case PATCH_COMPLETION:
-                patchCompletionToParent();
+            case CREATE_COMPUTE_STATES:
+                AWSEnumerationSubStage next;
+                if (aws.nextToken == null) {
+                    next = AWSEnumerationSubStage.ENUMERATION_STOP;
+                } else {
+                    next = AWSEnumerationSubStage.GET_NEXT_PAGE;
+                }
+                createComputeStates(next);
+                break;
+            case GET_NEXT_PAGE:
+                getNextPageFromEnumerationAdapter(AWSEnumerationSubStage.QUERY_LOCAL_RESOURCES);
+                break;
+            case ENUMERATION_STOP:
+                signalStopToEnumerationAdapter();
                 break;
             default:
-                aws.error = new Exception("Unknown AWS enumeration sub stage");
-                AdapterUtils.sendFailurePatchToTask(service,
-                        aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
+                Throwable t = new Exception("Unknown AWS enumeration sub stage");
+                signalErrorToEnumerationAdapter(t);
             }
         }
 
         /**
-         * Creates a query to get all the resources in the local system filtered by the instance Ids received from the AWS
-         * endpoint and fires off a query task to get the results.
+         * Query the local data store and retrieve all the the compute states that exist filtered by the instanceIds
+         * that are received in the enumeration data from AWS.
          */
-        public void fireQueryToGetLocalResources(AWSEnumerationSubStage next) {
+        public void getLocalResources(AWSEnumerationSubStage next) {
             // query all ComputeState resources for the cluster filtered by the received set of
             // instance Ids
             QueryTask q = new QueryTask();
@@ -460,8 +543,7 @@ public class AWSEnumerationService extends StatelessService {
                         if (e != null) {
                             service.logSevere("Failure retrieving query results: %s",
                                     e.toString());
-                            AdapterUtils.sendFailurePatchToTask(this.service,
-                                    aws.computeEnumerationRequest.enumerationTaskReference, e);
+                            signalErrorToEnumerationAdapter(e);
                             return;
                         }
                         QueryTask responseTask = o.getBody(QueryTask.class);
@@ -487,160 +569,121 @@ public class AWSEnumerationService extends StatelessService {
          * have to be created in the local system to correspond to the remote AWS endpoint.
          */
         private void compareLocalStateWithEnumerationData(AWSEnumerationSubStage next) {
-            // Find all the instances to be created in the local system
-            if (aws.remoteAWSInstances != null && aws.localAWSInstanceIds != null) {
+            // No remote instances
+            if (aws.remoteAWSInstances == null || aws.remoteAWSInstances.size() == 0) {
+                service.logInfo(
+                        "No resources discovered on the remote system. Nothing to be created locally");
+                // no local instances
+            } else if (aws.localAWSInstanceIds == null || aws.localAWSInstanceIds.size() == 0) {
+                service.logInfo(
+                        "No local resources found. Everything on the remote system should be created locally.");
+                for (String key : aws.remoteAWSInstances.keySet()) {
+                    aws.instancesToBeCreated.add(aws.remoteAWSInstances.get(key));
+                }
+            } else { // compare and add the ones that do not exist locally
                 for (String key : aws.remoteAWSInstances.keySet()) {
                     if (!aws.localAWSInstanceIds.containsKey(key)) {
                         aws.instancesToBeCreated.add(aws.remoteAWSInstances.get(key));
                     }
                 }
-                aws.subStage = next;
-                handleReceivedEnumerationData();
-            }
-        }
-
-        /**
-         * Signals completion to the parent task.
-         */
-        private void patchCompletionToParent() {
-            service.logInfo(
-                    "Completed enumeration. Signalling completion to the parent task");
-            AdapterUtils.sendPatchToTask(service,
-                    aws.computeEnumerationRequest.enumerationTaskReference);
-        }
-
-        /**
-         * Method to create Compute descriptions associated with the instances received from the AWS host.
-         * param next
-         */
-        private void createComputeDescriptions() {
-            if (aws.instancesToBeCreated != null && aws.instancesToBeCreated.size() > 0) {
-                service.logInfo(
-                        "Need to create %d resources unknown to the local system",
+                service.logInfo("%d instances need to be represented in the local system",
                         aws.instancesToBeCreated.size());
-                getRepresentativeListOfComputeDescriptions();
-                for (String key : aws.computeDescriptionSet) {
-                    service.logInfo("Creating compute description %s", key);
-                    AWSComputeDescriptionState cd = new AWSComputeDescriptionState();
-                    cd.creationStage = ComputeDescCreationStage.CHECK_EXISTING_CD_QUERY;
-                    cd.zoneId = key.substring(0, key.indexOf("~"));
-                    cd.instanceType = key.substring(key.indexOf("~") + 1);
-                    cd.authCredentiaslLink = aws.parentAuth.documentSelfLink;
-                    cd.enumerationTaskLink = aws.computeEnumerationRequest.enumerationTaskReference;
-                    doPatchComputeDescription(cd, aws.computeSubTaskLink);
-                }
-                service.logInfo("These resources are represented by %d new compute descriptions ",
-                        aws.computeDescriptionSet.size());
-            } else {
-                service.logInfo("No instances need to be created in the local system");
             }
-        }
-
-        /**
-         * Create a sub task that will track the ProvisionComputeHostTask
-         * completions.
-         */
-        private void createSubTaskForComputeDescriptionCallbacks(AWSComputeDescriptionState cd) {
-            ComputeSubTaskService.ComputeSubTaskState subTaskInitState = new ComputeSubTaskService.ComputeSubTaskState();
-            // Tell the sub task where and what to patch on completion . Once all the compute
-            // descriptions are created,
-            // invoke the ComputeState task with the list of instances to be created.
-            AWSComputeState awsComputeState = new AWSComputeState();
-            awsComputeState.instancesToBeCreated = aws.instancesToBeCreated;
-            awsComputeState.parentComputeLink = aws.computeEnumerationRequest.parentComputeLink;
-            awsComputeState.resourcePoolLink = aws.computeEnumerationRequest.resourcePoolLink;
-            awsComputeState.parentTaskLink = aws.computeEnumerationRequest.enumerationTaskReference;
-
-            subTaskInitState.parentPatchBody = Utils.toJson(awsComputeState);
-            subTaskInitState.parentTaskLink = AWSComputeStateCreationService.SELF_LINK;
-            subTaskInitState.completionsRemaining = aws.computeDescriptionSet.size();
-            Operation startPost = Operation
-                    .createPost(service, UUID.randomUUID().toString())
-                    .setBody(subTaskInitState)
-                    .setCompletion(
-                            (o, e) -> {
-                                if (e != null) {
-                                    service.logWarning("Failure creating sub task: %s",
-                                            Utils.toString(e));
-                                    AdapterUtils.sendFailurePatchToTask(service,
-                                            aws.computeEnumerationRequest.enumerationTaskReference,
-                                            e);
-                                    return;
-                                }
-                                service.logInfo(
-                                        "Created a sub task for compute description creation");
-                                ComputeSubTaskService.ComputeSubTaskState body = o
-                                        .getBody(ComputeSubTaskService.ComputeSubTaskState.class);
-                                aws.computeSubTaskLink = body.documentSelfLink;
-                                // continue, passing the sub task link
-                                doPatchComputeDescription(cd,
-                                        aws.computeSubTaskLink);
-                            });
-            service.getHost().startService(startPost, new ComputeSubTaskService());
+            aws.subStage = next;
+            handleReceivedEnumerationData();
         }
 
         /**
          * Posts a compute description to the compute description service for creation.
          * @param documentSelfLink
          */
-        private void doPatchComputeDescription(AWSComputeDescriptionState cd, String subTaskLink) {
-            if (subTaskLink == null) {
-                // recurse after creating a sub task
-                createSubTaskForComputeDescriptionCallbacks(cd);
-                return;
-            }
-            cd.parentTaskLink = UriUtils.buildUri(service.getHost(), subTaskLink);
+        private void createComputeDescriptions(AWSEnumerationSubStage next) {
+            AWSComputeDescriptionState cd = new AWSComputeDescriptionState();
+            cd.instancesToBeCreated = aws.instancesToBeCreated;
+            cd.parentTaskLink = aws.computeEnumerationRequest.enumerationTaskReference;
+            cd.authCredentiaslLink = aws.parentAuth.documentSelfLink;
+
             service.sendRequest(Operation
-                    .createPatch(service, AWSComputeDescriptionCreationService.SELF_LINK)
+                    .createPatch(service, AWSComputeDescriptionCreationAdapterService.SELF_LINK)
                     .setBody(cd)
                     .setCompletion((o, e) -> {
-                        if (e == null) {
+                        if (e != null) {
+                            service.logSevere(
+                                    "Failure creating compute descriptions %s",
+                                    Utils.toString(e));
+                            signalErrorToEnumerationAdapter(e);
+                            return;
+                        } else {
                             service.logInfo(
-                                    "Processing next compute description in the enumeration service.");
+                                    "Successfully created compute descriptions. Proceeding to next state.");
+                            aws.subStage = next;
+                            handleReceivedEnumerationData();
                             return;
                         }
-                        service.logSevere(
-                                "Failure creating compute description creation task: %s",
-                                Utils.toString(e));
-                        AdapterUtils.sendFailurePatchToTask(service,
-                                aws.computeEnumerationRequest.enumerationTaskReference,
-                                e);
-                        return;
                     }));
-
         }
 
         /**
-         * Arrives at the representative set of compute descriptions for the instances discovered in AWS
-         * and need to be created in the local system. TODO harden key to include more attributes?
+         * Creates the compute states that represent the instances received from AWS during enumeration.
+         * @param next
          */
-        private void getRepresentativeListOfComputeDescriptions() {
-            for (Instance i : aws.instancesToBeCreated) {
-                String key = getKeyForComputeDescription(i);
-                aws.computeDescriptionSet.add(key);
-            }
+        private void createComputeStates(AWSEnumerationSubStage next) {
+            AWSComputeState awsComputeState = new AWSComputeState();
+            awsComputeState.instancesToBeCreated = aws.instancesToBeCreated;
+            awsComputeState.parentComputeLink = aws.computeEnumerationRequest.parentComputeLink;
+            awsComputeState.resourcePoolLink = aws.computeEnumerationRequest.resourcePoolLink;
+            awsComputeState.parentTaskLink = aws.computeEnumerationRequest.enumerationTaskReference;
+
+            service.sendRequest(Operation
+                    .createPatch(service, AWSComputeStateCreationAdapterService.SELF_LINK)
+                    .setBody(awsComputeState)
+                    .setCompletion((o, e) -> {
+                        if (e != null) {
+                            service.logSevere(
+                                    "Failure creating compute states %s",
+                                    Utils.toString(e));
+                            signalErrorToEnumerationAdapter(e);
+                            return;
+                        } else {
+                            service.logInfo(
+                                    "Successfully created compute states. Proceeding to next state.");
+                            aws.subStage = next;
+                            handleReceivedEnumerationData();
+                            return;
+                        }
+                    }));
         }
 
         /**
-         * Gets the key to uniquely represent a compute description that needs to be created in the system.
-         * Currently uses regionId and instanceType
+         * Signals Enumeration Stop to the AWS enumeration adapter. The AWS enumeration adapter will in turn patch the
+         * parent task to indicate completion.
          */
-        private String getKeyForComputeDescription(Instance i) {
-            // Representing the compute-description as a key regionId~instanceType
-            return getRegionId(i).concat("~").concat(i.getInstanceType());
+        private void signalStopToEnumerationAdapter() {
+            aws.computeEnumerationRequest.enumerationAction = EnumerationAction.STOP;
+            service.handleEnumerationRequest(aws);
         }
 
         /**
-        * Returns the region Id for the AWS instance
-        * @param vm
-        * @return the region id
-        */
-        private String getRegionId(Instance i) {
-            // Drop the zone suffix "a" ,"b" etc to get the region Id.
-            String zoneId = i.getPlacement().getAvailabilityZone();
-            String regiondId = zoneId.substring(0, zoneId.length() - 1);
-            return regiondId;
+         * Signals error to the AWS enumeration adapter. The adapter will in turn clean up resources and signal error to the parent task.
+         */
+        private void signalErrorToEnumerationAdapter(Throwable t) {
+            aws.error = t;
+            aws.stage = AWSEnumerationStages.ERROR;
+            service.handleEnumerationRequest(aws);
         }
 
+        /**
+         * Calls the AWS enumeration adapter to get the next page from AWSs
+         * @param next
+         */
+        private void getNextPageFromEnumerationAdapter(AWSEnumerationSubStage next) {
+            // Reset all the results from the last page that was processed.
+            aws.remoteAWSInstances.clear();
+            aws.instancesToBeCreated.clear();
+            aws.localAWSInstanceIds.clear();
+            aws.describeInstancesRequest.setNextToken(aws.nextToken);
+            aws.subStage = next;
+            service.handleEnumerationRequest(aws);
+        }
     }
 }

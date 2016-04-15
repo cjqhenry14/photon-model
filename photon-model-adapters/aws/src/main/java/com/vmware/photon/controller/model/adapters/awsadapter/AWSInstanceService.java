@@ -87,7 +87,7 @@ public class AWSInstanceService extends StatelessService {
             op.complete();
             if (aws.computeRequest.isMockRequest
                     && aws.computeRequest.requestType == ComputeInstanceRequest.InstanceRequestType.CREATE) {
-                AdapterUtils.sendPatchToTask(this, aws.computeRequest.provisioningTaskReference);
+                AdapterUtils.sendPatchToProvisioningTask(this, aws.computeRequest.provisioningTaskReference);
                 return;
             }
             handleAllocation(aws);
@@ -163,7 +163,7 @@ public class AWSInstanceService extends StatelessService {
         case ERROR:
             cleanupEC2ClientResources(aws.amazonEC2Client);
             if (aws.computeRequest.provisioningTaskReference != null) {
-                AdapterUtils.sendFailurePatchToTask(this,
+                AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         aws.computeRequest.provisioningTaskReference, aws.error);
             } else {
                 aws.awsOperation.fail(aws.error);
@@ -273,21 +273,21 @@ public class AWSInstanceService extends StatelessService {
 
     private void createInstance(AWSAllocation aws) {
         if (aws.computeRequest.isMockRequest) {
-            AdapterUtils.sendPatchToTask(this,
+            AdapterUtils.sendPatchToProvisioningTask(this,
                     aws.computeRequest.provisioningTaskReference);
             return;
         }
 
         DiskState bootDisk = aws.childDisks.get(DiskType.HDD);
         if (bootDisk == null) {
-            AdapterUtils.sendFailurePatchToTask(this,
+            AdapterUtils.sendFailurePatchToProvisioningTask(this,
                     aws.computeRequest.provisioningTaskReference,
                     new IllegalStateException("AWS bootDisk not specified"));
             return;
         }
 
         if (bootDisk.bootConfig != null && bootDisk.bootConfig.files.length > 1) {
-            AdapterUtils.sendFailurePatchToTask(this,
+            AdapterUtils.sendFailurePatchToProvisioningTask(this,
                     aws.computeRequest.provisioningTaskReference,
                     new IllegalStateException(
                             "Only 1 configuration file allowed"));
@@ -390,7 +390,7 @@ public class AWSInstanceService extends StatelessService {
         @Override
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(this.opContext);
-            AdapterUtils.sendFailurePatchToTask(this.service,
+            AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
                     this.computeReq.provisioningTaskReference, exception);
         }
 
@@ -401,7 +401,7 @@ public class AWSInstanceService extends StatelessService {
             Consumer<Instance> consumer = instance -> {
                 OperationContext.restoreOperationContext(opContext);
                 if (instance == null) {
-                    AdapterUtils.sendFailurePatchToTask(service,
+                    AdapterUtils.sendFailurePatchToProvisioningTask(service,
                             computeReq.provisioningTaskReference,
                             new IllegalStateException(
                                     "Error getting instance EC2 instance"));
@@ -440,13 +440,13 @@ public class AWSInstanceService extends StatelessService {
                 OperationJoin.JoinedCompletionHandler joinCompletion = (ox,
                         exc) -> {
                     if (exc != null) {
-                        AdapterUtils.sendFailurePatchToTask(service,
+                        AdapterUtils.sendFailurePatchToProvisioningTask(service,
                                 computeReq.provisioningTaskReference,
                                 new IllegalStateException(
                                         "Error updating VM state"));
                         return;
                     }
-                    AdapterUtils.sendPatchToTask(service,
+                    AdapterUtils.sendPatchToProvisioningTask(service,
                             computeReq.provisioningTaskReference);
                 };
                 OperationJoin joinOp = OperationJoin.create(patchState,
@@ -525,7 +525,7 @@ public class AWSInstanceService extends StatelessService {
         @Override
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToTask(service,
+            AdapterUtils.sendFailurePatchToProvisioningTask(service,
                     computeReq.provisioningTaskReference, exception);
         }
 
@@ -538,7 +538,7 @@ public class AWSInstanceService extends StatelessService {
                 public void accept(Instance instance) {
                     OperationContext.restoreOperationContext(opContext);
                     if (instance == null) {
-                        AdapterUtils.sendFailurePatchToTask(service,
+                        AdapterUtils.sendFailurePatchToProvisioningTask(service,
                                 computeReq.provisioningTaskReference,
                                 new IllegalStateException(
                                         "Error getting instance"));
@@ -574,13 +574,13 @@ public class AWSInstanceService extends StatelessService {
         CompletionHandler deletionKickoffCompletion = (sendDeleteOp,
                 sendDeleteEx) -> {
             if (sendDeleteEx != null) {
-                AdapterUtils.sendFailurePatchToTask(this,
+                AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         computeReq.provisioningTaskReference, sendDeleteEx);
                 return;
             }
             if (deleteCallbackCount.incrementAndGet() == resourcesToDelete
                     .size()) {
-                AdapterUtils.sendPatchToTask(this,
+                AdapterUtils.sendPatchToProvisioningTask(this,
                         computeReq.provisioningTaskReference);
             }
         };

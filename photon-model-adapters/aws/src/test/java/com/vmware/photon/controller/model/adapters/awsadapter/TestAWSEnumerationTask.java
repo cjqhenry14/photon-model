@@ -13,6 +13,12 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_PENDING;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_RUNNING;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_SHUTTING_DOWN;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_STOPPED;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_STOPPING;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.instanceType_t2_micro;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.zoneId;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.getExecutor;
@@ -32,6 +38,7 @@ import com.amazonaws.handlers.AsyncHandler;
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
 import com.amazonaws.services.ec2.model.DescribeInstancesResult;
+import com.amazonaws.services.ec2.model.Filter;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
@@ -44,7 +51,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
-import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationService;
+import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeDescriptionCreationAdapterService;
+import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeStateCreationAdapterService;
+import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
@@ -58,6 +67,7 @@ import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.ServiceStats;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
@@ -77,6 +87,9 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public static final int instanceCount3 = 3;
     public static final int instanceCount4 = 4;
     public static final int instanceCount5 = 5;
+    public static final int instanceCount7 = 7;
+    public static final int instanceCount8 = 8;
+    public int instanceCountAtScale = 10;
     public ComputeService.ComputeState vmState;
     public ResourcePoolState outPool;
     public ComputeService.ComputeState outComputeHost;
@@ -120,15 +133,9 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
 
             host.startService(
                     Operation.createPost(UriUtils.buildUri(host,
-                            AWSEnumerationService.class)),
-                    new AWSEnumerationService());
-            serviceSelfLinks.add(AWSEnumerationService.SELF_LINK);
-
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host,
-                            AWSStatsService.class)),
-                    new AWSStatsService());
-            serviceSelfLinks.add(AWSStatsService.SELF_LINK);
+                            AWSEnumerationAdapterService.class)),
+                    new AWSEnumerationAdapterService());
+            serviceSelfLinks.add(AWSEnumerationAdapterService.SELF_LINK);
 
             ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
         } catch (Throwable e) {
@@ -168,25 +175,29 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public void testEnumeration() throws Throwable {
         if (!isMock) {
             host.setTimeoutSeconds(600);
-            getInstanceCount();
+            // Overriding the page size to test the pagination logic with limited instances on AWS.
+            // This is a functional test
+            // so the latency numbers maybe higher from this test due to low page size.
+            AWSEnumerationAdapterService.AWS_PAGE_SIZE = 5;
+            getBaseLineInstanceCount();
             // Provision a single VM . Check initial state.
             provisionSingleVMUsingInstanceService();
             ProvisioningUtils.queryComputeInstances(this.host, instanceCount2);
             ProvisioningUtils.queryComputeDescriptions(this.host, instanceCount2);
 
             // CREATION directly on AWS
-            provisionAWSVMWithEC2Client(instanceCount2, T2_NANO_INSTANCE_TYPE);
+            provisionAWSVMWithEC2Client(instanceCount5, T2_NANO_INSTANCE_TYPE);
 
             // Xenon does not know about the new instances.
             ProvisioningUtils.queryComputeInstances(this.host, instanceCount2);
 
             enumerateResources();
-            // 2 new resources should be discovered. Mapping to 1 compute description and 2 new
+            // 5 new resources should be discovered. Mapping to 1 new compute description and 5 new
             // compute states.
             ProvisioningUtils.queryComputeDescriptions(this.host,
                     instanceCount3 + baseLineComputeDescriptionCount);
             ProvisioningUtils.queryComputeInstances(this.host,
-                    instanceCount4 + baseLineInstanceCount);
+                    instanceCount7 + baseLineInstanceCount);
 
             // Provision an additional VM that has a compute description already present in the
             // system.
@@ -196,13 +207,32 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             ProvisioningUtils.queryComputeDescriptions(this.host,
                     instanceCount3 + baseLineComputeDescriptionCount);
             ProvisioningUtils.queryComputeInstances(this.host,
-                    instanceCount5 + baseLineInstanceCount);
+                    instanceCount8 + baseLineInstanceCount);
         } else {
             // Create basic state for kicking off enumeration
             createResourcePoolComputeHostAndVMState();
             // Just make a call to the enumeration service and make sure that the adapter patches
             // the parent with completion.
             enumerateResources();
+        }
+    }
+
+    @Test
+    public void testEnumerationAtScale() throws Throwable {
+        if (!isMock) {
+            host.setTimeoutSeconds(600);
+            getBaseLineInstanceCount();
+            // Provision a single VM . Check initial state.
+            provisionSingleVMUsingInstanceService();
+            // Create {instanceCountAtScale} VMs on AWS
+            host.log("Running scale test by provisioning %d instances", instanceCountAtScale);
+            provisionAWSVMWithEC2Client(instanceCountAtScale, instanceType_t2_micro);
+            enumerateResources();
+            // {instanceCountAtScale} new resources should be discovered.
+            ProvisioningUtils.queryComputeInstances(this.host,
+                    instanceCountAtScale + 2 + baseLineInstanceCount);
+        } else {
+            // Do nothing. Basic enumeration logic tested above in functional test.
         }
     }
 
@@ -223,6 +253,20 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         this.host.waitFor("Error waiting for enumeration task", () -> {
             return checkEnumerationTaskCompletion(enumTask);
         });
+        ServiceStats enumerationStats = host.getServiceState(null, ServiceStats.class, UriUtils
+                .buildStatsUri(UriUtils.buildUri(host, AWSEnumerationAdapterService.SELF_LINK)));
+        host.log(Utils.toJsonHtml(enumerationStats));
+        host.log("==Time spent in individual services==");
+        ServiceStats computeDescriptionCreationStats = host.getServiceState(null,
+                ServiceStats.class, UriUtils
+                        .buildStatsUri(UriUtils.buildUri(host,
+                                AWSComputeDescriptionCreationAdapterService.SELF_LINK)));
+        host.log(Utils.toJsonHtml(computeDescriptionCreationStats));
+        ServiceStats computeStateCreationStats = host.getServiceState(null, ServiceStats.class,
+                UriUtils
+                        .buildStatsUri(UriUtils.buildUri(host,
+                                AWSComputeStateCreationAdapterService.SELF_LINK)));
+        host.log(Utils.toJsonHtml(computeStateCreationStats));
     }
 
     /**
@@ -344,9 +388,9 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
 
         enumerationTaskState.computeDescriptionLink = computeDescriptionLink;
         enumerationTaskState.parentComputeLink = parentComputeLink;
-        enumerationTaskState.enumerationAction = EnumerationAction.REFRESH;
+        enumerationTaskState.enumerationAction = EnumerationAction.START;
         enumerationTaskState.adapterManagementReference = UriUtils
-                .buildUri(AWSEnumerationService.SELF_LINK);
+                .buildUri(AWSEnumerationAdapterService.SELF_LINK);
         enumerationTaskState.resourcePoolLink = resourcePoolLink;
         enumerationTaskState.isMockRequest = isMock;
 
@@ -367,6 +411,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
      */
     private void provisionAWSVMWithEC2Client(int numberOfInstance, String instanceType)
             throws Throwable {
+        host.log("Provisioning %d instances on the AWS endpoint using the EC2 client.",
+                numberOfInstance);
         provisioningFlags = new ArrayList<Boolean>(numberOfInstance);
         for (int i = 0; i < numberOfInstance; i++) {
             provisioningFlags.add(i, Boolean.FALSE);
@@ -522,13 +568,21 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     }
 
     /**
-     * Checks if a newly deleted instance has its status set to terminated.
-     * @return
+     * Gets the instance count of non-terminated instances on the AWS endpoint. This is used to run the asserts and validate the results
+     * for the data that is collected during enumeration.
      */
-    private void getInstanceCount() {
+    private void getBaseLineInstanceCount() {
+        baseLineInstanceCount = 0;
         AWSEnumerationAsyncHandler enumerationHandler = new AWSEnumerationAsyncHandler(this.host,
                 AWSEnumerationAsyncHandler.MODE.GET_COUNT);
         DescribeInstancesRequest request = new DescribeInstancesRequest();
+        List<String> stateValues = new ArrayList<String>(Arrays.asList(INSTANCE_STATE_RUNNING,
+                INSTANCE_STATE_PENDING, INSTANCE_STATE_STOPPING, INSTANCE_STATE_STOPPED,
+                INSTANCE_STATE_SHUTTING_DOWN));
+        Filter runningInstanceFilter = new Filter();
+        runningInstanceFilter.setName(INSTANCE_STATE);
+        runningInstanceFilter.setValues(stateValues);
+        request.getFilters().add(runningInstanceFilter);
         client.describeInstancesAsync(request, enumerationHandler);
     }
 
@@ -603,9 +657,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
                     baseLineComputeDescriptionCount = computeDescriptionSet.size();
                 }
                 host.log("The baseline instance count on AWS is %d ", baseLineInstanceCount);
-                host.log(
-                        "These instances will be represented by %d additional compute descriptions ",
-                        baseLineComputeDescriptionCount);
+                host.log("These instances will be represented by %d additional compute "
+                        + "descriptions ", baseLineComputeDescriptionCount);
                 break;
             default:
                 host.log("Invalid stage %s for describing AWS instances", mode);

@@ -72,7 +72,7 @@ public class AWSTaskStatusChecker {
 
             @Override
             public void onError(Exception exception) {
-                AdapterUtils.sendFailurePatchToTask(service,
+                AdapterUtils.sendFailurePatchToProvisioningTask(service,
                         computeRequest.provisioningTaskReference, exception);
                 return;
             }

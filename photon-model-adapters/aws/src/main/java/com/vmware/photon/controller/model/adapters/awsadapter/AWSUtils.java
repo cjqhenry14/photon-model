@@ -28,6 +28,7 @@ import com.amazonaws.services.ec2.model.CreateTagsRequest;
 import com.amazonaws.services.ec2.model.DescribeTagsRequest;
 import com.amazonaws.services.ec2.model.DescribeTagsResult;
 import com.amazonaws.services.ec2.model.Filter;
+import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.Tag;
 import com.amazonaws.services.ec2.model.TagDescription;
 
@@ -143,6 +144,18 @@ public class AWSUtils {
             // invoked.
             client = null;
         }
+    }
+
+    /**
+     * Returns the region Id for the AWS instance
+     * @param vm
+     * @return the region id
+     */
+    public static String getRegionId(Instance i) {
+        // Drop the zone suffix "a" ,"b" etc to get the region Id.
+        String zoneId = i.getPlacement().getAvailabilityZone();
+        String regiondId = zoneId.substring(0, zoneId.length() - 1);
+        return regiondId;
     }
 
 }

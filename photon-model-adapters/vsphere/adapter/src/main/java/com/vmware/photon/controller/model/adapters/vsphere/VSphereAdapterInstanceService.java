@@ -32,6 +32,7 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ComputeSubTaskService.ComputeSubTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.OperationJoin.JoinedCompletionHandler;
@@ -90,7 +91,7 @@ public class VSphereAdapterInstanceService extends StatelessService {
 
         // global error handler: it marks the task as failed
         initialContext.errorHandler = failure -> {
-            AdapterUtils.sendFailurePatchToTask(this, request.provisioningTaskReference, failure);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this, request.provisioningTaskReference, failure);
         };
 
         initialContext.pool = VSphereIOThreadPoolAllocator.getPool(this);
@@ -240,6 +241,8 @@ public class VSphereAdapterInstanceService extends StatelessService {
                                 .next(patchTask)
                                 .setCompletion(failOnError(ctx))
                                 .sendWith(this);
+                        // complete task
+                        AdapterUtils.sendPatchToProvisioningTask(this, ctx.request.provisioningTaskReference);
 
                     } catch (ClientException | FinderException e) {
                         ctx.fail(e);
@@ -298,7 +301,7 @@ public class VSphereAdapterInstanceService extends StatelessService {
                         client.deleteInstance();
 
                         // complete task
-                        AdapterUtils.sendPatchToTask(this, ctx.request.provisioningTaskReference);
+                        AdapterUtils.sendPatchToProvisioningTask(this, ctx.request.provisioningTaskReference);
                     } catch (ClientException e) {
                         ctx.fail(e);
                     } catch (FinderException e) {
@@ -313,7 +316,7 @@ public class VSphereAdapterInstanceService extends StatelessService {
             deleteComputeState(ctx);
         } else {
             // just report the task as finished
-            AdapterUtils.sendPatchToTask(this, ctx.request.provisioningTaskReference);
+            AdapterUtils.sendPatchToProvisioningTask(this, ctx.request.provisioningTaskReference);
         }
     }
 

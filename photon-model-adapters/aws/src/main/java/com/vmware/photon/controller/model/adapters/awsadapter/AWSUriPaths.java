@@ -32,8 +32,8 @@ public class AWSUriPaths {
             + "/stats-service";
     public static final String AWS_ENUMERATION_SERVICE = PROVISIONING_AWS
             + "/enumeration-service";
-    public static final String AWS_COMPUTE_DESCRIPTION_TASK_SERVICE = PROVISIONING_AWS
+    public static final String AWS_COMPUTE_DESCRIPTION_SERVICE = PROVISIONING_AWS
             + "/compute-description-creation-service";
-    public static final String AWS_COMPUTE_STATE_TASK_SERVICE = PROVISIONING_AWS
+    public static final String AWS_COMPUTE_STATE_SERVICE = PROVISIONING_AWS
             + "/compute-state-creation-service";
 }

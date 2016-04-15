@@ -163,7 +163,7 @@ public class AWSFirewallService extends StatelessService {
         case FAILED:
             cleanupEC2ClientResources(requestState.client);
             if (requestState.firewallRequest.provisioningTaskReference != null) {
-                AdapterUtils.sendFailurePatchToTask(this,
+                AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         requestState.firewallRequest.provisioningTaskReference,
                         requestState.error);
             } else {

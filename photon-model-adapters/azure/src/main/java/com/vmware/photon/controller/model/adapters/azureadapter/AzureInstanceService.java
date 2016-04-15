@@ -155,7 +155,7 @@ public class AzureInstanceService extends StatelessService {
         op.complete();
         if (ctx.computeRequest.isMockRequest && ctx.computeRequest.requestType
                 == ComputeInstanceRequest.InstanceRequestType.CREATE) {
-            AdapterUtils.sendPatchToTask(this, ctx.computeRequest.provisioningTaskReference);
+            AdapterUtils.sendPatchToProvisioningTask(this, ctx.computeRequest.provisioningTaskReference);
             return;
         }
         try {
@@ -163,7 +163,7 @@ public class AzureInstanceService extends StatelessService {
         } catch (Exception e) {
             logSevere(e);
             if (ctx.computeRequest.provisioningTaskReference != null) {
-                AdapterUtils.sendFailurePatchToTask(this,
+                AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         ctx.computeRequest.provisioningTaskReference, e);
             }
         }
@@ -241,7 +241,7 @@ public class AzureInstanceService extends StatelessService {
             break;
         case ERROR:
             if (ctx.computeRequest.provisioningTaskReference != null) {
-                AdapterUtils.sendFailurePatchToTask(this,
+                AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         ctx.computeRequest.provisioningTaskReference, ctx.error);
             }
             cleanUpHttpClient(ctx);
@@ -296,7 +296,7 @@ public class AzureInstanceService extends StatelessService {
                 handleAllocation(ctx);
                 return;
             }
-            AdapterUtils.sendPatchToTask(AzureInstanceService.this,
+            AdapterUtils.sendPatchToProvisioningTask(AzureInstanceService.this,
                     ctx.computeRequest.provisioningTaskReference);
             ctx.stage = AzureStages.FINISHED;
             handleAllocation(ctx);
@@ -599,7 +599,7 @@ public class AzureInstanceService extends StatelessService {
                                 handleAllocation(ctx);
                                 return;
                             }
-                            AdapterUtils.sendPatchToTask(AzureInstanceService.this,
+                            AdapterUtils.sendPatchToProvisioningTask(AzureInstanceService.this,
                                     ctx.computeRequest.provisioningTaskReference);
                             ctx.stage = AzureStages.FINISHED;
                             handleAllocation(ctx);

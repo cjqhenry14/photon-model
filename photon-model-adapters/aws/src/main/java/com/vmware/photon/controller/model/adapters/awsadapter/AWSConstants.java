@@ -19,4 +19,10 @@ public class AWSConstants {
     public static final String AWS_INSTANCE_ID = "awsInstanceId";
     public static final String AWS_VPC_ID = "awsVpcId";
     public static final String AWS_SUBNET_ID = "awsSubnetId";
+    public static final String INSTANCE_STATE = "instance-state-name";
+    public static final String INSTANCE_STATE_RUNNING = "running";
+    public static final String INSTANCE_STATE_PENDING = "pending";
+    public static final String INSTANCE_STATE_STOPPING = "stopping";
+    public static final String INSTANCE_STATE_STOPPED = "stopped";
+    public static final String INSTANCE_STATE_SHUTTING_DOWN = "shutting-down";
 }
