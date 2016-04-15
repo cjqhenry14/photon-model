@@ -540,9 +540,6 @@ public class ResourceAllocationTaskService extends TaskService<ResourceAllocatio
 
             // as long as you can predict the document self link of a service,
             // you can start services that depend on each other in parallel!
-            // The provision task requires a compute host resource, but the runtime will
-            // automatically register for availability, if the compute host is not created
-            // yet. So, we set the link in the provision task, and let the system run in parallel
 
             String computeResourceLink = UriUtils.buildUriPath(
                     ComputeService.FACTORY_LINK, computeResourceId);

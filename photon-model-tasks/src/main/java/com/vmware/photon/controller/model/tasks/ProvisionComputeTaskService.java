@@ -135,7 +135,8 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
             // to actuate
             URI computeHost = buildComputeHostUri(state);
             sendRequest(Operation.createGet(computeHost)
-                    .setTargetReplicated(true).setCompletion((o, e) -> {
+                    .addPragmaDirective(Operation.PRAGMA_DIRECTIVE_QUEUE_FOR_SERVICE_AVAILABILITY)
+                    .setCompletion((o, e) -> {
                         validateComputeHostAndStart(startPost, o, e, state);
                     }));
         } catch (Throwable e) {

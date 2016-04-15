@@ -189,6 +189,7 @@ public abstract class BaseModelTest extends BasicReusableHostTestCase {
         this.testStart(1);
         Operation getOperation = Operation
                 .createGet(UriUtils.buildUri(this.host, serviceUri))
+                .addPragmaDirective(Operation.PRAGMA_DIRECTIVE_QUEUE_FOR_SERVICE_AVAILABILITY)
                 .setCompletion((operation, throwable) -> {
                     if (throwable != null) {
                         this.failIteration(throwable);

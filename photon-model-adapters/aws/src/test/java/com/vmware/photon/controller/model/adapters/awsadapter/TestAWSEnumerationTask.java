@@ -419,7 +419,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
      * Deletes instances on the AWS endpoint for the set of instance Ids that are passed in.
      * @param instanceIdsToDelete
      */
-    private void deleteVMsUsingEC2Client(List<String> instanceIdsToDelete) throws Throwable {
+    public void deleteVMsUsingEC2Client(List<String> instanceIdsToDelete) throws Throwable {
         TerminateInstancesRequest termRequest = new TerminateInstancesRequest(
                 instanceIdsToDelete);
         AsyncHandler<TerminateInstancesRequest, TerminateInstancesResult> terminateHandler = new AWSTerminateHandler(
