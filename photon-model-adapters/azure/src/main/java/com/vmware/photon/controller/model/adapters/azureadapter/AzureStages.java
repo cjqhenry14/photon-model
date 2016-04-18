@@ -81,6 +81,11 @@ public enum AzureStages {
     /**
      * Stage to handle errors.
      */
-    ERROR
+    ERROR,
+
+    /**
+     * The finished stage.
+     */
+    FINISHED
 
 }

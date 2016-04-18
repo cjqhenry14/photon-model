@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -125,6 +126,23 @@ public class AzureInstanceService extends StatelessService {
 
     private static final long DEFAULT_EXPIRATION_INTERVAL_MICROS = TimeUnit.MINUTES.toMicros(5);
     private static final int RETRY_INTERVAL_SECONDS = 30;
+    private static final int EXECUTOR_SHUTDOWN_INTERVAL_MINUTES = 5;
+
+    private ExecutorService executorService;
+
+    @Override
+    public void handleStart(Operation startPost) {
+        executorService = getHost().allocateExecutor(this);
+
+        super.handleStart(startPost);
+    }
+
+    @Override
+    public void handleStop(Operation delete) {
+        executorService.shutdown();
+        awaitTermination(executorService);
+        super.handleStop(delete);
+    }
 
     @Override
     public void handlePatch(Operation op) {
@@ -176,6 +194,11 @@ public class AzureInstanceService extends StatelessService {
                     handleAllocation(ctx);
                 }
             }
+
+            if (ctx.httpClient == null) {
+                ctx.httpClient = new OkHttpClient();
+                ctx.clientBuilder = ctx.httpClient.newBuilder();
+            }
             // now that we have a client lets move onto the next step
             switch (ctx.computeRequest.requestType) {
             case CREATE:
@@ -221,9 +244,14 @@ public class AzureInstanceService extends StatelessService {
                 AdapterUtils.sendFailurePatchToTask(this,
                         ctx.computeRequest.provisioningTaskReference, ctx.error);
             }
+            cleanUpHttpClient(ctx);
+            break;
+        case FINISHED:
+            cleanUpHttpClient(ctx);
             break;
         default:
             logSevere("Unhandled stage: %s", ctx.stage.toString());
+            cleanUpHttpClient(ctx);
             break;
         }
     }
@@ -234,10 +262,7 @@ public class AzureInstanceService extends StatelessService {
             return;
         }
 
-        ResourceManagementClient client = new ResourceManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, new OkHttpClient.Builder(), getRetrofitBuilder());
-
-        client.setSubscriptionId(ctx.parentAuth.userLink);
+        ResourceManagementClient client = getResourceManagementClient(ctx);
 
         String resourceGroupName = ctx.child.description.customProperties
                 .get(AZURE_RESOURCE_GROUP_NAME);
@@ -266,12 +291,15 @@ public class AzureInstanceService extends StatelessService {
     private void deleteComputeResource(AzureAllocationContext ctx) {
         Operation.CompletionHandler completionHandler = (ox, exc) -> {
             if (exc != null) {
-                AdapterUtils.sendFailurePatchToTask(AzureInstanceService.this,
-                        ctx.computeRequest.provisioningTaskReference, exc);
+                ctx.stage = AzureStages.ERROR;
+                ctx.error = exc;
+                handleAllocation(ctx);
                 return;
             }
             AdapterUtils.sendPatchToTask(AzureInstanceService.this,
                     ctx.computeRequest.provisioningTaskReference);
+            ctx.stage = AzureStages.FINISHED;
+            handleAllocation(ctx);
         };
         sendRequest(Operation.createDelete(
                 UriUtils.buildUri(getHost(), ctx.child.documentSelfLink))
@@ -281,10 +309,7 @@ public class AzureInstanceService extends StatelessService {
     }
 
     private void initResourceGroup(AzureAllocationContext ctx) {
-        ResourceManagementClient client = new ResourceManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, new OkHttpClient.Builder(), getRetrofitBuilder());
-
-        client.setSubscriptionId(ctx.parentAuth.userLink);
+        ResourceManagementClient client = getResourceManagementClient(ctx);
 
         String resourceGroupName = ctx.child.description.customProperties
                 .get(AZURE_RESOURCE_GROUP_NAME);
@@ -322,7 +347,7 @@ public class AzureInstanceService extends StatelessService {
         storageParameters.setAccountType(AccountType.STANDARD_LRS);
 
         StorageManagementClient client = new StorageManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, new OkHttpClient.Builder(), getRetrofitBuilder());
+                ctx.credentials, ctx.clientBuilder, getRetrofitBuilder());
         client.setSubscriptionId(ctx.parentAuth.userLink);
 
         final String storageAccountName = generateName(STORAGE_NAME_PREFIX);
@@ -365,9 +390,7 @@ public class AzureInstanceService extends StatelessService {
         subnet.setAddressPrefix(SUBNET_ADDRESS_PREFIX);
         vnet.getSubnets().add(subnet);
 
-        NetworkManagementClient client = new NetworkManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, new OkHttpClient.Builder(), getRetrofitBuilder());
-        client.setSubscriptionId(ctx.parentAuth.userLink);
+        NetworkManagementClient client = getNetworkManagementClient(ctx);
 
         String vNetName = generateName(NETWORK_NAME_PREFIX);
 
@@ -399,9 +422,7 @@ public class AzureInstanceService extends StatelessService {
         publicIPAddress.setDnsSettings(new PublicIPAddressDnsSettings());
         publicIPAddress.getDnsSettings().setDomainNameLabel(generateName(DOMAIN_NAME_PREFIX));
 
-        NetworkManagementClient client = new NetworkManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, new OkHttpClient.Builder(), getRetrofitBuilder());
-        client.setSubscriptionId(ctx.parentAuth.userLink);
+        NetworkManagementClient client = getNetworkManagementClient(ctx);
 
         String publicIPName = generateName(PUBLICIP_NAME_PREFIX);
 
@@ -435,9 +456,7 @@ public class AzureInstanceService extends StatelessService {
         NetworkSecurityGroup group = new NetworkSecurityGroup();
         group.setLocation(ctx.resourceGroup.getLocation());
 
-        NetworkManagementClient client = new NetworkManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, new OkHttpClient.Builder(), getRetrofitBuilder());
-        client.setSubscriptionId(ctx.parentAuth.userLink);
+        NetworkManagementClient client = getNetworkManagementClient(ctx);
 
         String secGroupName = generateName(SECGROUP_NAME_PREFIX);
 
@@ -477,9 +496,7 @@ public class AzureInstanceService extends StatelessService {
         nic.getIpConfigurations().add(configuration);
         nic.setNetworkSecurityGroup(ctx.securityGroup);
 
-        NetworkManagementClient client = new NetworkManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, new OkHttpClient.Builder(), getRetrofitBuilder());
-        client.setSubscriptionId(ctx.parentAuth.userLink);
+        NetworkManagementClient client = getNetworkManagementClient(ctx);
 
         String nicName = generateName(NIC_NAME_PREFIX);
 
@@ -544,7 +561,7 @@ public class AzureInstanceService extends StatelessService {
         request.getNetworkProfile().getNetworkInterfaces().add(nir);
 
         ComputeManagementClient client = new ComputeManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, new OkHttpClient.Builder(), getRetrofitBuilder());
+                ctx.credentials, ctx.clientBuilder, getRetrofitBuilder());
         client.setSubscriptionId(ctx.parentAuth.userLink);
 
         String vmName = generateName(VM_NAME_PREFIX);
@@ -577,14 +594,15 @@ public class AzureInstanceService extends StatelessService {
                         Operation.CompletionHandler completionHandler = (ox,
                                 exc) -> {
                             if (exc != null) {
-                                AdapterUtils.sendFailurePatchToTask(AzureInstanceService.this,
-                                        ctx.computeRequest.provisioningTaskReference,
-                                        new IllegalStateException(
-                                                "Error updating VM state"));
+                                ctx.stage = AzureStages.ERROR;
+                                ctx.error = exc;
+                                handleAllocation(ctx);
                                 return;
                             }
                             AdapterUtils.sendPatchToTask(AzureInstanceService.this,
                                     ctx.computeRequest.provisioningTaskReference);
+                            ctx.stage = AzureStages.FINISHED;
+                            handleAllocation(ctx);
                         };
 
                         sendRequest(
@@ -619,9 +637,7 @@ public class AzureInstanceService extends StatelessService {
     }
 
     private void registerSubscription(AzureAllocationContext ctx, String namespace) {
-        ResourceManagementClient client = new ResourceManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, new OkHttpClient.Builder(), getRetrofitBuilder());
-        client.setSubscriptionId(ctx.parentAuth.userLink);
+        ResourceManagementClient client = getResourceManagementClient(ctx);
         client.getProvidersOperations().registerAsync(namespace, new ServiceCallback<Provider>() {
             @Override
             public void failure(Throwable e) {
@@ -639,7 +655,7 @@ public class AzureInstanceService extends StatelessService {
                     logInfo("%s namespace registration in %s state", namespace, registrationState);
                     long retryExpiration =
                             Utils.getNowMicrosUtc() + DEFAULT_EXPIRATION_INTERVAL_MICROS;
-                    getSubscriptionState(client, ctx, namespace, retryExpiration);
+                    getSubscriptionState(ctx, namespace, retryExpiration);
                     return;
                 }
                 logInfo("Successfully registered namespace [%s]", provider.getNamespace());
@@ -648,7 +664,7 @@ public class AzureInstanceService extends StatelessService {
         });
     }
 
-    private void getSubscriptionState(ResourceManagementClient client, AzureAllocationContext ctx,
+    private void getSubscriptionState(AzureAllocationContext ctx,
             String namespace, long retryExpiration) {
         if (Utils.getNowMicrosUtc() > retryExpiration) {
             String msg = String
@@ -660,6 +676,8 @@ public class AzureInstanceService extends StatelessService {
             handleAllocation(ctx);
             return;
         }
+
+        ResourceManagementClient client = getResourceManagementClient(ctx);
 
         getHost().schedule(
                 () -> client.getProvidersOperations().getAsync(namespace,
@@ -679,7 +697,7 @@ public class AzureInstanceService extends StatelessService {
                                 if (!PROVIDER_REGISTRED_STATE.equalsIgnoreCase(registrationState)) {
                                     logInfo("%s namespace registration in %s state",
                                             namespace, registrationState);
-                                    getSubscriptionState(client, ctx, namespace, retryExpiration);
+                                    getSubscriptionState(ctx, namespace, retryExpiration);
                                     return;
                                 }
                                 logInfo("Successfully registered namespace [%s]",
@@ -761,7 +779,7 @@ public class AzureInstanceService extends StatelessService {
 
     private Retrofit.Builder getRetrofitBuilder() {
         Retrofit.Builder builder = new Retrofit.Builder();
-        builder.callbackExecutor(getHost().allocateExecutor(this));
+        builder.callbackExecutor(executorService);
         return builder;
     }
 
@@ -776,5 +794,55 @@ public class AzureInstanceService extends StatelessService {
             stringBuilder.append((char) ('a' + random.nextInt(26)));
         }
         return stringBuilder.toString();
+    }
+
+    private void cleanUpHttpClient(AzureAllocationContext ctx) {
+        if (ctx.httpClient == null) {
+            return;
+        }
+
+        ctx.httpClient.connectionPool().evictAll();
+        ExecutorService httpClientExecutor = ctx.httpClient.dispatcher().executorService();
+        httpClientExecutor.shutdown();
+
+        awaitTermination(httpClientExecutor);
+    }
+
+    private void awaitTermination(ExecutorService executor) {
+        try {
+            if (!executor.awaitTermination(EXECUTOR_SHUTDOWN_INTERVAL_MINUTES, TimeUnit.MINUTES)) {
+                logWarning(
+                        "Executor service can't be shutdown for Azure. Trying to shutdown now...");
+                executor.shutdownNow();
+            }
+            logFine("Executor service shutdown for Azure");
+        } catch (InterruptedException e) {
+            logSevere(e);
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            logSevere(e);
+        }
+    }
+
+    private ResourceManagementClient getResourceManagementClient(AzureAllocationContext ctx) {
+        if (ctx.resourceManagementClient == null) {
+            ResourceManagementClient client = new ResourceManagementClientImpl(
+                    AzureConstants.BASE_URI, ctx.credentials, ctx.clientBuilder,
+                    getRetrofitBuilder());
+            client.setSubscriptionId(ctx.parentAuth.userLink);
+            ctx.resourceManagementClient = client;
+        }
+        return ctx.resourceManagementClient;
+    }
+
+    private NetworkManagementClient getNetworkManagementClient(AzureAllocationContext ctx) {
+        if (ctx.networkManagementClient == null) {
+            NetworkManagementClient client = new NetworkManagementClientImpl(
+                    AzureConstants.BASE_URI, ctx.credentials, ctx.clientBuilder,
+                    getRetrofitBuilder());
+            client.setSubscriptionId(ctx.parentAuth.userLink);
+            ctx.networkManagementClient = client;
+        }
+        return ctx.networkManagementClient;
     }
 }
