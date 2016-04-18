@@ -73,7 +73,7 @@ public class MockAdapter {
                 computeSubTaskState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
-                        computeSubTaskState));
+                                computeSubTaskState));
                 break;
             default:
                 super.handleRequest(op);
@@ -105,7 +105,7 @@ public class MockAdapter {
                         .create(new Exception(), 500);
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
-                        computeSubTaskState));
+                                computeSubTaskState));
                 break;
             default:
                 super.handleRequest(op);
@@ -135,7 +135,7 @@ public class MockAdapter {
                 computeSubTaskState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
-                        computeSubTaskState));
+                                computeSubTaskState));
                 break;
             default:
                 super.handleRequest(op);
@@ -167,7 +167,7 @@ public class MockAdapter {
                         .create(new Exception(), 500);
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
-                        computeSubTaskState));
+                                computeSubTaskState));
                 break;
             default:
                 super.handleRequest(op);
@@ -281,6 +281,9 @@ public class MockAdapter {
                 ComputeSubTaskService.ComputeSubTaskState computeSubTaskState = new ComputeSubTaskService.ComputeSubTaskState();
                 computeSubTaskState.taskInfo = new TaskState();
                 computeSubTaskState.taskInfo.stage = TaskState.TaskStage.FAILED;
+                computeSubTaskState.taskInfo.failure = ServiceErrorResponse.create(
+                        new IllegalStateException("Failing on purpose, from mock adapter"),
+                        Operation.STATUS_CODE_SERVER_FAILURE_THRESHOLD);
                 sendRequest(Operation
                         .createPatch(request.snapshotTaskReference).setBody(
                                 computeSubTaskState));
@@ -314,7 +317,7 @@ public class MockAdapter {
                 provisionNetworkTaskState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
-                        provisionNetworkTaskState));
+                                provisionNetworkTaskState));
                 break;
             default:
                 super.handleRequest(op);
@@ -345,7 +348,7 @@ public class MockAdapter {
                 provisionNetworkTaskState.taskInfo.stage = TaskState.TaskStage.FAILED;
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
-                        provisionNetworkTaskState));
+                                provisionNetworkTaskState));
                 break;
             default:
                 super.handleRequest(op);
@@ -376,7 +379,7 @@ public class MockAdapter {
                 provisionFirewallTaskState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
-                        provisionFirewallTaskState));
+                                provisionFirewallTaskState));
                 break;
             default:
                 super.handleRequest(op);
@@ -407,7 +410,7 @@ public class MockAdapter {
                 provisionFirewallTaskState.taskInfo.stage = TaskState.TaskStage.FAILED;
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
-                        provisionFirewallTaskState));
+                                provisionFirewallTaskState));
                 break;
             default:
                 super.handleRequest(op);

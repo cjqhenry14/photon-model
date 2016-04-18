@@ -211,7 +211,6 @@ public class SnapshotTaskService extends TaskService<SnapshotTaskService.Snapsho
         default:
             break;
         }
-        patch.complete();
     }
 
     private void createSnapshot(SnapshotTaskState updatedState,
