@@ -347,6 +347,7 @@ public class ResourceRemovalTaskService extends TaskService<ResourceRemovalTaskS
 
     public void getQueryResults(ResourceRemovalTaskState currentState) {
         sendRequest(Operation.createGet(this, currentState.resourceQueryLink)
+                .addPragmaDirective(Operation.PRAGMA_DIRECTIVE_QUEUE_FOR_SERVICE_AVAILABILITY)
                 .setCompletion((o, e) -> {
                     if (e != null) {
                         // the task might have expired, with no results every
