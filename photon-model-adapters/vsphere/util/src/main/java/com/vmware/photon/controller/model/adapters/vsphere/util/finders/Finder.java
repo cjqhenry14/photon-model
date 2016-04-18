@@ -52,7 +52,11 @@ public class Finder extends Recurser {
     public Finder(Connection connection, String datacenterPath)
             throws FinderException, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
         super(connection);
-        this.datacenter = datacenter(datacenterPath);
+        if (datacenterPath == null) {
+            this.datacenter = defaultDatacenter();
+        } else {
+            this.datacenter = datacenter(datacenterPath);
+        }
     }
 
     public static List<String> toParts(String p) {
@@ -176,6 +180,13 @@ public class Finder extends Recurser {
 
         // root object
         return null;
+    }
+
+    /**
+     * Returns the datacenter this finder is rooted at. Will never return null.
+     */
+    public Element getDatacenter() {
+        return this.datacenter;
     }
 
     private String getName(ObjectContent cont) throws FinderException {
@@ -389,7 +400,7 @@ public class Finder extends Recurser {
         return datastoreFolder;
     }
 
-    private Element vmFolder() throws
+    public Element vmFolder() throws
             InvalidPropertyFaultMsg,
             RuntimeFaultFaultMsg,
             FinderException {

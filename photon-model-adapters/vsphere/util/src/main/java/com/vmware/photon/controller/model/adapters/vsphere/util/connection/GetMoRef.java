@@ -430,7 +430,7 @@ public class GetMoRef extends BaseHelper {
     @SuppressWarnings("unchecked")
     public <T> T entityProp(ManagedObjectReference ref,  String name)
             throws InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
-        Map<String, Object> map = entityProps(ref, new String[] { name });
+        Map<String, Object> map = entityProps(ref, name);
         return (T) map.get(name);
     }
 
@@ -444,7 +444,7 @@ public class GetMoRef extends BaseHelper {
      * @throws RuntimeFaultFaultMsg
      */
     public Map<String, Object> entityProps(
-            ManagedObjectReference entityMor, String[] props)
+            ManagedObjectReference entityMor, String... props)
             throws InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
 
         init();

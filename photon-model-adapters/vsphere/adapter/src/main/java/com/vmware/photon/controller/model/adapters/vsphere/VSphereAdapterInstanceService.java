@@ -23,6 +23,8 @@ import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.adapters.vsphere.Client.ClientException;
+import com.vmware.photon.controller.model.adapters.vsphere.util.finders.FinderException;
+import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ComputeSubTaskService.ComputeSubTaskState;
@@ -52,6 +54,9 @@ public class VSphereAdapterInstanceService extends StatelessService {
         ComputeInstanceRequest request = op.getBody(ComputeInstanceRequest.class);
         ProvisionContext initialContext = createInitialContext(request);
 
+        // mark task as started
+        patchSubstageAsync(request.computeReference, TaskStage.STARTED);
+
         withContext(initialContext, ctx -> {
             if (request.isMockRequest) {
                 handleMockRequest(ctx);
@@ -74,8 +79,7 @@ public class VSphereAdapterInstanceService extends StatelessService {
     }
 
     private ProvisionContext createInitialContext(ComputeInstanceRequest request) {
-        ProvisionContext initialContext = new ProvisionContext();
-        initialContext.request = request;
+        ProvisionContext initialContext = new ProvisionContext(request);
 
         // global error handler: it marks the task as failed
         initialContext.errorHandler = failure -> {
@@ -172,12 +176,28 @@ public class VSphereAdapterInstanceService extends StatelessService {
                     }
 
                     try {
-                        Client client = new Client(conn, ctx.child);
-                        client.createInstance();
-                    } catch (ClientException clientEx) {
-                        ctx.fail(clientEx);
+                        Client client = new Client(conn, ctx.child, ctx.parent);
+                        ComputeState state = client.createInstance();
+
+                        // patch compute resource
+                        patchComputeResource(state, ctx.request.computeReference);
+
+                        // complete task
+                        AdapterUtils.sendPatchToTask(this, ctx.request.provisioningTaskReference);
+                    } catch (ClientException | FinderException e) {
+                        ctx.fail(e);
+                    } catch (RuntimeException e) {
+                        ctx.fail(e);
+                    } catch (Exception vimException) {
+                        ctx.fail(vimException);
                     }
                 });
+    }
+
+    private void patchComputeResource(ComputeState state, URI computeReference) {
+        Operation.createPatch(computeReference)
+                .setBody(state)
+                .sendWith(this);
     }
 
     private void handleDeleteInstance(ProvisionContext ctx) {
@@ -188,10 +208,15 @@ public class VSphereAdapterInstanceService extends StatelessService {
                     }
 
                     try {
-                        Client client = new Client(conn, ctx.child);
+                        Client client = new Client(conn, ctx.child, ctx.parent);
                         client.deleteInstance();
-                    } catch (ClientException clientEx) {
-                        ctx.fail(clientEx);
+
+                        // complete task
+                        AdapterUtils.sendPatchToTask(this, ctx.request.provisioningTaskReference);
+                    } catch (ClientException e) {
+                        ctx.fail(e);
+                    } catch (FinderException e) {
+                        ctx.fail(e);
                     }
                 });
     }

@@ -217,7 +217,7 @@ public class BasicConnection implements Connection {
         return requestTimeoutMillis;
     }
 
-    private class BasicConnectionException extends ConnectionException {
+    public static class BasicConnectionException extends ConnectionException {
         private static final long serialVersionUID = 1L;
 
         public BasicConnectionException(String s, Throwable t) {

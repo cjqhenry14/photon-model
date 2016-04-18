@@ -46,18 +46,22 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  * All public fields below can be specified via command line arguments
  *
  * If the 'isMock' flag is set to true the test runs the adapter in mock
- * mode and does not actually create a VM. isMock is set to true if no {@link #vpshereUrl}
+ * mode and does not actually create a VM. isMock is set to true if no {@link #vcUrl}
  * is defined.
 
  */
 public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
 
     private static final String DEFAULT_AUTH_TYPE = "Username/Password";
-    public String vpshereUrl = "";
-    public String vpshereUsername = "";
-    public String vpsherePassword = "";
 
-    public boolean isMock = true;
+    public String vcUrl = System.getProperty("vc.url");
+    public String vcUsername = System.getProperty("vc.username");
+    public String vcPassword = System.getProperty("vc.password");
+
+    public String zoneId = System.getProperty("vc.zoneId");
+    public String dataStoreId = System.getProperty("vc.dataStoreId");
+    public String networkId = System.getProperty("vc.networkId");
+
     // fields that are used across method calls, stash them as private fields
     private ResourcePoolState resourcePool;
 
@@ -66,6 +70,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
     private ComputeState computeHost;
     private ComputeDescription vmDescription;
     private ComputeState vm;
+    private boolean mock;
 
     @Before
     public void setUp() throws Throwable {
@@ -122,12 +127,11 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         vmDescription = createVmDescription();
         vm = createVmState();
 
-
         // kick off a provision task to do the actual VM creation
         ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskService.ProvisionComputeTaskState();
 
         provisionTask.computeLink = vm.documentSelfLink;
-        provisionTask.isMockRequest = isMock;
+        provisionTask.isMockRequest = isMock();
         provisionTask.taskSubStage = ProvisionComputeTaskState.SubStage.CREATING_HOST;
 
         ProvisionComputeTaskService.ProvisionComputeTaskState outTask = TestUtils.doPost(this.host,
@@ -138,16 +142,16 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
 
         List<URI> uris = new ArrayList<>();
         uris.add(UriUtils.buildUri(this.host, outTask.documentSelfLink));
-        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ProvisionComputeTaskState.class );
+        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ProvisionComputeTaskState.class);
     }
 
     private ComputeState createVmState() throws Throwable {
         ComputeState computeState = new ComputeState();
-        computeState.id = UUID.randomUUID().toString();
+        computeState.id = vmDescription.name;
         computeState.documentSelfLink = computeState.id;
         computeState.descriptionLink = vmDescription.documentSelfLink;
         computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
-        computeState.adapterManagementReference = UriUtils.buildUri(vpshereUrl);
+        computeState.adapterManagementReference = UriUtils.buildUri(vcUrl);
 
         computeState.parentLink = computeHost.documentSelfLink;
 
@@ -160,12 +164,15 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
     private ComputeDescription createVmDescription() throws Throwable {
         ComputeDescription computeDesc = new ComputeDescription();
 
-        computeDesc.id = UUID.randomUUID().toString();
+        computeDesc.id = "vm-" + UUID.randomUUID().toString();
         computeDesc.documentSelfLink = computeDesc.id;
         computeDesc.supportedChildren = new ArrayList<>();
-        computeDesc.instanceAdapterReference = UriUtils.buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
+        computeDesc.instanceAdapterReference = UriUtils
+                .buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
         computeDesc.authCredentialsLink = this.auth.documentSelfLink;
-
+        computeDesc.name = computeDesc.id;
+        computeDesc.dataStoreId = dataStoreId;
+        computeDesc.networkId = networkId;
 
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,
@@ -181,7 +188,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         computeState.documentSelfLink = computeState.id;
         computeState.descriptionLink = computeHostDescription.documentSelfLink;
         computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
-        computeState.adapterManagementReference = UriUtils.buildUri(vpshereUrl);
+        computeState.adapterManagementReference = UriUtils.buildUri(vcUrl);
 
         ComputeService.ComputeState returnState = TestUtils.doPost(this.host, computeState,
                 ComputeService.ComputeState.class,
@@ -192,8 +199,8 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
     private AuthCredentialsServiceState createAuth() throws Throwable {
         AuthCredentialsServiceState auth = new AuthCredentialsServiceState();
         auth.type = DEFAULT_AUTH_TYPE;
-        auth.privateKeyId = vpshereUsername;
-        auth.privateKey = vpsherePassword;
+        auth.privateKeyId = vcUsername;
+        auth.privateKey = vcPassword;
         auth.documentSelfLink = UUID.randomUUID().toString();
 
         AuthCredentialsServiceState result = TestUtils
@@ -209,12 +216,18 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         computeDesc.documentSelfLink = computeDesc.id;
         computeDesc.supportedChildren = new ArrayList<>();
         computeDesc.supportedChildren.add(ComputeType.VM_GUEST.name());
-        computeDesc.instanceAdapterReference = UriUtils.buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
+        computeDesc.instanceAdapterReference = UriUtils
+                .buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
         computeDesc.authCredentialsLink = this.auth.documentSelfLink;
 
+        computeDesc.zoneId = zoneId;
 
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,
                 UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
+    }
+
+    public boolean isMock() {
+        return vcUrl == null || vcUrl.length() == 0;
     }
 }

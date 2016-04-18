@@ -29,9 +29,13 @@ public class ProvisionContext {
 
     public ResourcePoolState resourcePool;
     public VSphereIOThreadPool pool;
-    public ComputeInstanceRequest request;
+    public final ComputeInstanceRequest request;
     public AuthCredentialsServiceState vSphereCredentials;
     public Consumer<Throwable> errorHandler;
+
+    public ProvisionContext(ComputeInstanceRequest request) {
+        this.request = request;
+    }
 
     /**
      * Fails the provisioning by invoking the errorHandler.
