@@ -51,6 +51,14 @@ public class MockAdapter {
         host.startService(new MockFirewallInstanceFailureAdapter());
     }
 
+    public static TaskState createFailedTaskInfo() {
+        TaskState taskState = new TaskState();
+        taskState.stage = TaskState.TaskStage.FAILED;
+        taskState.failure = ServiceErrorResponse
+                .create(new IllegalStateException("Mock adapter failing task on purpose"), 500);
+        return taskState;
+    }
+
     /**
      * Mock instance adapter that always succeeds.
      */
@@ -99,10 +107,7 @@ public class MockAdapter {
                 ComputeInstanceRequest request = op
                         .getBody(ComputeInstanceRequest.class);
                 ComputeSubTaskService.ComputeSubTaskState computeSubTaskState = new ComputeSubTaskService.ComputeSubTaskState();
-                computeSubTaskState.taskInfo = new TaskState();
-                computeSubTaskState.taskInfo.stage = TaskState.TaskStage.FAILED;
-                computeSubTaskState.taskInfo.failure = ServiceErrorResponse
-                        .create(new Exception(), 500);
+                computeSubTaskState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
                                 computeSubTaskState));
@@ -162,9 +167,7 @@ public class MockAdapter {
                         .getBody(ComputeBootRequest.class);
                 ComputeSubTaskService.ComputeSubTaskState computeSubTaskState = new ComputeSubTaskService.ComputeSubTaskState();
                 computeSubTaskState.taskInfo = new TaskState();
-                computeSubTaskState.taskInfo.stage = TaskState.TaskStage.FAILED;
-                computeSubTaskState.taskInfo.failure = ServiceErrorResponse
-                        .create(new Exception(), 500);
+                computeSubTaskState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
                                 computeSubTaskState));
@@ -222,8 +225,7 @@ public class MockAdapter {
                 ComputeEnumerateResourceRequest request = op
                         .getBody(ComputeEnumerateResourceRequest.class);
                 ResourceEnumerationTaskService.ResourceEnumerationTaskState patchState = new ResourceEnumerationTaskService.ResourceEnumerationTaskState();
-                patchState.taskInfo = new TaskState();
-                patchState.taskInfo.stage = TaskState.TaskStage.FAILED;
+                patchState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation.createPatch(
                         request.enumerationTaskReference).setBody(patchState));
                 break;
@@ -246,6 +248,7 @@ public class MockAdapter {
                 op.fail(new IllegalArgumentException("body is required"));
                 return;
             }
+
             switch (op.getAction()) {
             case PATCH:
                 SnapshotRequest request = op.getBody(SnapshotRequest.class);
@@ -255,6 +258,7 @@ public class MockAdapter {
                 sendRequest(Operation
                         .createPatch(request.snapshotTaskReference).setBody(
                                 computeSubTaskState));
+                op.complete();
                 break;
             default:
                 super.handleRequest(op);
@@ -279,14 +283,11 @@ public class MockAdapter {
             case PATCH:
                 SnapshotRequest request = op.getBody(SnapshotRequest.class);
                 ComputeSubTaskService.ComputeSubTaskState computeSubTaskState = new ComputeSubTaskService.ComputeSubTaskState();
-                computeSubTaskState.taskInfo = new TaskState();
-                computeSubTaskState.taskInfo.stage = TaskState.TaskStage.FAILED;
-                computeSubTaskState.taskInfo.failure = ServiceErrorResponse.create(
-                        new IllegalStateException("Failing on purpose, from mock adapter"),
-                        Operation.STATUS_CODE_SERVER_FAILURE_THRESHOLD);
+                computeSubTaskState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation
                         .createPatch(request.snapshotTaskReference).setBody(
                                 computeSubTaskState));
+                op.complete();
                 break;
             default:
                 super.handleRequest(op);
@@ -318,6 +319,7 @@ public class MockAdapter {
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
                                 provisionNetworkTaskState));
+                op.complete();
                 break;
             default:
                 super.handleRequest(op);
@@ -344,11 +346,11 @@ public class MockAdapter {
                 NetworkInstanceRequest request = op
                         .getBody(NetworkInstanceRequest.class);
                 ProvisionNetworkTaskService.ProvisionNetworkTaskState provisionNetworkTaskState = new ProvisionNetworkTaskService.ProvisionNetworkTaskState();
-                provisionNetworkTaskState.taskInfo = new TaskState();
-                provisionNetworkTaskState.taskInfo.stage = TaskState.TaskStage.FAILED;
+                provisionNetworkTaskState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
                                 provisionNetworkTaskState));
+                op.complete();
                 break;
             default:
                 super.handleRequest(op);
@@ -380,6 +382,7 @@ public class MockAdapter {
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
                                 provisionFirewallTaskState));
+                op.complete();
                 break;
             default:
                 super.handleRequest(op);
@@ -406,11 +409,11 @@ public class MockAdapter {
                 FirewallInstanceRequest request = op
                         .getBody(FirewallInstanceRequest.class);
                 ProvisionFirewallTaskService.ProvisionFirewallTaskState provisionFirewallTaskState = new ProvisionFirewallTaskService.ProvisionFirewallTaskState();
-                provisionFirewallTaskState.taskInfo = new TaskState();
-                provisionFirewallTaskState.taskInfo.stage = TaskState.TaskStage.FAILED;
+                provisionFirewallTaskState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation.createPatch(
                         request.provisioningTaskReference).setBody(
                                 provisionFirewallTaskState));
+                op.complete();
                 break;
             default:
                 super.handleRequest(op);

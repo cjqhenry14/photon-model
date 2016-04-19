@@ -171,20 +171,6 @@ public class SnapshotTaskService extends TaskService<SnapshotTaskService.Snapsho
         sendSelfPatch(body);
     }
 
-    private void sendPatch(URI uri, Object body) {
-        Operation patch = Operation
-                .createPatch(uri)
-                .setBody(body)
-                .setCompletion(
-                        (o, ex) -> {
-                            if (ex != null) {
-                                logWarning("Self patch failed: %s",
-                                        Utils.toString(ex));
-                            }
-                        });
-        sendRequest(patch);
-    }
-
     @Override
     public void handlePatch(Operation patch) {
         SnapshotTaskState body = patch.getBody(SnapshotTaskState.class);
@@ -232,10 +218,6 @@ public class SnapshotTaskService extends TaskService<SnapshotTaskService.Snapsho
                 .setCompletion(
                         (o, e) -> {
                             if (e != null) {
-                                SnapshotTaskState subTaskPatchBody = new SnapshotTaskState();
-                                subTaskPatchBody.taskInfo.stage = TaskState.TaskStage.FAILED;
-                                sendPatch(UriUtils.buildUri(getHost(),
-                                        subTaskLink), subTaskPatchBody);
                                 failTask(e);
                                 return;
                             }
@@ -285,6 +267,14 @@ public class SnapshotTaskService extends TaskService<SnapshotTaskService.Snapsho
         }
         logFine("Current: %s. New: %s(%s)", currentState.taskInfo.stage,
                 patchBody.taskInfo.stage);
+
+        if (TaskState.isFailed(currentState.taskInfo)
+                || TaskState.isCancelled(currentState.taskInfo)) {
+            patch.fail(new IllegalStateException(
+                    "task in failed state, can not transition to " + patchBody.taskInfo.stage));
+            return true;
+        }
+
         // update current stage to new stage
         currentState.taskInfo.stage = patchBody.taskInfo.stage;
         adjustStat(patchBody.taskInfo.stage.toString(), 1);
