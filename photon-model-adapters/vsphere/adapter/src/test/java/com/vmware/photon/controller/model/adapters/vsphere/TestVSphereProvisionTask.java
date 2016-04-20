@@ -27,6 +27,9 @@ import com.vmware.photon.controller.model.resources.ComputeDescriptionService.Co
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
+import com.vmware.photon.controller.model.resources.DiskService;
+import com.vmware.photon.controller.model.resources.DiskService.DiskState;
+import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
@@ -155,10 +158,28 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
 
         computeState.parentLink = computeHost.documentSelfLink;
 
+        computeState.diskLinks = new ArrayList<>(1);
+        computeState.diskLinks.add(createDisk("main", DiskType.HDD).documentSelfLink);
+        computeState.diskLinks.add(createDisk("movies", DiskType.HDD).documentSelfLink);
+        computeState.diskLinks.add(createDisk("A", DiskType.FLOPPY).documentSelfLink);
+        computeState.diskLinks.add(createDisk("cd", DiskType.CDROM).documentSelfLink);
+
         ComputeService.ComputeState returnState = TestUtils.doPost(this.host, computeState,
                 ComputeService.ComputeState.class,
                 UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
         return returnState;
+    }
+
+    private DiskState createDisk(String alias, DiskType type) throws Throwable {
+        DiskState res = new DiskState();
+        res.capacityMBytes = 32;
+        res.bootOrder = 1;
+        res.type = type;
+        res.id = res.name = "disk-" + alias;
+
+        return TestUtils.doPost(this.host, res,
+                DiskState.class,
+                UriUtils.buildUri(this.host, DiskService.FACTORY_LINK));
     }
 
     private ComputeDescription createVmDescription() throws Throwable {

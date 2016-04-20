@@ -14,10 +14,12 @@
 package com.vmware.photon.controller.model.adapters.vsphere;
 
 import java.net.URI;
+import java.util.List;
 import java.util.function.Consumer;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
+import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
@@ -26,6 +28,8 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
 public class ProvisionContext {
     public ComputeStateWithDescription parent;
     public ComputeStateWithDescription child;
+
+    public List<DiskState> disks;
 
     public ResourcePoolState resourcePool;
     public VSphereIOThreadPool pool;

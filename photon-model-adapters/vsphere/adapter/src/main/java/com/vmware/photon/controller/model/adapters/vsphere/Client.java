@@ -13,10 +13,15 @@
 
 package com.vmware.photon.controller.model.adapters.vsphere;
 
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BaseHelper;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
@@ -28,6 +33,9 @@ import com.vmware.photon.controller.model.adapters.vsphere.util.finders.FinderEx
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.ComputeService.PowerState;
+import com.vmware.photon.controller.model.resources.DiskService.DiskState;
+import com.vmware.photon.controller.model.resources.DiskService.DiskStatus;
+import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.vim25.ArrayOfVirtualDevice;
 import com.vmware.vim25.DuplicateNameFaultMsg;
 import com.vmware.vim25.FileAlreadyExists;
@@ -46,16 +54,27 @@ import com.vmware.vim25.SharesLevel;
 import com.vmware.vim25.TaskInfo;
 import com.vmware.vim25.TaskInfoState;
 import com.vmware.vim25.VimPortType;
+import com.vmware.vim25.VirtualCdrom;
+import com.vmware.vim25.VirtualCdromAtapiBackingInfo;
 import com.vmware.vim25.VirtualDevice;
 import com.vmware.vim25.VirtualDeviceConfigSpec;
+import com.vmware.vim25.VirtualDeviceConfigSpecFileOperation;
 import com.vmware.vim25.VirtualDeviceConfigSpecOperation;
+import com.vmware.vim25.VirtualDeviceConnectInfo;
+import com.vmware.vim25.VirtualDisk;
+import com.vmware.vim25.VirtualDiskFlatVer2BackingInfo;
 import com.vmware.vim25.VirtualE1000;
 import com.vmware.vim25.VirtualEthernetCard;
 import com.vmware.vim25.VirtualEthernetCardNetworkBackingInfo;
+import com.vmware.vim25.VirtualFloppy;
+import com.vmware.vim25.VirtualFloppyDeviceBackingInfo;
+import com.vmware.vim25.VirtualIDEController;
 import com.vmware.vim25.VirtualLsiLogicController;
 import com.vmware.vim25.VirtualMachineConfigSpec;
 import com.vmware.vim25.VirtualMachineFileInfo;
+import com.vmware.vim25.VirtualSCSIController;
 import com.vmware.vim25.VirtualSCSISharing;
+import com.vmware.vim25.VirtualSIOController;
 
 /**
  * A simple client for vsphere. Consist of a valid connection and some context.
@@ -70,6 +89,7 @@ public class Client extends BaseHelper {
 
     private final GetMoRef get;
     private final Finder finder;
+    private ManagedObjectReference vm;
 
     public Client(Connection connection,
             ComputeStateWithDescription resource,
@@ -110,8 +130,8 @@ public class Client extends BaseHelper {
             return null;
         }
 
-        // TODO add disks
-        // TODO patch disk state
+        // store reference to created vm for further processing
+        this.vm = vm;
 
         ComputeState state = new ComputeState();
         state.powerState = PowerState.OFF;
@@ -120,6 +140,229 @@ public class Client extends BaseHelper {
         enrichStateFromVm(state, vm);
 
         return state;
+    }
+
+    /**
+     * Creates disks and attaches them to the vm created by {@link #createInstance()}.
+     * The given diskStates are enriched with data from vSphere and can be patched back to xenon.
+     */
+    public void attachDisks(List<DiskState> diskStates) throws Exception {
+        if (this.vm == null) {
+            throw new IllegalStateException("Cannot attach diskStates if VM is not created");
+        }
+
+        EnumSet<DiskType> notSupportedTypes = EnumSet.of(DiskType.SSD, DiskType.NETWORK);
+        List<DiskState> unsupportedDisks = diskStates.stream()
+                .filter(d -> notSupportedTypes.contains(d.type))
+                .collect(Collectors.toList());
+        if (!unsupportedDisks.isEmpty()) {
+            throw new IllegalStateException(
+                    "Some diskStates cannot be created: " + unsupportedDisks.stream()
+                            .map(d -> d.documentSelfLink).collect(Collectors.toList()));
+        }
+
+        // the path to folder holding all vm files
+        String dir = get.entityProp(vm, "summary.config.vmPathName");
+        dir = Paths.get(dir).getParent().toString();
+
+        String dirPath = directoryPath(dir);
+
+        ArrayOfVirtualDevice devices = get.entityProp(vm, "config.hardware.device");
+
+        VirtualDevice scsiController = getFirstScsiController(devices);
+        int scsiUnit = findFreeUnit(scsiController, devices.getVirtualDevice());
+
+        VirtualDevice ideController = getFirstIdeController(devices);
+        int ideUnit = findFreeUnit(ideController, devices.getVirtualDevice());
+
+        VirtualDevice sioController = getFirstSioController(devices);
+        int sioUnit = findFreeUnit(sioController, devices.getVirtualDevice());
+
+        List<VirtualDeviceConfigSpec> newDisks = new ArrayList<>();
+
+        for (DiskState ds : diskStates) {
+            if (ds.type == DiskType.HDD) {
+                if (ds.sourceImageReference != null) {
+                    //TODO upload images using NFC
+                    throw new IllegalStateException("sourceImageReference not supported yet");
+                } else {
+                    VirtualDeviceConfigSpec hdd = createHdd(scsiController, ds, dir, scsiUnit);
+                    newDisks.add(hdd);
+                    scsiUnit = nextUnitNumber(scsiUnit);
+                }
+            }
+            if (ds.type == DiskType.CDROM) {
+                VirtualDeviceConfigSpec cdrom = createCdrom(ideController, ideUnit);
+                ideUnit = nextUnitNumber(ideUnit);
+                // TODO upload iso using customizationServiceReference
+                newDisks.add(cdrom);
+            }
+            if (ds.type == DiskType.FLOPPY) {
+                VirtualDeviceConfigSpec hdd = createFloppy(sioController, sioUnit);
+                sioUnit = nextUnitNumber(sioUnit);
+                // TODO attach floppy using customizationServiceReference
+                newDisks.add(hdd);
+            }
+
+            // mark disk as attached
+            ds.status = DiskStatus.ATTACHED;
+        }
+
+        // add disks one at a time
+        for (VirtualDeviceConfigSpec newDisk : newDisks) {
+            VirtualMachineConfigSpec spec = new VirtualMachineConfigSpec();
+            spec.getDeviceChange().add(newDisk);
+
+            ManagedObjectReference reconfigureTask = getVimPort().reconfigVMTask(this.vm, spec);
+            TaskInfo info = waitTaskEnd(reconfigureTask);
+            if (info.getState() == TaskInfoState.ERROR) {
+                VimUtils.rethrow(info.getError());
+            }
+        }
+    }
+
+    private VirtualDeviceConfigSpec createCdrom(VirtualDevice ideController, int unitNumber) {
+        VirtualCdrom cdrom = new VirtualCdrom();
+
+        cdrom.setControllerKey(ideController.getKey());
+        cdrom.setUnitNumber(unitNumber);
+
+        VirtualDeviceConnectInfo info = new VirtualDeviceConnectInfo();
+        info.setAllowGuestControl(true);
+        info.setConnected(true);
+        info.setStartConnected(true);
+        cdrom.setConnectable(info);
+
+        VirtualCdromAtapiBackingInfo backing = new VirtualCdromAtapiBackingInfo();
+        backing.setDeviceName(String.format("cdrom-%d-%d", ideController.getKey(), unitNumber));
+        backing.setUseAutoDetect(false);
+        cdrom.setBacking(backing);
+
+        VirtualDeviceConfigSpec spec = new VirtualDeviceConfigSpec();
+        spec.setDevice(cdrom);
+        spec.setOperation(VirtualDeviceConfigSpecOperation.ADD);
+
+        return spec;
+    }
+
+    private VirtualDeviceConfigSpec createFloppy(VirtualDevice sioController, int unitNumber) {
+        VirtualFloppy floppy = new VirtualFloppy();
+
+        floppy.setControllerKey(sioController.getKey());
+        floppy.setUnitNumber(unitNumber);
+
+        VirtualDeviceConnectInfo info = new VirtualDeviceConnectInfo();
+        info.setAllowGuestControl(true);
+        info.setConnected(true);
+        info.setStartConnected(true);
+        floppy.setConnectable(info);
+
+        VirtualFloppyDeviceBackingInfo backing = new VirtualFloppyDeviceBackingInfo();
+        backing.setDeviceName(String.format("floppy-%d", unitNumber));
+        floppy.setBacking(backing);
+
+        VirtualDeviceConfigSpec spec = new VirtualDeviceConfigSpec();
+        spec.setDevice(floppy);
+        spec.setOperation(VirtualDeviceConfigSpecOperation.ADD);
+        return spec;
+    }
+
+    private VirtualSIOController getFirstSioController(ArrayOfVirtualDevice devices) {
+        for (VirtualDevice dev : devices.getVirtualDevice()) {
+            if (dev instanceof VirtualSIOController) {
+                return (VirtualSIOController) dev;
+            }
+        }
+
+        throw new IllegalStateException("No SIO controller found");
+    }
+
+    private int findFreeUnit(VirtualDevice controller, List<VirtualDevice> devices) {
+        // TODO better find the first free slot
+        int max = 0;
+        for (VirtualDevice dev : devices) {
+            if (dev.getControllerKey() != null && controller.getKey() == dev
+                    .getControllerKey()) {
+                max = Math.max(dev.getUnitNumber(), max);
+            }
+        }
+
+        return max;
+    }
+
+    /**
+     * Increments the given unit number. Skips the number 6 which is reserved in scsi. IDE and SIO
+     * go up to 2 so it is safe to use this method for all types of controllers.
+     *
+     * @param unitNumber
+     * @return
+     */
+    private int nextUnitNumber(int unitNumber) {
+        if (unitNumber == 6) {
+            // unit 7 is reserved
+            return 8;
+        }
+        return unitNumber + 1;
+    }
+
+    private VirtualDeviceConfigSpec createHdd(VirtualDevice scsiController, DiskState ds,
+            String dir, int unitNumber)
+            throws FinderException, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
+        String diskName = Paths.get(dir, ds.id).toString();
+        if (!diskName.endsWith(".vmdk")) {
+            diskName += ".vmdk";
+        }
+
+        VirtualDisk disk = new VirtualDisk();
+        disk.setCapacityInKB(toKb(ds.capacityMBytes));
+
+        VirtualDiskFlatVer2BackingInfo backing = new VirtualDiskFlatVer2BackingInfo();
+        backing.setDiskMode("persistent");
+        backing.setThinProvisioned(true);
+        backing.setFileName(diskName);
+        backing.setDatastore(getDatastore());
+
+        disk.setBacking(backing);
+        disk.setControllerKey(scsiController.getKey());
+        disk.setUnitNumber(unitNumber);
+        disk.setKey(-1);
+
+        VirtualDeviceConfigSpec change = new VirtualDeviceConfigSpec();
+        change.setDevice(disk);
+        change.setOperation(VirtualDeviceConfigSpecOperation.ADD);
+        change.setFileOperation(VirtualDeviceConfigSpecFileOperation.CREATE);
+
+        return change;
+    }
+
+    private VirtualIDEController getFirstIdeController(ArrayOfVirtualDevice devices) {
+        for (VirtualDevice dev : devices.getVirtualDevice()) {
+            if (dev instanceof VirtualIDEController) {
+                return (VirtualIDEController) dev;
+            }
+        }
+
+        throw new IllegalStateException("No IDE controller found");
+    }
+
+    private VirtualSCSIController getFirstScsiController(ArrayOfVirtualDevice devices) {
+        for (VirtualDevice dev : devices.getVirtualDevice()) {
+            if (dev instanceof VirtualSCSIController) {
+                return (VirtualSCSIController) dev;
+            }
+        }
+
+        throw new IllegalStateException("No SCSI controller found");
+    }
+
+    private String directoryPath(String vmPath) {
+        int i = vmPath.indexOf(']');
+        if (i < 0) {
+            throw new IllegalStateException(
+                    "vmPath is not in the expected format '[datastore] /path/to/vm'");
+        }
+
+        return vmPath.substring(i + 2);
     }
 
     /**
@@ -192,7 +435,7 @@ public class Client extends BaseHelper {
                 // a .vmx file already exists, assume someone won the race to create the vm
                 return null;
             } else {
-                throw new RuntimeException(info.getError().getLocalizedMessage());
+                return VimUtils.rethrow(info.getError());
             }
         }
 
@@ -264,11 +507,8 @@ public class Client extends BaseHelper {
 
     private VirtualDevice createScsiController() {
         VirtualLsiLogicController scsiCtrl = new VirtualLsiLogicController();
-        // first controller,
-        int diskCtlrKey = 1;
-
         scsiCtrl.setBusNumber(0);
-        scsiCtrl.setKey(diskCtlrKey);
+        scsiCtrl.setKey(-1);
         scsiCtrl.setSharedBus(VirtualSCSISharing.NO_SHARING);
 
         return scsiCtrl;
@@ -301,6 +541,10 @@ public class Client extends BaseHelper {
 
     private Long toMb(long bytes) {
         return bytes / 1024 / 1024;
+    }
+
+    private Long toKb(long mb) {
+        return mb * 1024;
     }
 
     /**

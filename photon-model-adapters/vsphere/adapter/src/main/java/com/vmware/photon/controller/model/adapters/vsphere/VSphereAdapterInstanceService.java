@@ -16,8 +16,10 @@ package com.vmware.photon.controller.model.adapters.vsphere;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
@@ -26,10 +28,15 @@ import com.vmware.photon.controller.model.adapters.vsphere.Client.ClientExceptio
 import com.vmware.photon.controller.model.adapters.vsphere.util.finders.FinderException;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
+import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ComputeSubTaskService.ComputeSubTaskState;
+import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
+import com.vmware.xenon.common.OperationJoin.JoinedCompletionHandler;
+import com.vmware.xenon.common.OperationSequence;
+import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.TaskState.TaskStage;
@@ -94,67 +101,100 @@ public class VSphereAdapterInstanceService extends StatelessService {
      * Populates the given initial context and invoke the onSuccess handler when built. At every step,
      * if failure occurs the ProvisionContext's errorHandler is invoked to cleanup.
      *
-     * @param initialContext
+     * @param ctx
      * @param onSuccess
      */
-    private void withContext(ProvisionContext initialContext,
+    private void withContext(ProvisionContext ctx,
             Consumer<ProvisionContext> onSuccess) {
-        if (initialContext.child == null) {
+        if (ctx.child == null) {
             URI computeUri = UriUtils
-                    .extendUriWithQuery(initialContext.request.computeReference,
+                    .extendUriWithQuery(ctx.request.computeReference,
                             UriUtils.URI_PARAM_ODATA_EXPAND,
                             Boolean.TRUE.toString());
             AdapterUtils.getServiceState(this, computeUri, op -> {
-                initialContext.child = op.getBody(ComputeStateWithDescription.class);
-                withContext(initialContext, onSuccess);
-            }, initialContext.errorHandler);
+                ctx.child = op.getBody(ComputeStateWithDescription.class);
+                withContext(ctx, onSuccess);
+            }, ctx.errorHandler);
             return;
         }
 
-        if (initialContext.resourcePool == null) {
-            if (initialContext.child.resourcePoolLink == null) {
-                initialContext.fail(new IllegalStateException(
+        if (ctx.resourcePool == null) {
+            if (ctx.child.resourcePoolLink == null) {
+                ctx.fail(new IllegalStateException(
                         "resourcePoolLink is not defined for resource "
-                                + initialContext.child.documentSelfLink));
+                                + ctx.child.documentSelfLink));
                 return;
             }
 
-            URI rpUri = UriUtils.buildUri(getHost(), initialContext.child.resourcePoolLink);
+            URI rpUri = UriUtils.buildUri(getHost(), ctx.child.resourcePoolLink);
             AdapterUtils.getServiceState(this, rpUri, op -> {
-                initialContext.resourcePool = op.getBody(ResourcePoolState.class);
-                withContext(initialContext, onSuccess);
-            }, initialContext.errorHandler);
+                ctx.resourcePool = op.getBody(ResourcePoolState.class);
+                withContext(ctx, onSuccess);
+            }, ctx.errorHandler);
             return;
         }
 
-        if (initialContext.parent == null) {
-            if (initialContext.child.parentLink == null) {
-                initialContext.fail(new IllegalStateException(
+        if (ctx.parent == null) {
+            if (ctx.child.parentLink == null) {
+                ctx.fail(new IllegalStateException(
                         "parentLink is not defined for resource "
-                                + initialContext.child.documentSelfLink));
+                                + ctx.child.documentSelfLink));
                 return;
             }
 
             URI computeUri = UriUtils
                     .extendUriWithQuery(
-                            UriUtils.buildUri(getHost(), initialContext.child.parentLink),
+                            UriUtils.buildUri(getHost(), ctx.child.parentLink),
                             UriUtils.URI_PARAM_ODATA_EXPAND,
                             Boolean.TRUE.toString());
 
             AdapterUtils.getServiceState(this, computeUri, op -> {
-                initialContext.parent = op.getBody(ComputeStateWithDescription.class);
-                withContext(initialContext, onSuccess);
-            }, initialContext.errorHandler);
+                ctx.parent = op.getBody(ComputeStateWithDescription.class);
+                withContext(ctx, onSuccess);
+            }, ctx.errorHandler);
             return;
         }
 
-        if (initialContext.vSphereCredentials == null) {
+        if (ctx.vSphereCredentials == null) {
             URI credUri = UriUtils
-                    .buildUri(getHost(), initialContext.parent.description.authCredentialsLink);
+                    .buildUri(getHost(), ctx.parent.description.authCredentialsLink);
             AdapterUtils.getServiceState(this, credUri, op -> {
-                initialContext.vSphereCredentials = op.getBody(AuthCredentialsServiceState.class);
-                onSuccess.accept(initialContext);
-            }, initialContext.errorHandler);
+                ctx.vSphereCredentials = op.getBody(AuthCredentialsServiceState.class);
+                withContext(ctx, onSuccess);
+            }, ctx.errorHandler);
+        }
+
+        if (ctx.disks == null) {
+            // no disks attached
+            if (ctx.child.diskLinks == null || ctx.child.diskLinks
+                    .isEmpty()) {
+                ctx.disks = Collections.emptyList();
+                withContext(ctx, onSuccess);
+                return;
+            }
+
+            ctx.disks = new ArrayList<>(ctx.child.diskLinks.size());
+
+            // collect disks in parallel
+            Stream<Operation> opsGetDisk = ctx.child.diskLinks.stream()
+                    .map(link -> Operation.createGet(this, link));
+
+            OperationJoin join = OperationJoin.create(opsGetDisk)
+                    .setCompletion((os, errors) -> {
+                        if (errors != null && !errors.isEmpty()) {
+                            // fail on first error
+                            ctx.errorHandler
+                                    .accept(new IllegalStateException("Cannot get disk state",
+                                            errors.values().iterator().next()));
+                            return;
+                        }
+
+                        os.values().forEach(op -> ctx.disks.add(op.getBody(DiskState.class)));
+
+                        onSuccess.accept(ctx);
+                    });
+
+            join.sendWith(this);
         }
     }
 
@@ -178,12 +218,29 @@ public class VSphereAdapterInstanceService extends StatelessService {
                     try {
                         Client client = new Client(conn, ctx.child, ctx.parent);
                         ComputeState state = client.createInstance();
+                        if (state == null) {
+                            // someone else won the race to create the vim
+                            // assume they will patch the task if they have provisioned the vm
+                            return;
+                        }
 
-                        // patch compute resource
-                        patchComputeResource(state, ctx.request.computeReference);
+                        // attach disks, collecting side effects
+                        client.attachDisks(ctx.disks);
 
-                        // complete task
-                        AdapterUtils.sendPatchToTask(this, ctx.request.provisioningTaskReference);
+                        // all sides effect collected, patch model:
+
+                        OperationJoin patchDisks = diskPatches(ctx.disks);
+                        Operation patchResource = patchComputeResource(state,
+                                ctx.request.computeReference);
+                        Operation patchTask = patchTask(ctx.request.provisioningTaskReference);
+
+                        OperationSequence
+                                .create(patchDisks)
+                                .next(patchResource)
+                                .next(patchTask)
+                                .setCompletion(failOnError(ctx))
+                                .sendWith(this);
+
                     } catch (ClientException | FinderException e) {
                         ctx.fail(e);
                     } catch (RuntimeException e) {
@@ -194,10 +251,39 @@ public class VSphereAdapterInstanceService extends StatelessService {
                 });
     }
 
-    private void patchComputeResource(ComputeState state, URI computeReference) {
-        Operation.createPatch(computeReference)
-                .setBody(state)
-                .sendWith(this);
+    /**
+     * The returned JoinedCompletionHandler fails the whole provisioning context on first error
+     * found.
+     * @param ctx
+     */
+    private JoinedCompletionHandler failOnError(ProvisionContext ctx) {
+        return (ops, failures) -> {
+            if (failures != null && !failures.isEmpty()) {
+                ctx.fail(failures.values().iterator().next());
+            }
+        };
+    }
+
+    private Operation patchTask(URI taskLink) {
+        ProvisionComputeTaskState body = new ProvisionComputeTaskState();
+        TaskState taskInfo = new TaskState();
+        taskInfo.stage = TaskState.TaskStage.FINISHED;
+        body.taskInfo = taskInfo;
+        return Operation.createPatch(taskLink).setBody(body);
+    }
+
+    private Operation selfPatch(ServiceDocument doc) {
+        return Operation.createPatch(this, doc.documentSelfLink).setBody(doc);
+    }
+
+    private OperationJoin diskPatches(List<DiskState> disks) {
+        return OperationJoin.create()
+                .setOperations(disks.stream().map(this::selfPatch));
+    }
+
+    private Operation patchComputeResource(ComputeState state, URI computeReference) {
+        return Operation.createPatch(computeReference)
+                .setBody(state);
     }
 
     private void handleDeleteInstance(ProvisionContext ctx) {
