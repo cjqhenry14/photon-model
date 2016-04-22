@@ -27,6 +27,12 @@ public class AzureConstants {
     public static final String AZURE_IMAGE_OFFER = "azureImageOffer";
     public static final String AZURE_IMAGE_SKU = "azureImageSKU";
     public static final String AZURE_IMAGE_VERSION = "azureImageVersion";
+    public static final String AZURE_OSDISK_CACHING = "azureOsDiskCaching";
+    public static final String AZURE_STORAGE_ACCOUNT_TYPE = "azureStorageAccountType";
+    public static final String AZURE_STORAGE_ACCOUNT_NAME = "azureStorageAccountName";
+    public static final String AZURE_STORAGE_ACCOUNT_KEY1 = "azureStorageAccountKey1";
+    public static final String AZURE_STORAGE_ACCOUNT_KEY2 = "azureStorageAccountKey2";
+    public static final String AZURE_VM_SIZE = "azureVMSize";
 
     // Azure Namespace
     public static final String COMPUTE_NAMESPACE = "Microsoft.Compute";

@@ -299,6 +299,11 @@ public class DiskService extends StatefulService {
             isChanged = true;
         }
 
+        if (currentState.authCredentialsLink == null && patchBody.authCredentialsLink != null) {
+            currentState.authCredentialsLink = patchBody.authCredentialsLink;
+            isChanged = true;
+        }
+
         if (!isChanged) {
             patch.setStatusCode(Operation.STATUS_CODE_NOT_MODIFIED);
         }

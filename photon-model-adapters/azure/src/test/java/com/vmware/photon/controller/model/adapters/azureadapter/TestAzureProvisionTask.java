@@ -13,6 +13,15 @@
 
 package com.vmware.photon.controller.model.adapters.azureadapter;
 
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_OSDISK_CACHING;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_NAME;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_TYPE;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_TENANT_ID;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_ADMIN_PASSWORD;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_ADMIN_USERNAME;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_SIZE;
+import static com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_AZURE;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,6 +35,9 @@ import org.junit.Test;
 
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.resources.DiskService;
+import com.vmware.photon.controller.model.resources.DiskService.DiskState;
+import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
@@ -40,13 +52,22 @@ import com.vmware.xenon.services.common.QueryTask;
 
 public class TestAzureProvisionTask extends BasicReusableHostTestCase {
 
+    public static final String DEFAULT_ROOT_DISK_NAME = "root-disk";
+    public static final String DEFAULT_OS_DISK_CACHING = "None";
+
     public String clientID = "clientID";
     public String clientKey = "clientKey";
     public String subscriptionId = "subscriptionId";
     public String tenantId = "tenantId";
+
+    public String azureVMName = "azuretestvm";
     public String azureAdminUsername = "azureuser";
     public String azureAdminPassword = "Pa$$word1";
-    public String azureResourceGroupLocation = "EastUS";
+    public String azureVMSize = "Basic_A0";
+    public String imageReference = "Canonical:UbuntuServer:14.04.3-LTS:latest";
+    public String azureResourceGroupLocation = "westus";
+    public String azureStorageAccountName = "photonteststorageaccount";
+    public String azureStorageAccountType = "Standard_RAGRS";
     public boolean isMock = true;
 
     // fields that are used across method calls, stash them as private fields
@@ -115,7 +136,8 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
 
         List<URI> uris = new ArrayList<>();
         uris.add(UriUtils.buildUri(this.host, outTask.documentSelfLink));
-        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ProvisionComputeTaskService.ProvisionComputeTaskState.class);
+        ProvisioningUtils.waitForTaskCompletion(this.host, uris,
+                ProvisionComputeTaskService.ProvisionComputeTaskState.class);
 
         // check that the VM has been created
         ProvisioningUtils.queryComputeInstances(this.host, 2);
@@ -152,7 +174,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         auth.privateKey = clientKey;
         auth.userLink = subscriptionId;
         auth.customProperties = new HashMap<>();
-        auth.customProperties.put(AzureConstants.AZURE_TENANT_ID, tenantId);
+        auth.customProperties.put(AZURE_TENANT_ID, tenantId);
         auth.documentSelfLink = UUID.randomUUID().toString();
         TestUtils.doPost(this.host, auth, AuthCredentialsService.AuthCredentialsServiceState.class,
                 UriUtils.buildUri(this.host, AuthCredentialsService.FACTORY_LINK));
@@ -195,33 +217,52 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
                 new ComputeDescriptionService.ComputeDescription();
 
         azureVMDesc.id = UUID.randomUUID().toString();
-        // VM name on Azure cannot be more that 15 chars.
-        azureVMDesc.name = azureVMDesc.id.substring(0, 15);
-
-        azureVMDesc.supportedChildren = new ArrayList<>();
-        azureVMDesc.supportedChildren.add(ComputeDescriptionService.ComputeDescription.ComputeType.DOCKER_CONTAINER.name());
+        azureVMDesc.name = azureVMDesc.id;
+        azureVMDesc.regionId = azureResourceGroupLocation;
+        azureVMDesc.documentSelfLink = azureVMDesc.id;
+        azureVMDesc.environmentName = ENVIRONMENT_NAME_AZURE;
 
         azureVMDesc.customProperties = new HashMap<>();
-        azureVMDesc.customProperties.put(AzureConstants.AZURE_RESOURCE_GROUP_NAME, azureVMDesc.id);
-        azureVMDesc.customProperties.put(AzureConstants.AZURE_VM_ADMIN_USERNAME, azureAdminUsername);
-        azureVMDesc.customProperties.put(AzureConstants.AZURE_VM_ADMIN_PASSWORD, azureAdminPassword);
-
-        // set zone to east
-        azureVMDesc.zoneId = azureResourceGroupLocation;
+        azureVMDesc.customProperties.put(AZURE_VM_SIZE, azureVMSize);
 
         // set the create service to the azure instance service
         azureVMDesc.instanceAdapterReference = UriUtils.buildUri(this.host,
                 AzureUriPaths.AZURE_INSTANCE_SERVICE);
 
-        ComputeDescriptionService.ComputeDescription vmComputeDesc = TestUtils.doPost(this.host, azureVMDesc,
-                ComputeDescriptionService.ComputeDescription.class,
-                UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
+        ComputeDescriptionService.ComputeDescription vmComputeDesc = TestUtils
+                .doPost(this.host, azureVMDesc,
+                        ComputeDescriptionService.ComputeDescription.class,
+                        UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
+
+        List<String> vmDisks = new ArrayList<>();
+        DiskState rootDisk = new DiskState();
+        rootDisk.id = UUID.randomUUID().toString();
+        rootDisk.documentSelfLink = rootDisk.id;
+        rootDisk.name = DEFAULT_ROOT_DISK_NAME;
+        rootDisk.type = DiskType.HDD;
+        rootDisk.sourceImageReference = URI.create(imageReference);
+        rootDisk.bootOrder = 1;
+
+        rootDisk.customProperties = new HashMap<>();
+        rootDisk.customProperties.put(AZURE_OSDISK_CACHING, DEFAULT_OS_DISK_CACHING);
+        rootDisk.customProperties.put(AZURE_STORAGE_ACCOUNT_NAME, azureStorageAccountName);
+        rootDisk.customProperties.put(AZURE_STORAGE_ACCOUNT_TYPE, azureStorageAccountType);
+
+        TestUtils.doPost(host, rootDisk,
+                DiskService.DiskState.class,
+                UriUtils.buildUri(host, DiskService.FACTORY_LINK));
+        vmDisks.add(UriUtils.buildUriPath(DiskService.FACTORY_LINK, rootDisk.id));
 
         ComputeService.ComputeState resource = new ComputeService.ComputeState();
-        resource.id = UUID.randomUUID().toString();
+        // VM name on Azure cannot be more that 15 chars.
+        resource.id = azureVMName;
         resource.parentLink = parentResourceId;
         resource.descriptionLink = vmComputeDesc.documentSelfLink;
         resource.resourcePoolLink = this.resourcePoolLink;
+        resource.diskLinks = vmDisks;
+        resource.customProperties = new HashMap<>();
+        resource.customProperties.put(AZURE_VM_ADMIN_USERNAME, azureAdminUsername);
+        resource.customProperties.put(AZURE_VM_ADMIN_PASSWORD, azureAdminPassword);
 
         ComputeService.ComputeState vmComputeState = TestUtils.doPost(this.host, resource,
                 ComputeService.ComputeState.class,

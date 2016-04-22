@@ -13,13 +13,14 @@
 
 package com.vmware.photon.controller.model.adapters.azureadapter;
 
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_IMAGE_OFFER;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_IMAGE_PUBLISHER;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_IMAGE_SKU;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_IMAGE_VERSION;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_RESOURCE_GROUP_NAME;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_OSDISK_CACHING;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_KEY1;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_KEY2;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_NAME;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_TYPE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_ADMIN_PASSWORD;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_ADMIN_USERNAME;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_SIZE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.COMPUTE_NAMESPACE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.MISSING_SUBSCRIPTION_CODE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.NETWORK_NAMESPACE;
@@ -28,12 +29,18 @@ import static com.vmware.photon.controller.model.adapters.azureadapter.AzureCons
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import com.microsoft.azure.CloudError;
 import com.microsoft.azure.CloudException;
@@ -58,7 +65,6 @@ import com.microsoft.azure.management.network.models.NetworkInterface;
 import com.microsoft.azure.management.network.models.NetworkInterfaceIPConfiguration;
 import com.microsoft.azure.management.network.models.NetworkSecurityGroup;
 import com.microsoft.azure.management.network.models.PublicIPAddress;
-import com.microsoft.azure.management.network.models.PublicIPAddressDnsSettings;
 import com.microsoft.azure.management.network.models.Subnet;
 import com.microsoft.azure.management.network.models.VirtualNetwork;
 import com.microsoft.azure.management.resources.ResourceManagementClient;
@@ -70,6 +76,7 @@ import com.microsoft.azure.management.storage.StorageManagementClientImpl;
 import com.microsoft.azure.management.storage.models.AccountType;
 import com.microsoft.azure.management.storage.models.StorageAccount;
 import com.microsoft.azure.management.storage.models.StorageAccountCreateParameters;
+import com.microsoft.azure.management.storage.models.StorageAccountKeys;
 import com.microsoft.rest.ServiceCallback;
 import com.microsoft.rest.ServiceResponse;
 import okhttp3.OkHttpClient;
@@ -79,12 +86,17 @@ import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
+import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.Operation.CompletionHandler;
+import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
+import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
  * Adapter to create/delete a VM instance on Azure.
@@ -93,36 +105,23 @@ public class AzureInstanceService extends StatelessService {
 
     public static final String SELF_LINK = AzureUriPaths.AZURE_INSTANCE_SERVICE;
 
-    // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-322
+    // TODO VSYM-322: Remove unused default properties from AzureInstanceService
     // Name prefixes
-    public static final String STORAGE_NAME_PREFIX = "storage";
-    public static final String SUBNET_NAME_PREFIX = "subnet";
-    public static final String NETWORK_NAME_PREFIX = "network";
-    public static final String DOMAIN_NAME_PREFIX = "domain";
-    public static final String PUBLICIP_NAME_PREFIX = "publicip";
-    public static final String NICCONFIG_NAME_PREFIX = "nicconfig";
-    public static final String SECGROUP_NAME_PREFIX = "secgroup";
-    public static final String NIC_NAME_PREFIX = "nic";
-    public static final String COMPUTER_NAME_PREFIX = "azure";
-    public static final String OSDISK_NAME_PREFIX = "osdisk";
-    public static final String VM_NAME_PREFIX = "vm";
+    private static final String NICCONFIG_NAME_PREFIX = "nicconfig";
 
-    public static final String NETWORK_ADDRESS_PREFIX = "10.0.0.0/16";
-    public static final String DNS_SERVER = "10.1.1.1";
-    public static final String SUBNET_ADDRESS_PREFIX = "10.0.0.0/24";
-    public static final String PUBLIC_IP_ALLOCATION_METHOD = "Dynamic";
-    public static final String PRIVATE_IP_ALLOCATION_METHOD = "Dynamic";
+    private static final String SUBNET_NAME = "default";
+    private static final String NETWORK_ADDRESS_PREFIX = "10.0.0.0/16";
+    private static final String DNS_SERVER = "10.1.1.1";
+    private static final String SUBNET_ADDRESS_PREFIX = "10.0.0.0/24";
+    private static final String PUBLIC_IP_ALLOCATION_METHOD = "Dynamic";
+    private static final String PRIVATE_IP_ALLOCATION_METHOD = "Dynamic";
 
-    public static final String DEFAULT_VM_SIZE = "Basic_A0";
-    public static final String OS_DISK_CACHING = "None";
-    public static final String OS_DISK_CREATION_OPTION = "fromImage";
+    private static final String DEFAULT_VM_SIZE = "Basic_A0";
+    private static final String OS_DISK_CREATION_OPTION = "fromImage";
 
-    public static final String VHD_URI_FORMAT = "https://%s.blob.core.windows.net/javacontainer/osjavawindows.vhd";
-
-    public static final String DEFAULT_IMAGE_PUBLISHER = "Canonical";
-    public static final String DEFAULT_IMAGE_OFFER = "UbuntuServer";
-    public static final String DEFAULT_IMAGE_SKU = "14.04.3-LTS";
-    public static final String DEFAULT_IMAGE_VERSION = "latest";
+    private static final AccountType DEFAULT_STORAGE_ACCOUNT_TYPE = AccountType.STANDARD_LRS;
+    private static final String VHD_URI_FORMAT = "https://%s.blob.core.windows.net/vhds/%s.vhd";
+    private static final String BOOT_DISK_SUFFIX = "-boot-disk";
 
     private static final long DEFAULT_EXPIRATION_INTERVAL_MICROS = TimeUnit.MINUTES.toMicros(5);
     private static final int RETRY_INTERVAL_SECONDS = 30;
@@ -155,7 +154,8 @@ public class AzureInstanceService extends StatelessService {
         op.complete();
         if (ctx.computeRequest.isMockRequest && ctx.computeRequest.requestType
                 == ComputeInstanceRequest.InstanceRequestType.CREATE) {
-            AdapterUtils.sendPatchToProvisioningTask(this, ctx.computeRequest.provisioningTaskReference);
+            AdapterUtils.sendPatchToProvisioningTask(this,
+                    ctx.computeRequest.provisioningTaskReference);
             return;
         }
         try {
@@ -192,6 +192,7 @@ public class AzureInstanceService extends StatelessService {
                     ctx.error = e;
                     ctx.stage = AzureStages.ERROR;
                     handleAllocation(ctx);
+                    return;
                 }
             }
 
@@ -202,7 +203,7 @@ public class AzureInstanceService extends StatelessService {
             // now that we have a client lets move onto the next step
             switch (ctx.computeRequest.requestType) {
             case CREATE:
-                ctx.stage = AzureStages.INIT_RES_GROUP;
+                ctx.stage = AzureStages.VMDISKS;
                 handleAllocation(ctx);
                 break;
             case DELETE:
@@ -214,6 +215,9 @@ public class AzureInstanceService extends StatelessService {
                 ctx.stage = AzureStages.ERROR;
                 handleAllocation(ctx);
             }
+            break;
+        case VMDISKS:
+            getVMDisks(ctx);
             break;
         case INIT_RES_GROUP:
             initResourceGroup(ctx);
@@ -239,6 +243,9 @@ public class AzureInstanceService extends StatelessService {
         case DELETE:
             deleteVM(ctx);
             break;
+        case GET_STORAGE_KEYS:
+            getStorageKeys(ctx);
+            break;
         case ERROR:
             if (ctx.computeRequest.provisioningTaskReference != null) {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
@@ -262,12 +269,15 @@ public class AzureInstanceService extends StatelessService {
             return;
         }
 
-        ResourceManagementClient client = getResourceManagementClient(ctx);
+        String resourceGroupName = ctx.child.id;
 
-        String resourceGroupName = ctx.child.description.customProperties
-                .get(AZURE_RESOURCE_GROUP_NAME);
+        if (resourceGroupName == null || resourceGroupName.isEmpty()) {
+            throw new IllegalArgumentException("Resource group name is required");
+        }
 
         logInfo("Deleting resource group with name [%s]", resourceGroupName);
+
+        ResourceManagementClient client = getResourceManagementClient(ctx);
 
         client.getResourceGroupsOperations().deleteAsync(resourceGroupName,
                 new ServiceCallback<Void>() {
@@ -289,36 +299,48 @@ public class AzureInstanceService extends StatelessService {
     }
 
     private void deleteComputeResource(AzureAllocationContext ctx) {
-        Operation.CompletionHandler completionHandler = (ox, exc) -> {
-            if (exc != null) {
-                ctx.stage = AzureStages.ERROR;
-                ctx.error = exc;
-                handleAllocation(ctx);
+        ComputeStateWithDescription computeDesc = ctx.child;
+        ComputeInstanceRequest computeReq = ctx.computeRequest;
+
+        List<String> resourcesToDelete = new ArrayList<>();
+        resourcesToDelete.add(computeDesc.documentSelfLink);
+        if (computeDesc.diskLinks != null) {
+            resourcesToDelete.addAll(computeDesc.diskLinks);
+        }
+        AtomicInteger deleteCallbackCount = new AtomicInteger(0);
+        CompletionHandler deletionKickoffCompletion = (sendDeleteOp, sendDeleteEx) -> {
+            if (sendDeleteEx != null) {
+                handleError(ctx, sendDeleteEx);
                 return;
             }
-            AdapterUtils.sendPatchToProvisioningTask(AzureInstanceService.this,
-                    ctx.computeRequest.provisioningTaskReference);
-            ctx.stage = AzureStages.FINISHED;
-            handleAllocation(ctx);
+            if (deleteCallbackCount.incrementAndGet() == resourcesToDelete.size()) {
+                AdapterUtils
+                        .sendPatchToProvisioningTask(this, computeReq.provisioningTaskReference);
+                ctx.stage = AzureStages.FINISHED;
+                handleAllocation(ctx);
+            }
         };
-        sendRequest(Operation.createDelete(
-                UriUtils.buildUri(getHost(), ctx.child.documentSelfLink))
-                .setBody(new ServiceDocument())
-                .setCompletion(completionHandler)
-                .setReferer(getHost().getUri()));
+        for (String resourcetoDelete : resourcesToDelete) {
+            sendRequest(Operation.createDelete(UriUtils.buildUri(getHost(), resourcetoDelete))
+                    .setBody(new ServiceDocument())
+                    .setCompletion(deletionKickoffCompletion));
+        }
     }
 
     private void initResourceGroup(AzureAllocationContext ctx) {
-        ResourceManagementClient client = getResourceManagementClient(ctx);
+        String resourceGroupName = ctx.child.id;
 
-        String resourceGroupName = ctx.child.description.customProperties
-                .get(AZURE_RESOURCE_GROUP_NAME);
+        if (resourceGroupName == null || resourceGroupName.isEmpty()) {
+            throw new IllegalArgumentException("Resource group name is required");
+        }
 
         logInfo("Creating resource group with name [%s]", resourceGroupName);
 
         ResourceGroup group = new ResourceGroup();
+        group.setLocation(ctx.child.description.regionId);
 
-        group.setLocation(ctx.child.description.zoneId);
+        ResourceManagementClient client = getResourceManagementClient(ctx);
+
         client.getResourceGroupsOperations().createOrUpdateAsync(resourceGroupName, group,
                 new ServiceCallback<ResourceGroup>() {
                     @Override
@@ -344,18 +366,33 @@ public class AzureInstanceService extends StatelessService {
     private void initStorageAccount(AzureAllocationContext ctx) {
         StorageAccountCreateParameters storageParameters = new StorageAccountCreateParameters();
         storageParameters.setLocation(ctx.resourceGroup.getLocation());
-        storageParameters.setAccountType(AccountType.STANDARD_LRS);
 
-        StorageManagementClient client = new StorageManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, ctx.clientBuilder, getRetrofitBuilder());
-        client.setSubscriptionId(ctx.parentAuth.userLink);
+        if (ctx.bootDisk.customProperties == null) {
+            ctx.error = new IllegalArgumentException("Custom properties for boot disk is required");
+            ctx.stage = AzureStages.ERROR;
+            handleAllocation(ctx);
+            return;
+        }
 
-        final String storageAccountName = generateName(STORAGE_NAME_PREFIX);
+        ctx.storageAccountName = ctx.bootDisk.customProperties.get(AZURE_STORAGE_ACCOUNT_NAME);
 
-        logInfo("Creating storage account with name [%s]", storageAccountName)
-        ;
+        if (ctx.storageAccountName == null) {
+            ctx.error = new IllegalStateException("Storage account name is required");
+            ctx.stage = AzureStages.ERROR;
+            handleAllocation(ctx);
+            return;
+        }
+
+        String accountType = ctx.bootDisk.customProperties
+                .getOrDefault(AZURE_STORAGE_ACCOUNT_TYPE, DEFAULT_STORAGE_ACCOUNT_TYPE.toValue());
+        storageParameters.setAccountType(AccountType.fromValue(accountType));
+
+        logInfo("Creating storage account with name [%s]", ctx.storageAccountName);
+
+        StorageManagementClient client = getStorageManagementClient(ctx);
+
         client.getStorageAccountsOperations().createAsync(ctx.resourceGroup.getName(),
-                storageAccountName, storageParameters,
+                ctx.storageAccountName, storageParameters,
                 new ServiceCallback<StorageAccount>() {
                     @Override
                     public void failure(Throwable e) {
@@ -366,9 +403,8 @@ public class AzureInstanceService extends StatelessService {
                     public void success(ServiceResponse<StorageAccount> result) {
                         ctx.stage = AzureStages.INIT_NETWORK;
                         ctx.storage = result.getBody();
-                        // Storing the account name since the API isn't returning one.
-                        ctx.storageAccountName = storageAccountName;
-                        logInfo("Successfully created storage account [%s]", storageAccountName);
+                        logInfo("Successfully created storage account [%s]",
+                                ctx.storageAccountName);
                         handleAllocation(ctx);
                     }
                 });
@@ -386,15 +422,15 @@ public class AzureInstanceService extends StatelessService {
         vnet.setSubnets(new ArrayList<>());
 
         Subnet subnet = new Subnet();
-        subnet.setName(generateName(SUBNET_NAME_PREFIX));
+        subnet.setName(SUBNET_NAME);
         subnet.setAddressPrefix(SUBNET_ADDRESS_PREFIX);
         vnet.getSubnets().add(subnet);
 
-        NetworkManagementClient client = getNetworkManagementClient(ctx);
-
-        String vNetName = generateName(NETWORK_NAME_PREFIX);
+        String vNetName = ctx.child.id;
 
         logInfo("Creating virtual network [%s]", vNetName);
+
+        NetworkManagementClient client = getNetworkManagementClient(ctx);
 
         client.getVirtualNetworksOperations().createOrUpdateAsync(
                 ctx.resourceGroup.getName(), vNetName, vnet,
@@ -419,14 +455,12 @@ public class AzureInstanceService extends StatelessService {
         PublicIPAddress publicIPAddress = new PublicIPAddress();
         publicIPAddress.setLocation(ctx.resourceGroup.getLocation());
         publicIPAddress.setPublicIPAllocationMethod(PUBLIC_IP_ALLOCATION_METHOD);
-        publicIPAddress.setDnsSettings(new PublicIPAddressDnsSettings());
-        publicIPAddress.getDnsSettings().setDomainNameLabel(generateName(DOMAIN_NAME_PREFIX));
 
-        NetworkManagementClient client = getNetworkManagementClient(ctx);
-
-        String publicIPName = generateName(PUBLICIP_NAME_PREFIX);
+        String publicIPName = ctx.child.id;
 
         logInfo("Creating public IP with name [%s]", publicIPName);
+
+        NetworkManagementClient client = getNetworkManagementClient(ctx);
 
         client.getPublicIPAddressesOperations().createOrUpdateAsync(
                 ctx.resourceGroup.getName(), publicIPName, publicIPAddress,
@@ -443,10 +477,8 @@ public class AzureInstanceService extends StatelessService {
                     public void success(ServiceResponse<PublicIPAddress> result) {
                         ctx.stage = AzureStages.INIT_SEC_GROUP;
                         ctx.publicIP = result.getBody();
-                        logInfo("Successfully created public IP address with name [%s] and FQDN "
-                                        + "[%s]",
-                                result.getBody().getName(),
-                                result.getBody().getDnsSettings().getFqdn());
+                        logInfo("Successfully created public IP address with name [%s]",
+                                result.getBody().getName());
                         handleAllocation(ctx);
                     }
                 });
@@ -456,11 +488,11 @@ public class AzureInstanceService extends StatelessService {
         NetworkSecurityGroup group = new NetworkSecurityGroup();
         group.setLocation(ctx.resourceGroup.getLocation());
 
-        NetworkManagementClient client = getNetworkManagementClient(ctx);
-
-        String secGroupName = generateName(SECGROUP_NAME_PREFIX);
+        String secGroupName = ctx.child.id;
 
         logInfo("Creating security group with name [%s]", secGroupName);
+
+        NetworkManagementClient client = getNetworkManagementClient(ctx);
 
         client.getNetworkSecurityGroupsOperations().createOrUpdateAsync(
                 ctx.resourceGroup.getName(), secGroupName, group,
@@ -496,9 +528,9 @@ public class AzureInstanceService extends StatelessService {
         nic.getIpConfigurations().add(configuration);
         nic.setNetworkSecurityGroup(ctx.securityGroup);
 
-        NetworkManagementClient client = getNetworkManagementClient(ctx);
+        String nicName = generateName(ctx.child.id);
 
-        String nicName = generateName(NIC_NAME_PREFIX);
+        NetworkManagementClient client = getNetworkManagementClient(ctx);
 
         client.getNetworkInterfacesOperations().createOrUpdateAsync(
                 ctx.resourceGroup.getName(), nicName, nic,
@@ -525,48 +557,72 @@ public class AzureInstanceService extends StatelessService {
     private void createVM(AzureAllocationContext ctx) {
         ComputeDescriptionService.ComputeDescription description = ctx.child.description;
         Map<String, String> customProperties = description.customProperties;
+        Map<String, String> stateCustomProperties = ctx.child.customProperties;
 
-        ImageReference imageReference = new ImageReference();
-        imageReference.setPublisher(customProperties.getOrDefault(AZURE_IMAGE_PUBLISHER,
-                DEFAULT_IMAGE_PUBLISHER));
-        imageReference
-                .setOffer(customProperties.getOrDefault(AZURE_IMAGE_OFFER, DEFAULT_IMAGE_OFFER));
-        imageReference.setSku(customProperties.getOrDefault(AZURE_IMAGE_SKU, DEFAULT_IMAGE_SKU));
-        imageReference.setVersion(
-                customProperties.getOrDefault(AZURE_IMAGE_VERSION, DEFAULT_IMAGE_VERSION));
+        DiskState bootDisk = ctx.bootDisk;
+        if (bootDisk == null) {
+            handleError(ctx, new IllegalStateException("Azure bootDisk not specified"));
+            return;
+        }
+
+        URI imageId = bootDisk.sourceImageReference;
+        if (imageId == null) {
+            ctx.error = new IllegalStateException("Azure image reference not specified");
+            ctx.stage = AzureStages.ERROR;
+            handleAllocation(ctx);
+            return;
+        }
 
         VirtualMachine request = new VirtualMachine();
         request.setLocation(ctx.resourceGroup.getLocation());
-        request.setOsProfile(new OSProfile());
-        request.getOsProfile().setComputerName(generateName(COMPUTER_NAME_PREFIX));
-        request.getOsProfile().setAdminUsername(customProperties.get(AZURE_VM_ADMIN_USERNAME));
-        request.getOsProfile().setAdminPassword(customProperties.get(AZURE_VM_ADMIN_PASSWORD));
-        request.setHardwareProfile(new HardwareProfile());
-        request.getHardwareProfile().setVmSize(DEFAULT_VM_SIZE);
-        request.setStorageProfile(new StorageProfile());
-        request.getStorageProfile().setImageReference(imageReference);
-        request.getStorageProfile().setDataDisks(null);
-        request.getStorageProfile().setOsDisk(new OSDisk());
-        request.getStorageProfile().getOsDisk().setCaching(OS_DISK_CACHING);
-        request.getStorageProfile().getOsDisk().setCreateOption(OS_DISK_CREATION_OPTION);
-        request.getStorageProfile().getOsDisk().setName(generateName(OSDISK_NAME_PREFIX));
-        request.getStorageProfile().getOsDisk().setVhd(new VirtualHardDisk());
-        request.getStorageProfile().getOsDisk().getVhd()
-                .setUri(String.format(VHD_URI_FORMAT, ctx.storageAccountName));
-        request.setNetworkProfile(new NetworkProfile());
-        request.getNetworkProfile().setNetworkInterfaces(new ArrayList<>());
+
+        // Set OS profile.
+        OSProfile osProfile = new OSProfile();
+        String vmName = ctx.child.id;
+        osProfile.setComputerName(vmName);
+        osProfile.setAdminUsername(stateCustomProperties.get(AZURE_VM_ADMIN_USERNAME));
+        osProfile.setAdminPassword(stateCustomProperties.get(AZURE_VM_ADMIN_PASSWORD));
+        request.setOsProfile(osProfile);
+
+        // Set hardware profile.
+        HardwareProfile hardwareProfile = new HardwareProfile();
+        hardwareProfile.setVmSize(customProperties.getOrDefault(AZURE_VM_SIZE, DEFAULT_VM_SIZE));
+        request.setHardwareProfile(hardwareProfile);
+
+        // Set storage profile.
+        VirtualHardDisk vhd = new VirtualHardDisk();
+        String vhdName = getVHDName(vmName);
+        vhd.setUri(String.format(VHD_URI_FORMAT, ctx.storageAccountName, vhdName));
+
+        OSDisk osDisk = new OSDisk();
+        osDisk.setName(vmName);
+        osDisk.setVhd(vhd);
+        osDisk.setCaching(bootDisk.customProperties.get(AZURE_OSDISK_CACHING));
+        // We don't support Attach option which allows to use a specialized disk to create the
+        // virtual machine.
+        osDisk.setCreateOption(OS_DISK_CREATION_OPTION);
+
+        StorageProfile storageProfile = new StorageProfile();
+        // Currently we only support platform images.
+        ImageReference imageReference = getImageReference(imageId.toString());
+        storageProfile.setImageReference(imageReference);
+        storageProfile.setOsDisk(osDisk);
+        request.setStorageProfile(storageProfile);
+
+        // Set network profile
         NetworkInterfaceReference nir = new NetworkInterfaceReference();
         nir.setPrimary(true);
         nir.setId(ctx.nic.getId());
-        request.getNetworkProfile().getNetworkInterfaces().add(nir);
+
+        NetworkProfile networkProfile = new NetworkProfile();
+        networkProfile.setNetworkInterfaces(Collections.singletonList(nir));
+        request.setNetworkProfile(networkProfile);
+
+        logInfo("Creating virtual machine with name [%s]", vmName);
 
         ComputeManagementClient client = new ComputeManagementClientImpl(AzureConstants.BASE_URI,
                 ctx.credentials, ctx.clientBuilder, getRetrofitBuilder());
         client.setSubscriptionId(ctx.parentAuth.userLink);
-
-        String vmName = generateName(VM_NAME_PREFIX);
-
-        logInfo("Creating virtual machine with name [%s]", vmName);
 
         client.getVirtualMachinesOperations().createOrUpdateAsync(
                 ctx.resourceGroup.getName(), vmName, request,
@@ -594,14 +650,13 @@ public class AzureInstanceService extends StatelessService {
                         Operation.CompletionHandler completionHandler = (ox,
                                 exc) -> {
                             if (exc != null) {
+                                logSevere(exc);
                                 ctx.stage = AzureStages.ERROR;
                                 ctx.error = exc;
                                 handleAllocation(ctx);
                                 return;
                             }
-                            AdapterUtils.sendPatchToProvisioningTask(AzureInstanceService.this,
-                                    ctx.computeRequest.provisioningTaskReference);
-                            ctx.stage = AzureStages.FINISHED;
+                            ctx.stage = AzureStages.GET_STORAGE_KEYS;
                             handleAllocation(ctx);
                         };
 
@@ -611,6 +666,112 @@ public class AzureInstanceService extends StatelessService {
                                         .setReferer(getHost().getUri()));
                     }
                 });
+    }
+
+    /**
+     * Gets the storage keys from azure and patches the credential state.
+     */
+    private void getStorageKeys(AzureAllocationContext ctx) {
+        StorageManagementClient client = getStorageManagementClient(ctx);
+
+        client.getStorageAccountsOperations().listKeysAsync(ctx.resourceGroup.getName(),
+                ctx.storageAccountName, new ServiceCallback<StorageAccountKeys>() {
+                    @Override public void failure(Throwable e) {
+                        handleError(ctx, e);
+                    }
+
+                    @Override
+                    public void success(ServiceResponse<StorageAccountKeys> result) {
+                        StorageAccountKeys keys = result.getBody();
+                        String key1 = keys.getKey1();
+                        String key2 = keys.getKey2();
+                        String authCredentialsLink = ctx.bootDisk.authCredentialsLink;
+
+                        AuthCredentialsServiceState diskAuth = new AuthCredentialsServiceState();
+                        Operation operation;
+                        URI authUri;
+                        String authLink;
+                        // PATCH or POST depending whether credentials exists or not.
+                        if (authCredentialsLink == null) {
+                            diskAuth.documentSelfLink = UUID.randomUUID().toString();
+                            authUri = UriUtils
+                                    .buildUri(getHost(), AuthCredentialsService.FACTORY_LINK);
+                            authLink = UriUtils.buildUriPath(AuthCredentialsService.FACTORY_LINK,
+                                    diskAuth.documentSelfLink);
+                            operation = Operation.createPost(authUri);
+                        } else {
+                            authUri = UriUtils.buildUri(getHost(), authCredentialsLink);
+                            authLink = diskAuth.documentSelfLink;
+                            operation = Operation.createPatch(authUri);
+                        }
+
+                        diskAuth.customProperties = new HashMap<>();
+                        diskAuth.customProperties.put(AZURE_STORAGE_ACCOUNT_KEY1, key1);
+                        diskAuth.customProperties.put(AZURE_STORAGE_ACCOUNT_KEY2, key2);
+
+                        sendRequest(operation.setBody(diskAuth)
+                                .setCompletion((o, e) -> {
+                                    if (e != null) {
+                                        handleError(ctx, e);
+                                        return;
+                                    }
+                                    logInfo("Successfully retrieved keys for storage account [%s]",
+                                            ctx.storageAccountName);
+
+                                    // link the auth state with disk, if not linked.
+                                    if (authCredentialsLink == null) {
+                                        ctx.bootDisk.authCredentialsLink = authLink;
+                                        Operation patch = Operation
+                                                .createPatch(UriUtils.buildUri(getHost(),
+                                                        ctx.bootDisk.documentSelfLink))
+                                                .setBody(ctx.bootDisk)
+                                                .setCompletion(((completedOp, failure) -> {
+                                                    if (failure != null) {
+                                                        handleError(ctx, failure);
+                                                        return;
+                                                    }
+
+                                                    AdapterUtils.sendPatchToProvisioningTask(
+                                                            AzureInstanceService.this,
+                                                            ctx.computeRequest.provisioningTaskReference);
+                                                    ctx.stage = AzureStages.FINISHED;
+                                                    handleAllocation(ctx);
+                                                    return;
+
+                                                }));
+                                        sendRequest(patch);
+                                        return;
+                                    }
+
+                                    AdapterUtils
+                                            .sendPatchToProvisioningTask(AzureInstanceService.this,
+                                                    ctx.computeRequest.provisioningTaskReference);
+                                    ctx.stage = AzureStages.FINISHED;
+                                    handleAllocation(ctx);
+                                }));
+
+                    }
+                });
+    }
+
+    private String getVHDName(String vmName) {
+        return vmName + BOOT_DISK_SUFFIX;
+    }
+
+    private ImageReference getImageReference(String imageId) {
+        String[] imageIdParts = imageId.split(":");
+        if (imageIdParts.length != 4) {
+            throw new IllegalArgumentException(
+                    "Azure image id should be of the format <publisher>:<offer>:<sku>:<version>");
+        }
+
+        ImageReference imageReference = new ImageReference();
+        imageReference.setPublisher(imageIdParts[0]);
+        imageReference.setOffer(imageIdParts[1]);
+        imageReference.setSku(imageIdParts[2]);
+        imageReference.setVersion(imageIdParts[3]);
+
+        return imageReference;
     }
 
     /**
@@ -630,6 +791,10 @@ public class AzureInstanceService extends StatelessService {
                 }
             }
         }
+        handleError(ctx, e);
+    }
+
+    private void handleError(AzureAllocationContext ctx, Throwable e) {
         logSevere(e);
         ctx.error = e;
         ctx.stage = AzureStages.ERROR;
@@ -844,5 +1009,76 @@ public class AzureInstanceService extends StatelessService {
             ctx.networkManagementClient = client;
         }
         return ctx.networkManagementClient;
+    }
+
+    private StorageManagementClient getStorageManagementClient(AzureAllocationContext ctx) {
+        if (ctx.storageManagementClient == null) {
+            StorageManagementClient client = new StorageManagementClientImpl(
+                    AzureConstants.BASE_URI, ctx.credentials, ctx.clientBuilder,
+                    getRetrofitBuilder());
+            client.setSubscriptionId(ctx.parentAuth.userLink);
+            ctx.storageManagementClient = client;
+        }
+        return ctx.storageManagementClient;
+    }
+
+    /**
+     * Method will retrieve disks for targeted image
+     */
+    private void getVMDisks(AzureAllocationContext ctx) {
+        if (ctx.child.diskLinks == null || ctx.child.diskLinks.size() == 0) {
+            ctx.error = new IllegalStateException("a minimum of 1 disk is required");
+            ctx.stage = AzureStages.ERROR;
+            handleAllocation(ctx);
+            return;
+        }
+        Collection<Operation> operations = new ArrayList<>();
+        // iterate thru disks and create operations
+        operations.addAll(ctx.child.diskLinks.stream()
+                .map(disk -> Operation.createGet(UriUtils.buildUri(this.getHost(), disk)))
+                .collect(Collectors.toList()));
+
+        OperationJoin operationJoin = OperationJoin.create(operations)
+                .setCompletion(
+                        (ops, exc) -> {
+                            if (exc != null) {
+                                ctx.error = new IllegalStateException(
+                                        "Error getting disk information");
+                                ctx.stage = AzureStages.ERROR;
+                                handleAllocation(ctx);
+                                return;
+                            }
+
+                            ctx.childDisks = new ArrayList<>();
+                            for (Operation op : ops.values()) {
+                                DiskState disk = op.getBody(DiskState.class);
+
+                                // We treat the first disk in the boot order as the boot disk.
+                                if (disk.bootOrder == 1) {
+                                    if (ctx.bootDisk != null) {
+                                        ctx.error = new IllegalStateException(
+                                                "Only 1 boot disk is allowed");
+                                        ctx.stage = AzureStages.ERROR;
+                                        handleAllocation(ctx);
+                                        return;
+                                    }
+
+                                    ctx.bootDisk = disk;
+                                } else {
+                                    ctx.childDisks.add(disk);
+                                }
+                            }
+
+                            if (ctx.bootDisk == null) {
+                                ctx.error = new IllegalStateException("Boot disk is required");
+                                ctx.stage = AzureStages.ERROR;
+                                handleAllocation(ctx);
+                                return;
+                            }
+
+                            ctx.stage = AzureStages.INIT_RES_GROUP;
+                            handleAllocation(ctx);
+                        });
+        operationJoin.sendWith(this);
     }
 }

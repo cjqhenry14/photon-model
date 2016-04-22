@@ -44,6 +44,11 @@ public enum AzureStages {
     DELETE,
 
     /**
+     * Stage to get VM disk information.
+     */
+    VMDISKS,
+
+    /**
      * Stage where resource group is initialized.
      */
     INIT_RES_GROUP,
@@ -82,6 +87,11 @@ public enum AzureStages {
      * Stage to handle errors.
      */
     ERROR,
+
+    /**
+     * Stage to get storage account keys.
+     */
+    GET_STORAGE_KEYS,
 
     /**
      * The finished stage.

@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.azureadapter;
 
+import java.util.List;
+
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
 import com.microsoft.azure.management.network.NetworkManagementClient;
 import com.microsoft.azure.management.network.models.NetworkInterface;
@@ -21,11 +23,13 @@ import com.microsoft.azure.management.network.models.PublicIPAddress;
 import com.microsoft.azure.management.network.models.VirtualNetwork;
 import com.microsoft.azure.management.resources.ResourceManagementClient;
 import com.microsoft.azure.management.resources.models.ResourceGroup;
+import com.microsoft.azure.management.storage.StorageManagementClient;
 import com.microsoft.azure.management.storage.models.StorageAccount;
 import okhttp3.OkHttpClient;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 
 /**
@@ -39,6 +43,8 @@ public class AzureAllocationContext {
     public ComputeService.ComputeStateWithDescription child;
     public ComputeService.ComputeStateWithDescription parent;
     public AuthCredentialsService.AuthCredentialsServiceState parentAuth;
+    public DiskState bootDisk;
+    public List<DiskState> childDisks;
 
     //Azure specific context
     public ApplicationTokenCredentials credentials;
@@ -52,6 +58,7 @@ public class AzureAllocationContext {
 
     public ResourceManagementClient resourceManagementClient;
     public NetworkManagementClient networkManagementClient;
+    public StorageManagementClient storageManagementClient;
     public OkHttpClient.Builder clientBuilder;
     public OkHttpClient httpClient;
 
