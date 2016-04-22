@@ -14,12 +14,15 @@
 package com.vmware.photon.controller.model.adapters.vsphere;
 
 import java.lang.reflect.Constructor;
+import java.net.URI;
 
 import com.vmware.vim25.LocalizedMethodFault;
 
 /**
  */
 public final class VimUtils {
+
+    public static final String SCHEME_FILE = "file";
 
     private VimUtils() {
 
@@ -48,5 +51,41 @@ public final class VimUtils {
         }
 
         throw ex;
+    }
+
+    /**
+     * Converts an URI in the format file://datastoreName/path/to/file to a string like
+     * "[datastoreName] /path/to/file".
+     *
+     * @param uri
+     * @return
+     */
+    public static String uriToDatastorePath(URI uri) {
+        if (uri == null) {
+            return null;
+        }
+
+        if (!SCHEME_FILE.equals(uri.getScheme())) {
+            throw new IllegalArgumentException("Expected datastore scheme, found" + uri);
+        }
+
+        String path = uri.getSchemeSpecificPart();
+        // strip leading slashes
+        int i = 0;
+        while (i < path.length() && path.charAt(i) == '/') {
+            i++;
+        }
+        path = path.substring(i);
+
+        // separator between datastore and path
+        i = path.indexOf('/');
+        if (i <= 0) {
+            throw new IllegalArgumentException("Path to datastore not found:" + uri);
+        }
+
+        String ds = path.substring(0, i);
+        path = path.substring(i + 1);
+
+        return String.format("[%s] %s", ds, path);
     }
 }

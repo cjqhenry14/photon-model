@@ -56,6 +56,7 @@ import com.vmware.vim25.TaskInfoState;
 import com.vmware.vim25.VimPortType;
 import com.vmware.vim25.VirtualCdrom;
 import com.vmware.vim25.VirtualCdromAtapiBackingInfo;
+import com.vmware.vim25.VirtualCdromIsoBackingInfo;
 import com.vmware.vim25.VirtualDevice;
 import com.vmware.vim25.VirtualDeviceConfigSpec;
 import com.vmware.vim25.VirtualDeviceConfigSpecFileOperation;
@@ -68,6 +69,7 @@ import com.vmware.vim25.VirtualEthernetCard;
 import com.vmware.vim25.VirtualEthernetCardNetworkBackingInfo;
 import com.vmware.vim25.VirtualFloppy;
 import com.vmware.vim25.VirtualFloppyDeviceBackingInfo;
+import com.vmware.vim25.VirtualFloppyImageBackingInfo;
 import com.vmware.vim25.VirtualIDEController;
 import com.vmware.vim25.VirtualLsiLogicController;
 import com.vmware.vim25.VirtualMachineConfigSpec;
@@ -165,8 +167,6 @@ public class Client extends BaseHelper {
         String dir = get.entityProp(vm, "summary.config.vmPathName");
         dir = Paths.get(dir).getParent().toString();
 
-        String dirPath = directoryPath(dir);
-
         ArrayOfVirtualDevice devices = get.entityProp(vm, "config.hardware.device");
 
         VirtualDevice scsiController = getFirstScsiController(devices);
@@ -181,8 +181,10 @@ public class Client extends BaseHelper {
         List<VirtualDeviceConfigSpec> newDisks = new ArrayList<>();
 
         for (DiskState ds : diskStates) {
+            String diskPath = VimUtils.uriToDatastorePath(ds.sourceImageReference);
+
             if (ds.type == DiskType.HDD) {
-                if (ds.sourceImageReference != null) {
+                if (diskPath != null) {
                     //TODO upload images using NFC
                     throw new IllegalStateException("sourceImageReference not supported yet");
                 } else {
@@ -194,14 +196,20 @@ public class Client extends BaseHelper {
             if (ds.type == DiskType.CDROM) {
                 VirtualDeviceConfigSpec cdrom = createCdrom(ideController, ideUnit);
                 ideUnit = nextUnitNumber(ideUnit);
-                // TODO upload iso using customizationServiceReference
+                if (diskPath != null) {
+                    // mount iso image
+                    insertCdrom((VirtualCdrom) cdrom.getDevice(), diskPath);
+                }
                 newDisks.add(cdrom);
             }
             if (ds.type == DiskType.FLOPPY) {
-                VirtualDeviceConfigSpec hdd = createFloppy(sioController, sioUnit);
+                VirtualDeviceConfigSpec floppy = createFloppy(sioController, sioUnit);
                 sioUnit = nextUnitNumber(sioUnit);
-                // TODO attach floppy using customizationServiceReference
-                newDisks.add(hdd);
+                if (diskPath != null) {
+                    // mount iso image
+                    insertFloppy((VirtualFloppy) floppy.getDevice(), diskPath);
+                }
+                newDisks.add(floppy);
             }
 
             // mark disk as attached
@@ -220,6 +228,7 @@ public class Client extends BaseHelper {
             }
         }
     }
+
 
     private VirtualDeviceConfigSpec createCdrom(VirtualDevice ideController, int unitNumber) {
         VirtualCdrom cdrom = new VirtualCdrom();
@@ -243,6 +252,31 @@ public class Client extends BaseHelper {
         spec.setOperation(VirtualDeviceConfigSpecOperation.ADD);
 
         return spec;
+    }
+
+    /**
+     * Changes to backing of the cdrom to an iso-backed one.
+     *
+     * @param cdrom
+     * @param imagePath path to iso on disk, sth. like "[datastore] /images/ubuntu-16.04-amd64.iso"
+     */
+    private void insertCdrom(VirtualCdrom cdrom, String imagePath) {
+        VirtualCdromIsoBackingInfo backing = new VirtualCdromIsoBackingInfo();
+        backing.setFileName(imagePath);
+
+        cdrom.setBacking(backing);
+    }
+
+    /**
+     * Changes to backing of the floppy to an image-backed one.
+     *
+     * @param floppy
+     * @param imagePath
+     */
+    private void insertFloppy(VirtualFloppy floppy, String imagePath) {
+        VirtualFloppyImageBackingInfo backingInfo = new VirtualFloppyImageBackingInfo();
+        backingInfo.setFileName(imagePath);
+        floppy.setBacking(backingInfo);
     }
 
     private VirtualDeviceConfigSpec createFloppy(VirtualDevice sioController, int unitNumber) {
@@ -355,16 +389,6 @@ public class Client extends BaseHelper {
         throw new IllegalStateException("No SCSI controller found");
     }
 
-    private String directoryPath(String vmPath) {
-        int i = vmPath.indexOf(']');
-        if (i < 0) {
-            throw new IllegalStateException(
-                    "vmPath is not in the expected format '[datastore] /path/to/vm'");
-        }
-
-        return vmPath.substring(i + 2);
-    }
-
     /**
      * Once a vm is provisioned this method collects vsphere-assigned properties and stores them
      * in the {@link ComputeState#customProperties}
@@ -374,7 +398,6 @@ public class Client extends BaseHelper {
      * @throws InvalidPropertyFaultMsg
      * @throws RuntimeFaultFaultMsg
      */
-    @SuppressWarnings("unchecked")
     private void enrichStateFromVm(ComputeState state, ManagedObjectReference ref)
             throws InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
         Map<String, Object> props =

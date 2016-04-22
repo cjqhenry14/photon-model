@@ -132,7 +132,7 @@ public class BasicConnection implements Connection {
         }
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @SuppressWarnings("unchecked")
     private void _connect() throws RuntimeFaultFaultMsg, InvalidLocaleFaultMsg, InvalidLoginFaultMsg {
         this.vimService = new VimService();
         this.vimPort = this.vimService.getVimPort();

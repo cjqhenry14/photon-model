@@ -65,6 +65,8 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
     public String dataStoreId = System.getProperty("vc.dataStoreId");
     public String networkId = System.getProperty("vc.networkId");
 
+    public URI cdromUri = getCdromUri();
+
     // fields that are used across method calls, stash them as private fields
     private ResourcePoolState resourcePool;
 
@@ -73,7 +75,6 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
     private ComputeState computeHost;
     private ComputeDescription vmDescription;
     private ComputeState vm;
-    private boolean mock;
 
     @Before
     public void setUp() throws Throwable {
@@ -159,10 +160,10 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         computeState.parentLink = computeHost.documentSelfLink;
 
         computeState.diskLinks = new ArrayList<>(1);
-        computeState.diskLinks.add(createDisk("main", DiskType.HDD).documentSelfLink);
-        computeState.diskLinks.add(createDisk("movies", DiskType.HDD).documentSelfLink);
-        computeState.diskLinks.add(createDisk("A", DiskType.FLOPPY).documentSelfLink);
-        computeState.diskLinks.add(createDisk("cd", DiskType.CDROM).documentSelfLink);
+        computeState.diskLinks.add(createDisk("main", DiskType.HDD, null).documentSelfLink);
+        computeState.diskLinks.add(createDisk("movies", DiskType.HDD, null).documentSelfLink);
+        computeState.diskLinks.add(createDisk("A", DiskType.FLOPPY, null).documentSelfLink);
+        computeState.diskLinks.add(createDisk("cd", DiskType.CDROM, cdromUri).documentSelfLink);
 
         ComputeService.ComputeState returnState = TestUtils.doPost(this.host, computeState,
                 ComputeService.ComputeState.class,
@@ -170,13 +171,15 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         return returnState;
     }
 
-    private DiskState createDisk(String alias, DiskType type) throws Throwable {
+    private DiskState createDisk(String alias, DiskType type, URI sourceImageReference)
+            throws Throwable {
         DiskState res = new DiskState();
         res.capacityMBytes = 32;
         res.bootOrder = 1;
         res.type = type;
         res.id = res.name = "disk-" + alias;
 
+        res.sourceImageReference = sourceImageReference;
         return TestUtils.doPost(this.host, res,
                 DiskState.class,
                 UriUtils.buildUri(this.host, DiskService.FACTORY_LINK));
@@ -250,5 +253,14 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
 
     public boolean isMock() {
         return vcUrl == null || vcUrl.length() == 0;
+    }
+
+    public URI getCdromUri() {
+        String cdromUri = System.getProperty("vc.cdromUri");
+        if (cdromUri == null) {
+            return null;
+        } else {
+            return URI.create(cdromUri);
+        }
     }
 }

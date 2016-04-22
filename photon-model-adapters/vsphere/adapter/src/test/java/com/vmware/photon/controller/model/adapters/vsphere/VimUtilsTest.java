@@ -13,8 +13,12 @@
 
 package com.vmware.photon.controller.model.adapters.vsphere;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
+
+import java.net.URI;
 
 import org.junit.Test;
 
@@ -63,5 +67,39 @@ public class VimUtilsTest {
         } catch (Exception e) {
             fail();
         }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void uriToDatastorePathBadScheme() {
+        VimUtils.uriToDatastorePath(URI.create("http://hello/world"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void uriToDatastoreMissingPath() {
+        VimUtils.uriToDatastorePath(URI.create("file://hello"));
+    }
+
+    @Test
+    public void uriToDatastoreManySlashes() {
+        String s = VimUtils.uriToDatastorePath(URI.create("file:////ds1/folder/vm.vmx"));
+        assertEquals("[ds1] folder/vm.vmx", s);
+    }
+
+    @Test
+    public void uriToDatastore() {
+        String s = VimUtils.uriToDatastorePath(URI.create("file:///ds_test/folder/vm.vmx"));
+        assertEquals("[ds_test] folder/vm.vmx", s);
+    }
+
+    @Test
+    public void uriToDatastoreNull() {
+        String s = VimUtils.uriToDatastorePath(null);
+        assertNull(s);
+    }
+
+    @Test
+    public void uriToDatastoreRelativeWithUnderscore() {
+        String s = VimUtils.uriToDatastorePath(URI.create("file://ds_test/folder/vm.vmx"));
+        assertEquals("[ds_test] folder/vm.vmx", s);
     }
 }
