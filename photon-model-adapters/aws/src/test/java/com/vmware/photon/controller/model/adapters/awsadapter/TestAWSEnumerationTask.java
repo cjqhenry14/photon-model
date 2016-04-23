@@ -48,6 +48,7 @@ import com.amazonaws.services.ec2.model.TerminateInstancesResult;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
@@ -217,6 +218,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         }
     }
 
+    // TODO enable in CI VSYM-489
+    @Ignore
     @Test
     public void testEnumerationAtScale() throws Throwable {
         if (!isMock) {
