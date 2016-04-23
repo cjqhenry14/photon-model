@@ -463,8 +463,7 @@ public class AWSEnumerationAdapterService extends StatelessService {
         private void handleReceivedEnumerationData() {
             switch (aws.subStage) {
             case QUERY_LOCAL_RESOURCES:
-                getLocalResources(
-                        AWSEnumerationSubStage.COMPARE);
+                getLocalResources(AWSEnumerationSubStage.COMPARE);
                 break;
             case COMPARE:
                 compareLocalStateWithEnumerationData(

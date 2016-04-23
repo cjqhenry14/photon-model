@@ -49,21 +49,12 @@ import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
- * Test to enumerate instances on AWS and tear it down. The test creates VM using the Provisioning task as well as
- * directly creating instances on AWS using the EC2 client.It then invokes the AWS enumeration adapter to enumerate
- * all the resources on the AWS endpoint and validates that all the updates to the local state are as expected.If the 'isMock'
- * flag is set to true the test runs the adapter in mock mode and does not actually create a VM.
- * Minimally the accessKey and secretKey for AWS must be specified must be provided in the SetupUtils class to run the test.
+ *
+ * Minimally the accessKey and secretKey for AWS must be specified must be provided to run the test and the isMock
+ * flag needs to be turned OFF.
  *
  */
-public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
-    public static final int instanceCount1 = 1;
-    public static final int instanceCount2 = 2;
-    public static final int instanceCount3 = 3;
-    public static final int instanceCount4 = 4;
-    public static final int instanceCount5 = 5;
-    public static final int instanceCount7 = 7;
-    public static final int instanceCount8 = 8;
+public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
     public int instanceCountAtScale = 10;
     public ComputeService.ComputeState vmState;
     public ResourcePoolState outPool;
@@ -111,9 +102,9 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
                     new AWSEnumerationAdapterService());
             serviceSelfLinks.add(AWSEnumerationAdapterService.SELF_LINK);
 
+            ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
             // create the compute host, resource pool and the VM state to be used in the test.
             createResourcePoolComputeHostAndVMState();
-            ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
         } catch (Throwable e) {
             host.log("Error starting up services for the test %s", e.getMessage());
             throw new Exception(e);
@@ -145,59 +136,26 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         }
     }
 
-    // Runs the enumeration task on the AWS endpoint to list all the instances on the endpoint.
     @Test
-    public void testEnumeration() throws Throwable {
+    public void testEnumerationAtScale() throws Throwable {
         if (!isMock) {
             host.setTimeoutSeconds(600);
-            // Overriding the page size to test the pagination logic with limited instances on AWS.
-            // This is a functional test
-            // so the latency numbers maybe higher from this test due to low page size.
-            AWSEnumerationAdapterService.AWS_PAGE_SIZE = 5;
             baseLineState = getBaseLineInstanceCount(host, client, testComputeDescriptions);
             host.log(baseLineState.toString());
             // Provision a single VM . Check initial state.
             provisionMachine(host, vmState, isMock, instancesToCleanUp);
-            ProvisioningUtils.queryComputeInstances(this.host, instanceCount2);
-            ProvisioningUtils.queryComputeDescriptions(this.host, instanceCount2);
-
-            // CREATION directly on AWS
-            instanceIds = provisionAWSVMWithEC2Client(client, host, instanceCount5,
+            // Create {instanceCountAtScale} VMs on AWS
+            host.log("Running scale test by provisioning %d instances", instanceCountAtScale);
+            instanceIds = provisionAWSVMWithEC2Client(client, host, instanceCountAtScale,
                     T2_NANO_INSTANCE_TYPE);
             instancesToCleanUp.addAll(instanceIds);
-
-            // Xenon does not know about the new instances.
-            ProvisioningUtils.queryComputeInstances(this.host, instanceCount2);
-
             enumerateResources(host, isMock, outPool.documentSelfLink,
                     outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
-            // 5 new resources should be discovered. Mapping to 1 new compute description and 5 new
-            // compute states.
-            ProvisioningUtils.queryComputeDescriptions(this.host,
-                    instanceCount3 + baseLineState.baselineComputeDescriptionCount);
+            // {instanceCountAtScale} new resources should be discovered.
             ProvisioningUtils.queryComputeInstances(this.host,
-                    instanceCount7 + baseLineState.baselineVMCount);
-
-            // Provision an additional VM that has a compute description already present in the
-            // system.
-            instanceIds.clear();
-            instanceIds = provisionAWSVMWithEC2Client(client, host, instanceCount1,
-                    TestAWSSetupUtils.instanceType_t2_micro);
-            instancesToCleanUp.addAll(instanceIds);
-            enumerateResources(host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
-            // One additional compute state and no new compute descriptions should be created.
-            ProvisioningUtils.queryComputeDescriptions(this.host,
-                    instanceCount3 + baseLineState.baselineComputeDescriptionCount);
-            ProvisioningUtils.queryComputeInstances(this.host,
-                    instanceCount8 + baseLineState.baselineVMCount);
+                    instanceCountAtScale + 2 + baseLineState.baselineVMCount);
         } else {
-            // Create basic state for kicking off enumeration
-            createResourcePoolComputeHostAndVMState();
-            // Just make a call to the enumeration service and make sure that the adapter patches
-            // the parent with completion.
-            enumerateResources(host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
+            // Do nothing. Basic enumeration logic tested in functional test.
         }
     }
 
