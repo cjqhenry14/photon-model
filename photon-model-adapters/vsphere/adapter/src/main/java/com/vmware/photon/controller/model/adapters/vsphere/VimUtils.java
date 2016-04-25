@@ -22,7 +22,7 @@ import com.vmware.vim25.LocalizedMethodFault;
  */
 public final class VimUtils {
 
-    public static final String SCHEME_FILE = "file";
+    public static final String SCHEME_DATASTORE = "datastore";
 
     private VimUtils() {
 
@@ -65,7 +65,7 @@ public final class VimUtils {
             return null;
         }
 
-        if (!SCHEME_FILE.equals(uri.getScheme())) {
+        if (!SCHEME_DATASTORE.equals(uri.getScheme())) {
             throw new IllegalArgumentException("Expected datastore scheme, found" + uri);
         }
 

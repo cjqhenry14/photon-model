@@ -160,7 +160,8 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         computeState.parentLink = computeHost.documentSelfLink;
 
         computeState.diskLinks = new ArrayList<>(1);
-        computeState.diskLinks.add(createDisk("main", DiskType.HDD, null).documentSelfLink);
+        computeState.diskLinks.add(createDisk("boot", DiskType.HDD, getDiskUri()).documentSelfLink);
+
         computeState.diskLinks.add(createDisk("movies", DiskType.HDD, null).documentSelfLink);
         computeState.diskLinks.add(createDisk("A", DiskType.FLOPPY, null).documentSelfLink);
         computeState.diskLinks.add(createDisk("cd", DiskType.CDROM, cdromUri).documentSelfLink);
@@ -174,7 +175,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
     private DiskState createDisk(String alias, DiskType type, URI sourceImageReference)
             throws Throwable {
         DiskState res = new DiskState();
-        res.capacityMBytes = 32;
+        res.capacityMBytes = 512;
         res.bootOrder = 1;
         res.type = type;
         res.id = res.name = "disk-" + alias;
@@ -261,6 +262,15 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
             return null;
         } else {
             return URI.create(cdromUri);
+        }
+    }
+
+    public URI getDiskUri() {
+        String diskUri = System.getProperty("vc.diskUri");
+        if (diskUri == null) {
+            return null;
+        } else {
+            return URI.create(diskUri);
         }
     }
 }

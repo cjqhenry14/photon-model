@@ -70,24 +70,29 @@ public class VimUtilsTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void uriToDatastorePathBadScheme() {
+    public void uriToDatastorePathBadSchemeHttp() {
         VimUtils.uriToDatastorePath(URI.create("http://hello/world"));
     }
 
     @Test(expected = IllegalArgumentException.class)
+    public void uriToDatastorePathBadSchemeFile() {
+        VimUtils.uriToDatastorePath(URI.create("file://hello/world"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
     public void uriToDatastoreMissingPath() {
-        VimUtils.uriToDatastorePath(URI.create("file://hello"));
+        VimUtils.uriToDatastorePath(URI.create("datastore://hello"));
     }
 
     @Test
     public void uriToDatastoreManySlashes() {
-        String s = VimUtils.uriToDatastorePath(URI.create("file:////ds1/folder/vm.vmx"));
+        String s = VimUtils.uriToDatastorePath(URI.create("datastore:////ds1/folder/vm.vmx"));
         assertEquals("[ds1] folder/vm.vmx", s);
     }
 
     @Test
     public void uriToDatastore() {
-        String s = VimUtils.uriToDatastorePath(URI.create("file:///ds_test/folder/vm.vmx"));
+        String s = VimUtils.uriToDatastorePath(URI.create("datastore:///ds_test/folder/vm.vmx"));
         assertEquals("[ds_test] folder/vm.vmx", s);
     }
 
@@ -99,7 +104,7 @@ public class VimUtilsTest {
 
     @Test
     public void uriToDatastoreRelativeWithUnderscore() {
-        String s = VimUtils.uriToDatastorePath(URI.create("file://ds_test/folder/vm.vmx"));
+        String s = VimUtils.uriToDatastorePath(URI.create("datastore://ds_test/folder/vm.vmx"));
         assertEquals("[ds_test] folder/vm.vmx", s);
     }
 }

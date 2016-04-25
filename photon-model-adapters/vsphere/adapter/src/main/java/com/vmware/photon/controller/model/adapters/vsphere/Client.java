@@ -64,8 +64,11 @@ import com.vmware.vim25.VirtualDeviceConfigSpecOperation;
 import com.vmware.vim25.VirtualDeviceConnectInfo;
 import com.vmware.vim25.VirtualDisk;
 import com.vmware.vim25.VirtualDiskFlatVer2BackingInfo;
+import com.vmware.vim25.VirtualDiskMode;
+import com.vmware.vim25.VirtualDiskSpec;
 import com.vmware.vim25.VirtualE1000;
 import com.vmware.vim25.VirtualEthernetCard;
+import com.vmware.vim25.VirtualEthernetCardMacType;
 import com.vmware.vim25.VirtualEthernetCardNetworkBackingInfo;
 import com.vmware.vim25.VirtualFloppy;
 import com.vmware.vim25.VirtualFloppyDeviceBackingInfo;
@@ -92,6 +95,7 @@ public class Client extends BaseHelper {
     private final GetMoRef get;
     private final Finder finder;
     private ManagedObjectReference vm;
+    private ManagedObjectReference datastore;
 
     public Client(Connection connection,
             ComputeStateWithDescription resource,
@@ -185,13 +189,16 @@ public class Client extends BaseHelper {
 
             if (ds.type == DiskType.HDD) {
                 if (diskPath != null) {
-                    //TODO upload images using NFC
-                    throw new IllegalStateException("sourceImageReference not supported yet");
+                    // create full clone of given disk
+                    VirtualDeviceConfigSpec hdd = createFullCloneAndAttach(diskPath, ds, dir,
+                            scsiController, scsiUnit);
+                    newDisks.add(hdd);
                 } else {
                     VirtualDeviceConfigSpec hdd = createHdd(scsiController, ds, dir, scsiUnit);
                     newDisks.add(hdd);
-                    scsiUnit = nextUnitNumber(scsiUnit);
                 }
+
+                scsiUnit = nextUnitNumber(scsiUnit);
             }
             if (ds.type == DiskType.CDROM) {
                 VirtualDeviceConfigSpec cdrom = createCdrom(ideController, ideUnit);
@@ -229,6 +236,53 @@ public class Client extends BaseHelper {
         }
     }
 
+    private VirtualDeviceConfigSpec createFullCloneAndAttach(String sourcePath, DiskState ds,
+            String dir, VirtualDevice scsiController, int unitNumber)
+            throws Exception {
+
+        ManagedObjectReference diskManager = connection.getServiceContent().getVirtualDiskManager();
+
+        // put full clone in the vm folder
+        String destName = makePathToVmdkFile(ds, dir);
+
+        // all ops are withing a datacenter
+        ManagedObjectReference sourceDc = finder.getDatacenter().object;
+        ManagedObjectReference destDc = sourceDc;
+
+        Boolean force = true;
+
+        // spec is not supported, should use null for now
+        VirtualDiskSpec spec = null;
+
+        ManagedObjectReference task = getVimPort()
+                .copyVirtualDiskTask(diskManager, sourcePath, sourceDc, destName, destDc, spec,
+                        force);
+
+        // wait for the disk to be copied
+        TaskInfo taskInfo = waitTaskEnd(task);
+        if (taskInfo.getState() == TaskInfoState.ERROR) {
+            return VimUtils.rethrow(taskInfo.getError());
+        }
+
+        VirtualDisk disk = new VirtualDisk();
+
+        VirtualDiskFlatVer2BackingInfo backing = new VirtualDiskFlatVer2BackingInfo();
+        backing.setDiskMode(VirtualDiskMode.PERSISTENT.value());
+        backing.setThinProvisioned(true);
+        backing.setFileName(destName);
+        backing.setDatastore(getDatastore());
+
+        disk.setBacking(backing);
+        disk.setControllerKey(scsiController.getKey());
+        disk.setUnitNumber(unitNumber);
+        disk.setKey(-1);
+
+        VirtualDeviceConfigSpec change = new VirtualDeviceConfigSpec();
+        change.setDevice(disk);
+        change.setOperation(VirtualDeviceConfigSpecOperation.ADD);
+
+        return change;
+    }
 
     private VirtualDeviceConfigSpec createCdrom(VirtualDevice ideController, int unitNumber) {
         VirtualCdrom cdrom = new VirtualCdrom();
@@ -342,16 +396,13 @@ public class Client extends BaseHelper {
     private VirtualDeviceConfigSpec createHdd(VirtualDevice scsiController, DiskState ds,
             String dir, int unitNumber)
             throws FinderException, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
-        String diskName = Paths.get(dir, ds.id).toString();
-        if (!diskName.endsWith(".vmdk")) {
-            diskName += ".vmdk";
-        }
+        String diskName = makePathToVmdkFile(ds, dir);
 
         VirtualDisk disk = new VirtualDisk();
         disk.setCapacityInKB(toKb(ds.capacityMBytes));
 
         VirtualDiskFlatVer2BackingInfo backing = new VirtualDiskFlatVer2BackingInfo();
-        backing.setDiskMode("persistent");
+        backing.setDiskMode(VirtualDiskMode.PERSISTENT.value());
         backing.setThinProvisioned(true);
         backing.setFileName(diskName);
         backing.setDatastore(getDatastore());
@@ -367,6 +418,14 @@ public class Client extends BaseHelper {
         change.setFileOperation(VirtualDeviceConfigSpecFileOperation.CREATE);
 
         return change;
+    }
+
+    private String makePathToVmdkFile(DiskState ds, String dir) {
+        String diskName = Paths.get(dir, ds.id).toString();
+        if (!diskName.endsWith(".vmdk")) {
+            diskName += ".vmdk";
+        }
+        return diskName;
     }
 
     private VirtualIDEController getFirstIdeController(ArrayOfVirtualDevice devices) {
@@ -544,7 +603,7 @@ public class Client extends BaseHelper {
         String networkName = get.entityProp(network, "name");
 
         VirtualEthernetCard nic = new VirtualE1000();
-        nic.setAddressType("generated");
+        nic.setAddressType(VirtualEthernetCardMacType.GENERATED.value());
         nic.setKey(-1);
 
         VirtualEthernetCardNetworkBackingInfo backing = new VirtualEthernetCardNetworkBackingInfo();
@@ -580,7 +639,9 @@ public class Client extends BaseHelper {
      */
     private ManagedObjectReference getDatastore()
             throws RuntimeFaultFaultMsg, InvalidPropertyFaultMsg, FinderException {
-        ManagedObjectReference datastore;
+        if (datastore != null) {
+            return datastore;
+        }
 
         String datastorePath = state.description.dataStoreId;
 
@@ -589,6 +650,7 @@ public class Client extends BaseHelper {
         } else {
             datastore = finder.datastore(datastorePath).object;
         }
+
         return datastore;
     }
 
