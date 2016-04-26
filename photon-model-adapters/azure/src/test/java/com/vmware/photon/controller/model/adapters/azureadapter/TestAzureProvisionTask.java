@@ -17,15 +17,15 @@ import static com.vmware.photon.controller.model.adapters.azureadapter.AzureCons
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_TYPE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_TENANT_ID;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_ADMIN_PASSWORD;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_ADMIN_USERNAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_SIZE;
 import static com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_AZURE;
+import static com.vmware.photon.controller.model.tasks.ResourceAllocationTaskService.CUSTOM_DISPLAY_NAME;
 
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -66,7 +66,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     public String azureVMSize = "Basic_A0";
     public String imageReference = "Canonical:UbuntuServer:14.04.3-LTS:latest";
     public String azureResourceGroupLocation = "westus";
-    public String azureStorageAccountName = "photonteststorageaccount";
+    public String azureStorageAccountName = "storage";
     public String azureStorageAccountType = "Standard_RAGRS";
     public boolean isMock = true;
 
@@ -212,6 +212,15 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     }
 
     private ComputeService.ComputeState createAzureVMResource() throws Throwable {
+        AuthCredentialsService.AuthCredentialsServiceState auth = new AuthCredentialsService.AuthCredentialsServiceState();
+        auth.userEmail = azureAdminUsername;
+        auth.privateKey = azureAdminPassword;
+        auth.documentSelfLink = UUID.randomUUID().toString();
+        TestUtils.doPost(this.host, auth, AuthCredentialsService.AuthCredentialsServiceState.class,
+                UriUtils.buildUri(this.host, AuthCredentialsService.FACTORY_LINK));
+        String authLink = UriUtils.buildUriPath(AuthCredentialsService.FACTORY_LINK,
+                auth.documentSelfLink);
+
         // Create a VM desc
         ComputeDescriptionService.ComputeDescription azureVMDesc =
                 new ComputeDescriptionService.ComputeDescription();
@@ -219,6 +228,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         azureVMDesc.id = UUID.randomUUID().toString();
         azureVMDesc.name = azureVMDesc.id;
         azureVMDesc.regionId = azureResourceGroupLocation;
+        azureVMDesc.authCredentialsLink = authLink;
         azureVMDesc.documentSelfLink = azureVMDesc.id;
         azureVMDesc.environmentName = ENVIRONMENT_NAME_AZURE;
 
@@ -245,7 +255,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
 
         rootDisk.customProperties = new HashMap<>();
         rootDisk.customProperties.put(AZURE_OSDISK_CACHING, DEFAULT_OS_DISK_CACHING);
-        rootDisk.customProperties.put(AZURE_STORAGE_ACCOUNT_NAME, azureStorageAccountName);
+        rootDisk.customProperties.put(AZURE_STORAGE_ACCOUNT_NAME, generateName(azureStorageAccountName));
         rootDisk.customProperties.put(AZURE_STORAGE_ACCOUNT_TYPE, azureStorageAccountType);
 
         TestUtils.doPost(host, rootDisk,
@@ -254,15 +264,13 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         vmDisks.add(UriUtils.buildUriPath(DiskService.FACTORY_LINK, rootDisk.id));
 
         ComputeService.ComputeState resource = new ComputeService.ComputeState();
-        // VM name on Azure cannot be more that 15 chars.
-        resource.id = azureVMName;
+        resource.id = UUID.randomUUID().toString();
         resource.parentLink = parentResourceId;
         resource.descriptionLink = vmComputeDesc.documentSelfLink;
         resource.resourcePoolLink = this.resourcePoolLink;
         resource.diskLinks = vmDisks;
         resource.customProperties = new HashMap<>();
-        resource.customProperties.put(AZURE_VM_ADMIN_USERNAME, azureAdminUsername);
-        resource.customProperties.put(AZURE_VM_ADMIN_PASSWORD, azureAdminPassword);
+        resource.customProperties.put(CUSTOM_DISPLAY_NAME, azureVMName);
 
         ComputeService.ComputeState vmComputeState = TestUtils.doPost(this.host, resource,
                 ComputeService.ComputeState.class,
@@ -288,5 +296,22 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
                 .setBody(deletionState)
                 .setCompletion(this.host.getCompletion()));
         this.host.testWait();
+    }
+
+    /**
+     * Generate random names. For Azure, storage account names need to be unique across
+     * Azure.
+     */
+    private String generateName(String prefix) {
+        return prefix + randomString(5);
+    }
+
+    private String randomString(int length) {
+        Random random = new Random();
+        StringBuilder stringBuilder = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            stringBuilder.append((char) ('a' + random.nextInt(26)));
+        }
+        return stringBuilder.toString();
     }
 }

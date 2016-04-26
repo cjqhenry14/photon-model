@@ -43,8 +43,10 @@ public class AzureAllocationContext {
     public ComputeService.ComputeStateWithDescription child;
     public ComputeService.ComputeStateWithDescription parent;
     public AuthCredentialsService.AuthCredentialsServiceState parentAuth;
+    public AuthCredentialsService.AuthCredentialsServiceState childAuth;
     public DiskState bootDisk;
     public List<DiskState> childDisks;
+    public String vmName;
 
     //Azure specific context
     public ApplicationTokenCredentials credentials;

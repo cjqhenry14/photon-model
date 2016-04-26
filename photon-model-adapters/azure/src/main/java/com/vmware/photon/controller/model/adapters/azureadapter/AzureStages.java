@@ -34,6 +34,11 @@ public enum AzureStages {
     PARENTAUTH,
 
     /**
+     * This stage gets the authentication information from the child.
+     */
+    CHILDAUTH,
+
+    /**
      * Stage where VM creation happens.
      */
     CREATE,

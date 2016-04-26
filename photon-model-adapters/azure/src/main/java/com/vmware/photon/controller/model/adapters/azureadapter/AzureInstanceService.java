@@ -18,14 +18,13 @@ import static com.vmware.photon.controller.model.adapters.azureadapter.AzureCons
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_KEY2;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_TYPE;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_ADMIN_PASSWORD;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_ADMIN_USERNAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_SIZE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.COMPUTE_NAMESPACE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.MISSING_SUBSCRIPTION_CODE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.NETWORK_NAMESPACE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.PROVIDER_REGISTRED_STATE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.STORAGE_NAMESPACE;
+import static com.vmware.photon.controller.model.tasks.ResourceAllocationTaskService.CUSTOM_DISPLAY_NAME;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -181,7 +180,10 @@ public class AzureInstanceService extends StatelessService {
             getParentDescription(ctx, AzureStages.PARENTAUTH);
             break;
         case PARENTAUTH:
-            getParentAuth(ctx, AzureStages.CLIENT);
+            getParentAuth(ctx, AzureStages.CHILDAUTH);
+            break;
+        case CHILDAUTH:
+            getChildAuth(ctx, AzureStages.CLIENT);
             break;
         case CLIENT:
             if (ctx.credentials == null) {
@@ -269,7 +271,7 @@ public class AzureInstanceService extends StatelessService {
             return;
         }
 
-        String resourceGroupName = ctx.child.id;
+        String resourceGroupName = ctx.vmName;
 
         if (resourceGroupName == null || resourceGroupName.isEmpty()) {
             throw new IllegalArgumentException("Resource group name is required");
@@ -328,7 +330,7 @@ public class AzureInstanceService extends StatelessService {
     }
 
     private void initResourceGroup(AzureAllocationContext ctx) {
-        String resourceGroupName = ctx.child.id;
+        String resourceGroupName = ctx.vmName;
 
         if (resourceGroupName == null || resourceGroupName.isEmpty()) {
             throw new IllegalArgumentException("Resource group name is required");
@@ -426,7 +428,7 @@ public class AzureInstanceService extends StatelessService {
         subnet.setAddressPrefix(SUBNET_ADDRESS_PREFIX);
         vnet.getSubnets().add(subnet);
 
-        String vNetName = ctx.child.id;
+        String vNetName = ctx.vmName;
 
         logInfo("Creating virtual network [%s]", vNetName);
 
@@ -456,7 +458,7 @@ public class AzureInstanceService extends StatelessService {
         publicIPAddress.setLocation(ctx.resourceGroup.getLocation());
         publicIPAddress.setPublicIPAllocationMethod(PUBLIC_IP_ALLOCATION_METHOD);
 
-        String publicIPName = ctx.child.id;
+        String publicIPName = ctx.vmName;
 
         logInfo("Creating public IP with name [%s]", publicIPName);
 
@@ -488,7 +490,7 @@ public class AzureInstanceService extends StatelessService {
         NetworkSecurityGroup group = new NetworkSecurityGroup();
         group.setLocation(ctx.resourceGroup.getLocation());
 
-        String secGroupName = ctx.child.id;
+        String secGroupName = ctx.vmName;
 
         logInfo("Creating security group with name [%s]", secGroupName);
 
@@ -528,7 +530,7 @@ public class AzureInstanceService extends StatelessService {
         nic.getIpConfigurations().add(configuration);
         nic.setNetworkSecurityGroup(ctx.securityGroup);
 
-        String nicName = generateName(ctx.child.id);
+        String nicName = generateName(ctx.vmName);
 
         NetworkManagementClient client = getNetworkManagementClient(ctx);
 
@@ -556,8 +558,12 @@ public class AzureInstanceService extends StatelessService {
 
     private void createVM(AzureAllocationContext ctx) {
         ComputeDescriptionService.ComputeDescription description = ctx.child.description;
+
         Map<String, String> customProperties = description.customProperties;
-        Map<String, String> stateCustomProperties = ctx.child.customProperties;
+        if (customProperties == null) {
+            handleError(ctx, new IllegalStateException("Custom properties not specified"));
+            return;
+        }
 
         DiskState bootDisk = ctx.bootDisk;
         if (bootDisk == null) {
@@ -567,9 +573,7 @@ public class AzureInstanceService extends StatelessService {
 
         URI imageId = bootDisk.sourceImageReference;
         if (imageId == null) {
-            ctx.error = new IllegalStateException("Azure image reference not specified");
-            ctx.stage = AzureStages.ERROR;
-            handleAllocation(ctx);
+            handleError(ctx, new IllegalStateException("Azure image reference not specified"));
             return;
         }
 
@@ -578,10 +582,10 @@ public class AzureInstanceService extends StatelessService {
 
         // Set OS profile.
         OSProfile osProfile = new OSProfile();
-        String vmName = ctx.child.id;
+        String vmName = ctx.vmName;
         osProfile.setComputerName(vmName);
-        osProfile.setAdminUsername(stateCustomProperties.get(AZURE_VM_ADMIN_USERNAME));
-        osProfile.setAdminPassword(stateCustomProperties.get(AZURE_VM_ADMIN_PASSWORD));
+        osProfile.setAdminUsername(ctx.childAuth.userEmail);
+        osProfile.setAdminPassword(ctx.childAuth.privateKey);
         request.setOsProfile(osProfile);
 
         // Set hardware profile.
@@ -872,6 +876,22 @@ public class AzureInstanceService extends StatelessService {
                         }), RETRY_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 
+    private void getChildAuth(AzureAllocationContext ctx, AzureStages next) {
+        if (ctx.child.description.authCredentialsLink == null) {
+            handleError(ctx, new IllegalStateException("Auth information for compute is required"));
+            return;
+        }
+
+        String childAuthLink = ctx.child.description.authCredentialsLink;
+        URI authUri = UriUtils.buildUri(this.getHost(), childAuthLink);
+        Consumer<Operation> onSuccess = (op) -> {
+            ctx.childAuth = op.getBody(AuthCredentialsService.AuthCredentialsServiceState.class);
+            ctx.stage = next;
+            handleAllocation(ctx);
+        };
+        AdapterUtils.getServiceState(this, authUri, onSuccess, getFailureConsumer(ctx));
+    }
+
     private void getParentAuth(AzureAllocationContext ctx, AzureStages next) {
         String parentAuthLink;
         if (ctx.computeRequest.requestType
@@ -896,6 +916,11 @@ public class AzureInstanceService extends StatelessService {
     private void getVMDescription(AzureAllocationContext ctx, AzureStages next) {
         Consumer<Operation> onSuccess = (op) -> {
             ctx.child = op.getBody(ComputeService.ComputeStateWithDescription.class);
+            ctx.vmName = ctx.child.id;
+            if (ctx.child.customProperties != null) {
+                ctx.vmName = ctx.child.customProperties
+                        .getOrDefault(CUSTOM_DISPLAY_NAME, ctx.vmName);
+            }
             ctx.stage = next;
             logInfo(ctx.child.id);
             handleAllocation(ctx);
