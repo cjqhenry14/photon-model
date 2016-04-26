@@ -26,6 +26,7 @@ import com.vmware.vim25.ConnectedIso;
 import com.vmware.vim25.DuplicateName;
 import com.vmware.vim25.DuplicateNameFaultMsg;
 import com.vmware.vim25.LocalizedMethodFault;
+import com.vmware.vim25.ManagedObjectReference;
 
 /**
  */
@@ -106,5 +107,48 @@ public class VimUtilsTest {
     public void uriToDatastoreRelativeWithUnderscore() {
         String s = VimUtils.uriToDatastorePath(URI.create("datastore://ds_test/folder/vm.vmx"));
         assertEquals("[ds_test] folder/vm.vmx", s);
+    }
+
+    @Test
+    public void convertStringToMoRef() {
+        ManagedObjectReference ref = new ManagedObjectReference();
+        String type = "Datastore";
+        String value = "ds-123";
+
+        ref.setType(type);
+        ref.setValue(value);
+        String s = VimUtils.convertMoRefToString(ref);
+
+        assertEquals(type + ":" + value, s);
+
+        ManagedObjectReference conv = VimUtils.convertStringToMoRef(s);
+        assertEquals(type, conv.getType());
+        assertEquals(value, conv.getValue());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void convertStringToMoRefNoValue() {
+        VimUtils.convertStringToMoRef("Datastore:");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void convertStringToMoRefNoDelimiter() {
+        VimUtils.convertStringToMoRef("Datastore");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void convertStringToMoRefTooManyParts() {
+        VimUtils.convertStringToMoRef("Datastore:too:many");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void convertStringToMoRefNoType() {
+        VimUtils.convertStringToMoRef(":ds-123");
+    }
+
+    @Test
+    public void convertStringToMoRefNulls() {
+        assertNull(VimUtils.convertMoRefToString(null));
+        assertNull(VimUtils.convertStringToMoRef(null));
     }
 }

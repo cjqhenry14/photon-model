@@ -27,6 +27,7 @@ import com.vmware.photon.controller.model.resources.ComputeDescriptionService.Co
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
+import com.vmware.photon.controller.model.resources.ComputeService.PowerState;
 import com.vmware.photon.controller.model.resources.DiskService;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
@@ -86,7 +87,14 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
                 Operation.createPost(UriUtils.buildUri(host,
                         VSphereAdapterInstanceService.class)),
                 new VSphereAdapterInstanceService());
+
+        host.startService(
+                Operation.createPost(UriUtils.buildUri(host,
+                        VSphereAdapterPowerService.class)),
+                new VSphereAdapterPowerService());
+
         serviceSelfLinks.add(VSphereAdapterInstanceService.SELF_LINK);
+        serviceSelfLinks.add(VSphereAdapterPowerService.SELF_LINK);
 
         ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
     }
@@ -156,6 +164,8 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         computeState.descriptionLink = vmDescription.documentSelfLink;
         computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
         computeState.adapterManagementReference = UriUtils.buildUri(vcUrl);
+
+        computeState.powerState = PowerState.ON;
 
         computeState.parentLink = computeHost.documentSelfLink;
 

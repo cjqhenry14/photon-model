@@ -23,4 +23,10 @@ public class VSphereUriPaths {
     public static final String PROVISIONING = UriPaths.PROVISIONING + "/vsphere";
 
     public static final String INSTANCE_SERVICE = PROVISIONING + "/instance-service";
+
+    public static final String BOOT_SERVICE = PROVISIONING + "/boot-service";
+    public static final String POWER_SERVICE = PROVISIONING + "/power-service";
+    public static final String SNAPSHOT_SERVICE = PROVISIONING + "/snapshot-service";
+    public static final String HEALTH_SERVICE = PROVISIONING + "/health-service";
+    public static final String ENUMERATION_SERVICE = PROVISIONING + "/enumeration-service";
 }

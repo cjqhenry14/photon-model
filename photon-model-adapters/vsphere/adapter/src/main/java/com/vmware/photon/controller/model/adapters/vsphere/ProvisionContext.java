@@ -14,18 +14,31 @@
 package com.vmware.photon.controller.model.adapters.vsphere;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
+import com.vmware.photon.controller.model.adapterapi.ComputePowerRequest;
+import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.OperationJoin;
+import com.vmware.xenon.common.OperationJoin.JoinedCompletionHandler;
+import com.vmware.xenon.common.Service;
+import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
  */
 public class ProvisionContext {
+    public final URI computeReference;
+    public final URI provisioningTaskReference;
+
     public ComputeStateWithDescription parent;
     public ComputeStateWithDescription child;
 
@@ -33,12 +46,130 @@ public class ProvisionContext {
 
     public ResourcePoolState resourcePool;
     public VSphereIOThreadPool pool;
-    public final ComputeInstanceRequest request;
     public AuthCredentialsServiceState vSphereCredentials;
     public Consumer<Throwable> errorHandler;
 
-    public ProvisionContext(ComputeInstanceRequest request) {
-        this.request = request;
+    public ProvisionContext(ComputeInstanceRequest req) {
+        this.computeReference = req.computeReference;
+        this.provisioningTaskReference = req.provisioningTaskReference;
+    }
+
+    public ProvisionContext(ComputePowerRequest req) {
+        this.computeReference = req.computeReference;
+        this.provisioningTaskReference = req.provisioningTaskReference;
+    }
+
+    /**
+     * Populates the given initial context and invoke the onSuccess handler when built. At every step,
+     * if failure occurs the ProvisionContext's errorHandler is invoked to cleanup.
+     * @param ctx
+     * @param onSuccess
+     */
+    public static void populateContextThen(Service service, ProvisionContext ctx,
+            Consumer<ProvisionContext> onSuccess) {
+        // TODO fetch all required state in parallel using OperationJoin.
+        if (ctx.child == null) {
+            URI computeUri = UriUtils
+                    .extendUriWithQuery(ctx.computeReference,
+                            UriUtils.URI_PARAM_ODATA_EXPAND,
+                            Boolean.TRUE.toString());
+            AdapterUtils.getServiceState(service, computeUri, op -> {
+                ctx.child = op.getBody(ComputeStateWithDescription.class);
+                populateContextThen(service, ctx, onSuccess);
+            }, ctx.errorHandler);
+            return;
+        }
+
+        if (ctx.resourcePool == null) {
+            if (ctx.child.resourcePoolLink == null) {
+                ctx.fail(new IllegalStateException(
+                        "resourcePoolLink is not defined for resource "
+                                + ctx.child.documentSelfLink));
+                return;
+            }
+
+            URI rpUri = UriUtils.buildUri(service.getHost(), ctx.child.resourcePoolLink);
+            AdapterUtils.getServiceState(service, rpUri, op -> {
+                ctx.resourcePool = op.getBody(ResourcePoolState.class);
+                populateContextThen(service, ctx, onSuccess);
+            }, ctx.errorHandler);
+            return;
+        }
+
+        if (ctx.parent == null) {
+            if (ctx.child.parentLink == null) {
+                ctx.fail(new IllegalStateException(
+                        "parentLink is not defined for resource "
+                                + ctx.child.documentSelfLink));
+                return;
+            }
+
+            URI computeUri = UriUtils
+                    .extendUriWithQuery(
+                            UriUtils.buildUri(service.getHost(), ctx.child.parentLink),
+                            UriUtils.URI_PARAM_ODATA_EXPAND,
+                            Boolean.TRUE.toString());
+
+            AdapterUtils.getServiceState(service, computeUri, op -> {
+                ctx.parent = op.getBody(ComputeStateWithDescription.class);
+                populateContextThen(service, ctx, onSuccess);
+            }, ctx.errorHandler);
+            return;
+        }
+
+        if (ctx.vSphereCredentials == null) {
+            URI credUri = UriUtils
+                    .buildUri(service.getHost(), ctx.parent.description.authCredentialsLink);
+            AdapterUtils.getServiceState(service, credUri, op -> {
+                ctx.vSphereCredentials = op.getBody(AuthCredentialsServiceState.class);
+                populateContextThen(service, ctx, onSuccess);
+            }, ctx.errorHandler);
+        }
+
+        if (ctx.disks == null) {
+            // no disks attached
+            if (ctx.child.diskLinks == null || ctx.child.diskLinks
+                    .isEmpty()) {
+                ctx.disks = Collections.emptyList();
+                populateContextThen(service, ctx, onSuccess);
+                return;
+            }
+
+            ctx.disks = new ArrayList<>(ctx.child.diskLinks.size());
+
+            // collect disks in parallel
+            Stream<Operation> opsGetDisk = ctx.child.diskLinks.stream()
+                    .map(link -> Operation.createGet(service, link));
+
+            OperationJoin join = OperationJoin.create(opsGetDisk)
+                    .setCompletion((os, errors) -> {
+                        if (errors != null && !errors.isEmpty()) {
+                            // fail on first error
+                            ctx.errorHandler
+                                    .accept(new IllegalStateException("Cannot get disk state",
+                                            errors.values().iterator().next()));
+                            return;
+                        }
+
+                        os.values().forEach(op -> ctx.disks.add(op.getBody(DiskState.class)));
+
+                        onSuccess.accept(ctx);
+                    });
+
+            join.sendWith(service);
+        }
+    }
+
+    /**
+     * The returned JoinedCompletionHandler fails this context by invoking the error handler if any
+     * error is found in {@link JoinedCompletionHandler#handle(java.util.Map, java.util.Map) error map}.
+     */
+    public JoinedCompletionHandler failOnError() {
+        return (ops, failures) -> {
+            if (failures != null && !failures.isEmpty()) {
+                this.fail(failures.values().iterator().next());
+            }
+        };
     }
 
     /**
@@ -53,6 +184,10 @@ public class ProvisionContext {
         } else {
             return false;
         }
+    }
+
+    public void failWithMessage(String msg, Throwable t) {
+        this.fail(new Exception(msg, t));
     }
 
     public URI getAdapterManagementReference() {
@@ -74,5 +209,9 @@ public class ProvisionContext {
         } else {
             return parent.description.zoneId;
         }
+    }
+
+    public void failWithMessage(String msg) {
+        fail(new IllegalStateException(msg));
     }
 }

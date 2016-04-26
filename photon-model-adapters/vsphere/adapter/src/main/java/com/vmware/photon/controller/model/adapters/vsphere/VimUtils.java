@@ -16,13 +16,24 @@ package com.vmware.photon.controller.model.adapters.vsphere;
 import java.lang.reflect.Constructor;
 import java.net.URI;
 
+import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
+import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
+import com.vmware.photon.controller.model.adapters.vsphere.util.connection.WaitForValues;
+import com.vmware.vim25.InvalidCollectorVersionFaultMsg;
+import com.vmware.vim25.InvalidPropertyFaultMsg;
 import com.vmware.vim25.LocalizedMethodFault;
+import com.vmware.vim25.ManagedObjectReference;
+import com.vmware.vim25.RuntimeFaultFaultMsg;
+import com.vmware.vim25.TaskInfo;
+import com.vmware.vim25.TaskInfoState;
 
 /**
  */
 public final class VimUtils {
 
     public static final String SCHEME_DATASTORE = "datastore";
+
+    private static final String DELIMITER = ":";
 
     private VimUtils() {
 
@@ -87,5 +98,62 @@ public final class VimUtils {
         path = path.substring(i + 1);
 
         return String.format("[%s] %s", ds, path);
+    }
+
+    /**
+     * Serializes a MoRef into a String.
+     *
+     * @param ref
+     * @return
+     */
+    public static String convertMoRefToString(ManagedObjectReference ref) {
+        if (ref == null) {
+            return null;
+        }
+
+        return ref.getType() + DELIMITER + ref.getValue();
+    }
+
+    /**
+     * Builds a MoRef from a string produced bu {@link #convertMoRefToString(ManagedObjectReference)}
+     * @param s
+     * @return
+     */
+    public static ManagedObjectReference convertStringToMoRef(String s) {
+        if (s == null) {
+            return null;
+        }
+
+        String[] parts = s.split(":");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException(
+                    "Cannot convert string '" + s
+                            + "' to ManagedObjectReference: expected Type:Value format");
+        }
+
+        if (parts[0].length() == 0) {
+            throw new IllegalArgumentException("Missing Type in '" + s + "'");
+        }
+
+        if (parts[1].length() == 0) {
+            throw new IllegalArgumentException("Missing Value in '" + s + "'");
+        }
+        ManagedObjectReference ref = new ManagedObjectReference();
+        ref.setType(parts[0]);
+        ref.setValue(parts[1]);
+        return ref;
+    }
+
+    public static TaskInfo waitTaskEnd(Connection connection, ManagedObjectReference task)
+            throws InvalidCollectorVersionFaultMsg, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
+
+        WaitForValues waitForValues = new WaitForValues(connection);
+
+        waitForValues.wait(task, new String[] { "info.state", "info.error" },
+                new String[] { "state" }, new Object[][] { new Object[] {
+                        TaskInfoState.SUCCESS, TaskInfoState.ERROR } });
+
+        GetMoRef get = new GetMoRef(connection);
+        return get.entityProp(task, "info");
     }
 }

@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BaseHelper;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.WaitForValues;
 import com.vmware.photon.controller.model.adapters.vsphere.util.finders.Element;
 import com.vmware.photon.controller.model.adapters.vsphere.util.finders.Finder;
 import com.vmware.photon.controller.model.adapters.vsphere.util.finders.FinderException;
@@ -53,7 +52,6 @@ import com.vmware.vim25.SharesInfo;
 import com.vmware.vim25.SharesLevel;
 import com.vmware.vim25.TaskInfo;
 import com.vmware.vim25.TaskInfoState;
-import com.vmware.vim25.VimPortType;
 import com.vmware.vim25.VirtualCdrom;
 import com.vmware.vim25.VirtualCdromAtapiBackingInfo;
 import com.vmware.vim25.VirtualCdromIsoBackingInfo;
@@ -87,8 +85,8 @@ import com.vmware.vim25.VirtualSIOController;
  * A client operates in the context of a datacenter. If the datacenter cannot be determined at
  * construction time a ClientException is thrown.
  */
-public class Client extends BaseHelper {
-    private static final Logger logger = Logger.getLogger(Client.class.getName());
+public class InstanceClient extends BaseHelper {
+    private static final Logger logger = Logger.getLogger(InstanceClient.class.getName());
     private final ComputeStateWithDescription state;
     private final ComputeStateWithDescription parent;
 
@@ -97,7 +95,7 @@ public class Client extends BaseHelper {
     private ManagedObjectReference vm;
     private ManagedObjectReference datastore;
 
-    public Client(Connection connection,
+    public InstanceClient(Connection connection,
             ComputeStateWithDescription resource,
             ComputeStateWithDescription parent)
             throws ClientException, FinderException {
@@ -234,6 +232,11 @@ public class Client extends BaseHelper {
                 VimUtils.rethrow(info.getError());
             }
         }
+    }
+
+    private TaskInfo waitTaskEnd(ManagedObjectReference task)
+            throws InvalidCollectorVersionFaultMsg, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
+        return VimUtils.waitTaskEnd(this.connection, task);
     }
 
     private VirtualDeviceConfigSpec createFullCloneAndAttach(String sourcePath, DiskState ds,
@@ -471,8 +474,11 @@ public class Client extends BaseHelper {
             }
         }
 
-        state.customProperties = new HashMap<>();
-        state.customProperties.put("managedObjectReference", convertMoRefToString(ref));
+        if (state.customProperties == null) {
+            state.customProperties = new HashMap<>();
+        }
+
+        state.customProperties.put(CustomPropertyKeys.VM_MOREF, VimUtils.convertMoRefToString(ref));
     }
 
     /**
@@ -522,28 +528,6 @@ public class Client extends BaseHelper {
         }
 
         return (ManagedObjectReference) info.getResult();
-    }
-
-    private TaskInfo waitTaskEnd(ManagedObjectReference task)
-            throws InvalidCollectorVersionFaultMsg, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
-
-        WaitForValues waitForValues = new WaitForValues(this.connection);
-
-        waitForValues.wait(task, new String[] { "info.state", "info.error" },
-                new String[] { "state" }, new Object[][] { new Object[] {
-                        TaskInfoState.SUCCESS, TaskInfoState.ERROR } });
-
-        return get.entityProp(task, "info");
-    }
-
-    /**
-     * Serializes a MoRef into a String.
-     *
-     * @param ref
-     * @return
-     */
-    private String convertMoRefToString(ManagedObjectReference ref) {
-        return ref.getType() + "-" + ref.getValue();
     }
 
     /**
@@ -764,10 +748,6 @@ public class Client extends BaseHelper {
             // someone else won the race to create this pool, just return it
             return finder.resourcePool(resourcePoolPath).object;
         }
-    }
-
-    private VimPortType getVimPort() {
-        return this.connection.getVimPort();
     }
 
     /**
