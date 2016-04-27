@@ -19,7 +19,6 @@ import java.util.List;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
-import com.vmware.photon.controller.model.adapterapi.ComputePowerRequest;
 import com.vmware.photon.controller.model.adapters.util.TaskManager;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
@@ -124,16 +123,6 @@ public class VSphereAdapterInstanceService extends StatelessService {
                         ctx.fail(e);
                     }
                 });
-    }
-
-    private Operation powerOnVm(ComputeInstanceRequest req) {
-        ComputePowerRequest cpr = new ComputePowerRequest();
-        cpr.isMockRequest = req.isMockRequest;
-        cpr.computeReference = req.computeReference;
-        cpr.provisioningTaskReference = req.provisioningTaskReference;
-
-        URI uri = UriUtils.buildUri(getHost(), VSphereAdapterPowerService.class);
-        return Operation.createPatch(uri).setBody(cpr);
     }
 
     private Operation selfPatch(ServiceDocument doc) {

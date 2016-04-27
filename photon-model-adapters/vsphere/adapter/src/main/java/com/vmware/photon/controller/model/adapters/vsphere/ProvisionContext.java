@@ -30,6 +30,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.OperationJoin.JoinedCompletionHandler;
 import com.vmware.xenon.common.Service;
+import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
@@ -48,6 +49,8 @@ public class ProvisionContext {
     public VSphereIOThreadPool pool;
     public AuthCredentialsServiceState vSphereCredentials;
     public Consumer<Throwable> errorHandler;
+
+    public ServiceDocument task;
 
     public ProvisionContext(ComputeInstanceRequest req) {
         this.computeReference = req.computeReference;
@@ -122,6 +125,13 @@ public class ProvisionContext {
                     .buildUri(service.getHost(), ctx.parent.description.authCredentialsLink);
             AdapterUtils.getServiceState(service, credUri, op -> {
                 ctx.vSphereCredentials = op.getBody(AuthCredentialsServiceState.class);
+                populateContextThen(service, ctx, onSuccess);
+            }, ctx.errorHandler);
+        }
+
+        if (ctx.task == null) {
+            AdapterUtils.getServiceState(service, ctx.provisioningTaskReference, op -> {
+                ctx.task = op.getBody(ServiceDocument.class);
                 populateContextThen(service, ctx, onSuccess);
             }, ctx.errorHandler);
         }

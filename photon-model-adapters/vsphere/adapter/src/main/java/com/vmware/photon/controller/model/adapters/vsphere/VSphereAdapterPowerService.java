@@ -23,6 +23,7 @@ import com.vmware.photon.controller.model.resources.ComputeService.PowerState;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationSequence;
+import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.TaskState.TaskStage;
 
@@ -95,8 +96,10 @@ public class VSphereAdapterPowerService extends StatelessService {
                     }
 
                     try {
+                        long politenessDeadlineMicros = computeDeadline(ctx.task);
+
                         client.changePowerState(vmMoRef, request.powerState,
-                                request.powerTransition);
+                                request.powerTransition, politenessDeadlineMicros);
                     } catch (Exception e) {
                         ctx.failWithMessage("cannot change power state of vmMoRef " + VimUtils
                                 .convertMoRefToString(vmMoRef), e);
@@ -115,6 +118,11 @@ public class VSphereAdapterPowerService extends StatelessService {
                             .setCompletion(ctx.failOnError())
                             .sendWith(this);
                 });
+    }
+
+    private long computeDeadline(ServiceDocument task) {
+        // wait for soft power-off for as long as the task will be valid
+        return task.documentExpirationTimeMicros;
     }
 
     private Operation patchComputeResource(ComputeState state, URI computeReference) {

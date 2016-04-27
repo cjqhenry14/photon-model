@@ -13,23 +13,29 @@
 
 package com.vmware.photon.controller.model.adapters.vsphere;
 
+import java.util.concurrent.TimeUnit;
+
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BaseHelper;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
+import com.vmware.photon.controller.model.adapters.vsphere.util.connection.WaitForValues;
 import com.vmware.photon.controller.model.resources.ComputeService.PowerState;
 import com.vmware.photon.controller.model.resources.ComputeService.PowerTransition;
 import com.vmware.vim25.InvalidPropertyFaultMsg;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.RuntimeFaultFaultMsg;
-import com.vmware.vim25.TaskInProgressFaultMsg;
 import com.vmware.vim25.TaskInfo;
 import com.vmware.vim25.TaskInfoState;
+import com.vmware.vim25.ToolsUnavailableFaultMsg;
 import com.vmware.vim25.VirtualMachinePowerState;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Manages power state of VMs.
  */
 public class PowerStateClient extends BaseHelper {
+
+    public static final String PROP_PATH_POWER_STATE = "summary.runtime.powerState";
 
     private final GetMoRef get;
 
@@ -38,9 +44,17 @@ public class PowerStateClient extends BaseHelper {
         this.get = new GetMoRef(connection);
     }
 
+    /**
+     *
+     * @param vm
+     * @param targetState
+     * @param transition
+     * @param politenessDeadlineMicros Used only when doing a soft power-off,
+     *         how long to be polite before doing hard power-off.
+     * @throws Exception
+     */
     public void changePowerState(ManagedObjectReference vm, PowerState targetState,
-            PowerTransition transition) throws Exception {
-
+            PowerTransition transition, long politenessDeadlineMicros) throws Exception {
         PowerState currentState = getPowerState(vm);
 
         if (currentState == targetState) {
@@ -49,28 +63,79 @@ public class PowerStateClient extends BaseHelper {
 
         ManagedObjectReference task;
 
-        try {
-            // TODO https://jira-hzn.eng.vmware.com/browse/VSYM-512 respect the transition param
-            if (targetState == PowerState.ON) {
-                task = getVimPort().powerOnVMTask(vm, null);
-            } else {
-                task = getVimPort().powerOffVMTask(vm);
-            }
-        } catch (TaskInProgressFaultMsg e) {
-            // task in progress, give up
-            // TODO maybe retry after a timeout
+        if (targetState == PowerState.ON) {
+            task = getVimPort().powerOnVMTask(vm, null);
+            awaitTaskEnd(task);
             return;
         }
 
+        if (currentState == PowerState.ON && targetState == PowerState.SUSPEND) {
+            task = getVimPort().suspendVMTask(vm);
+            awaitTaskEnd(task);
+            return;
+        }
+
+        if (currentState == PowerState.ON && targetState == PowerState.OFF) {
+            if (transition == PowerTransition.SOFT) {
+                softPowerOff(vm, politenessDeadlineMicros);
+            } else {
+                hardPowerOff(vm);
+            }
+        }
+    }
+
+    private void awaitTaskEnd(ManagedObjectReference task) throws Exception {
         TaskInfo taskInfo = VimUtils.waitTaskEnd(this.connection, task);
         if (taskInfo.getState() == TaskInfoState.ERROR) {
             VimUtils.rethrow(taskInfo.getError());
         }
     }
 
-    public PowerState getPowerState(ManagedObjectReference vm)
-            throws InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
-        VirtualMachinePowerState vmps = get.entityProp(vm, "summary.runtime.powerState");
+    private void hardPowerOff(ManagedObjectReference vm) throws Exception {
+        ManagedObjectReference task = getVimPort().powerOffVMTask(vm);
+        awaitTaskEnd(task);
+    }
+
+    private void softPowerOff(ManagedObjectReference vm, long politenessDeadlineMicros)
+            throws Exception {
+        try {
+            getVimPort().shutdownGuest(vm);
+        } catch (ToolsUnavailableFaultMsg e) {
+            // no vmtoools present, try harder
+            hardPowerOff(vm);
+            return;
+        }
+
+        // wait for guest to shutdown
+        WaitForValues wait = new WaitForValues(connection);
+
+        int timeout = (int) TimeUnit.MICROSECONDS
+                .toSeconds(politenessDeadlineMicros - Utils.getNowMicrosUtc());
+
+        if (timeout <= 0) {
+            // maybe try anyway?
+            return;
+        }
+
+        Object[] currentPowerState = wait.wait(vm,
+                new String[] { PROP_PATH_POWER_STATE },
+                new String[] { PROP_PATH_POWER_STATE },
+                new Object[][] {
+                        new Object[] {
+                                VirtualMachinePowerState.POWERED_OFF
+                        }
+                }, timeout);
+
+        if (currentPowerState == null
+                || currentPowerState[0] != VirtualMachinePowerState.POWERED_OFF) {
+            // vm not shutdown on time
+            hardPowerOff(vm);
+        }
+    }
+
+    public PowerState getPowerState(ManagedObjectReference vm) throws InvalidPropertyFaultMsg,
+            RuntimeFaultFaultMsg {
+        VirtualMachinePowerState vmps = get.entityProp(vm, PROP_PATH_POWER_STATE);
         return VSphereToPhotonMapping.convertPowerState(vmps);
     }
 }

@@ -17,7 +17,6 @@ import java.lang.reflect.Constructor;
 import java.net.URI;
 
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.WaitForValues;
 import com.vmware.vim25.InvalidCollectorVersionFaultMsg;
 import com.vmware.vim25.InvalidPropertyFaultMsg;
@@ -146,14 +145,16 @@ public final class VimUtils {
 
     public static TaskInfo waitTaskEnd(Connection connection, ManagedObjectReference task)
             throws InvalidCollectorVersionFaultMsg, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
-
         WaitForValues waitForValues = new WaitForValues(connection);
 
-        waitForValues.wait(task, new String[] { "info.state", "info.error" },
-                new String[] { "state" }, new Object[][] { new Object[] {
-                        TaskInfoState.SUCCESS, TaskInfoState.ERROR } });
+        Object[] info = waitForValues.wait(task,
+                new String[] { "info" },
+                new String[] { "info.state" },
+                new Object[][] { new Object[] {
+                        TaskInfoState.SUCCESS,
+                        TaskInfoState.ERROR
+                } });
 
-        GetMoRef get = new GetMoRef(connection);
-        return get.entityProp(task, "info");
+        return (TaskInfo) info[0];
     }
 }
