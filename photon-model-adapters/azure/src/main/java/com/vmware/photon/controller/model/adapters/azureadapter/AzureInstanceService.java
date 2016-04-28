@@ -59,7 +59,6 @@ import com.microsoft.azure.management.compute.models.VirtualMachine;
 import com.microsoft.azure.management.network.NetworkManagementClient;
 import com.microsoft.azure.management.network.NetworkManagementClientImpl;
 import com.microsoft.azure.management.network.models.AddressSpace;
-import com.microsoft.azure.management.network.models.DhcpOptions;
 import com.microsoft.azure.management.network.models.NetworkInterface;
 import com.microsoft.azure.management.network.models.NetworkInterfaceIPConfiguration;
 import com.microsoft.azure.management.network.models.NetworkSecurityGroup;
@@ -110,7 +109,6 @@ public class AzureInstanceService extends StatelessService {
 
     private static final String SUBNET_NAME = "default";
     private static final String NETWORK_ADDRESS_PREFIX = "10.0.0.0/16";
-    private static final String DNS_SERVER = "10.1.1.1";
     private static final String SUBNET_ADDRESS_PREFIX = "10.0.0.0/24";
     private static final String PUBLIC_IP_ALLOCATION_METHOD = "Dynamic";
     private static final String PRIVATE_IP_ALLOCATION_METHOD = "Dynamic";
@@ -418,11 +416,8 @@ public class AzureInstanceService extends StatelessService {
         vnet.setAddressSpace(new AddressSpace());
         vnet.getAddressSpace().setAddressPrefixes(new ArrayList<>());
         vnet.getAddressSpace().getAddressPrefixes().add(NETWORK_ADDRESS_PREFIX);
-        vnet.setDhcpOptions(new DhcpOptions());
-        vnet.getDhcpOptions().setDnsServers(new ArrayList<>());
-        vnet.getDhcpOptions().getDnsServers().add(DNS_SERVER);
-        vnet.setSubnets(new ArrayList<>());
 
+        vnet.setSubnets(new ArrayList<>());
         Subnet subnet = new Subnet();
         subnet.setName(SUBNET_NAME);
         subnet.setAddressPrefix(SUBNET_ADDRESS_PREFIX);
