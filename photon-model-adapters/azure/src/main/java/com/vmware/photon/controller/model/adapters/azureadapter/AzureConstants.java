@@ -45,4 +45,27 @@ public class AzureConstants {
     // Azure constants
     public static final String PROVIDER_REGISTRED_STATE = "REGISTERED";
 
+    //Azure Linux Security Group constants
+    public static final int AZURE_LINUX_SECURITY_GROUP_PRIORITY = 1000;
+    public static final String AZURE_LINUX_SECURITY_GROUP_NAME = "default-allow-ssh";
+    public static final String AZURE_LINUX_SECURITY_GROUP_PROTOCOL = "TCP";
+    public static final String AZURE_LINUX_SECURITY_GROUP_DESCRIPTION = "Allow SSH (TCP/22)";
+    public static final String AZURE_LINUX_SECURITY_GROUP_DIRECTION = "Inbound";
+    public static final String AZURE_LINUX_SECURITY_GROUP_ACCESS = "Allow";
+    public static final String AZURE_LINUX_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX = "*";
+    public static final String AZURE_LINUX_SECURITY_GROUP_SOURCE_PORT_RANGE = "*";
+    public static final String AZURE_LINUX_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX = "*";
+    public static final String AZURE_LINUX_SECURITY_GROUP_DESTINATION_PORT_RANGE = "22";
+
+    //Azure Windows Security Group constants
+    public static final int AZURE_WINDOWS_SECURITY_GROUP_PRIORITY = 1001;
+    public static final String AZURE_WINDOWS_SECURITY_GROUP_NAME = "default-allow-rdp";
+    public static final String AZURE_WINDOWS_SECURITY_GROUP_PROTOCOL = "TCP";
+    public static final String AZURE_WINDOWS_SECURITY_GROUP_DESCRIPTION = "Allow RDP (TCP/3389)";
+    public static final String AZURE_WINDOWS_SECURITY_GROUP_DIRECTION = "Inbound";
+    public static final String AZURE_WINDOWS_SECURITY_GROUP_ACCESS = "Allow";
+    public static final String AZURE_WINDOWS_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX = "*";
+    public static final String AZURE_WINDOWS_SECURITY_GROUP_SOURCE_PORT_RANGE = "*";
+    public static final String AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX = "*";
+    public static final String AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_PORT_RANGE = "3389";
 }

@@ -63,6 +63,7 @@ import com.microsoft.azure.management.network.models.NetworkInterface;
 import com.microsoft.azure.management.network.models.NetworkInterfaceIPConfiguration;
 import com.microsoft.azure.management.network.models.NetworkSecurityGroup;
 import com.microsoft.azure.management.network.models.PublicIPAddress;
+import com.microsoft.azure.management.network.models.SecurityRule;
 import com.microsoft.azure.management.network.models.Subnet;
 import com.microsoft.azure.management.network.models.VirtualNetwork;
 import com.microsoft.azure.management.resources.ResourceManagementClient;
@@ -484,6 +485,37 @@ public class AzureInstanceService extends StatelessService {
     private void initSecurityGroup(AzureAllocationContext ctx) {
         NetworkSecurityGroup group = new NetworkSecurityGroup();
         group.setLocation(ctx.resourceGroup.getLocation());
+
+        // Set the linux security rule to allow SSH traffic
+        SecurityRule linuxSecurityRule = new SecurityRule();
+        linuxSecurityRule.setPriority(AzureConstants.AZURE_LINUX_SECURITY_GROUP_PRIORITY);
+        linuxSecurityRule.setName(AzureConstants.AZURE_LINUX_SECURITY_GROUP_NAME);
+        linuxSecurityRule.setDescription(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESCRIPTION);
+        linuxSecurityRule.setAccess(AzureConstants.AZURE_LINUX_SECURITY_GROUP_ACCESS);
+        linuxSecurityRule.setProtocol(AzureConstants.AZURE_LINUX_SECURITY_GROUP_PROTOCOL);
+        linuxSecurityRule.setDirection(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DIRECTION);
+        linuxSecurityRule.setSourceAddressPrefix(AzureConstants.AZURE_LINUX_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX);
+        linuxSecurityRule.setDestinationAddressPrefix(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX);
+        linuxSecurityRule.setSourcePortRange(AzureConstants.AZURE_LINUX_SECURITY_GROUP_SOURCE_PORT_RANGE);
+        linuxSecurityRule.setDestinationPortRange(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESTINATION_PORT_RANGE);
+
+        // Set the windows security rule to allow SSH traffic
+        SecurityRule windowsSecurityRule = new SecurityRule();
+        windowsSecurityRule.setPriority(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_PRIORITY);
+        windowsSecurityRule.setName(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_NAME);
+        windowsSecurityRule.setDescription(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESCRIPTION);
+        windowsSecurityRule.setAccess(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_ACCESS);
+        windowsSecurityRule.setProtocol(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_PROTOCOL);
+        windowsSecurityRule.setDirection(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DIRECTION);
+        windowsSecurityRule.setSourceAddressPrefix(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX);
+        windowsSecurityRule.setDestinationAddressPrefix(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX);
+        windowsSecurityRule.setSourcePortRange(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_SOURCE_PORT_RANGE);
+        windowsSecurityRule.setDestinationPortRange(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_PORT_RANGE);
+
+        List<SecurityRule> securityRules = new ArrayList<>();
+        securityRules.add(linuxSecurityRule);
+        securityRules.add(windowsSecurityRule);
+        group.setSecurityRules(securityRules);
 
         String secGroupName = ctx.vmName;
 
