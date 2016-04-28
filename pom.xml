@@ -277,7 +277,7 @@
         <configuration>
           <argLine>-Xmx256m</argLine>
           <systemPropertyVariables>
-            <java.io.tmpdir>./tmp</java.io.tmpdir>
+            <java.io.tmpdir>target</java.io.tmpdir>
           </systemPropertyVariables>
         </configuration>
       </plugin>
