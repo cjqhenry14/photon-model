@@ -130,12 +130,8 @@ public class VSphereAdapterPowerService extends StatelessService {
      * @return
      */
     private ManagedObjectReference getVmMoRef(ComputeStateWithDescription state) {
-        if (state.customProperties == null) {
-            return null;
-        }
-
-        String s = state.customProperties.get(CustomPropertyKeys.VM_MOREF);
-        return VimUtils.convertStringToMoRef(s);
+        return CustomProperties.of(state)
+                .getMoRef(CustomProperties.VM_MOREF);
     }
 
     private void handleMockRequest(TaskManager mgr, ComputePowerRequest request,

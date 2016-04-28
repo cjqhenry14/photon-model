@@ -434,6 +434,15 @@ public class Finder extends Recurser {
         return Element.asRoot(this.connection.getServiceContent().getRootFolder());
     }
 
+    public Element folder(String... path)
+            throws FinderException, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
+        List<Element> found = find(vmFolder(), false, path);
+
+        List<Element> foundFolders = acceptOnly(found, "Folder");
+
+        return uniqueResultOrFail(foundFolders);
+    }
+
     /**
      * A ManagedObjectReference wrapper that implements equals and hashCode
      */

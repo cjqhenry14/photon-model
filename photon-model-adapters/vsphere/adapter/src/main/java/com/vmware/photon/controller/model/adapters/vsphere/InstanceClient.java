@@ -16,7 +16,6 @@ package com.vmware.photon.controller.model.adapters.vsphere;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -474,11 +473,8 @@ public class InstanceClient extends BaseHelper {
             }
         }
 
-        if (state.customProperties == null) {
-            state.customProperties = new HashMap<>();
-        }
-
-        state.customProperties.put(CustomPropertyKeys.VM_MOREF, VimUtils.convertMoRefToString(ref));
+        CustomProperties.of(state)
+                .put(CustomProperties.VM_MOREF, ref);
     }
 
     /**
@@ -506,7 +502,7 @@ public class InstanceClient extends BaseHelper {
      * @throws Exception
      */
     private ManagedObjectReference createVm() throws FinderException, Exception {
-        ManagedObjectReference folder = finder.vmFolder().object;
+        ManagedObjectReference folder = getVmFolder();
         ManagedObjectReference resourcePool = getOrCreateResourcePoolForVm();
         ManagedObjectReference datastore = getDatastore();
 
@@ -528,6 +524,34 @@ public class InstanceClient extends BaseHelper {
         }
 
         return (ManagedObjectReference) info.getResult();
+    }
+
+    /**
+     * Decides in which folder to put the newly created vm.
+     *
+     * @return
+     * @throws InvalidPropertyFaultMsg
+     * @throws RuntimeFaultFaultMsg
+     * @throws FinderException
+     */
+    private ManagedObjectReference getVmFolder()
+            throws InvalidPropertyFaultMsg, RuntimeFaultFaultMsg, FinderException {
+
+        // look for a configured folder in parent
+        String folderPath = CustomProperties.of(this.state)
+                .getString(CustomProperties.VM_FOLDER_PATH);
+
+        if (folderPath == null) {
+            // look for a configured folder in compute state
+            folderPath = CustomProperties.of(this.parent)
+                    .getString(CustomProperties.VM_FOLDER_PATH);
+        }
+
+        if (folderPath == null) {
+            return finder.vmFolder().object;
+        } else {
+            return finder.folder(folderPath).object;
+        }
     }
 
     /**
