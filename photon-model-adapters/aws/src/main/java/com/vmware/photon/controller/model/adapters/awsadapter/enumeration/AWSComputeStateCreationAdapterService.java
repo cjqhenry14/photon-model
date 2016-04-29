@@ -25,12 +25,12 @@ import com.amazonaws.services.ec2.model.Instance;
 
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
+import com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.StatelessService;
@@ -175,6 +175,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         // TODO VSYM-375 for adding disk information
 
         computeState.address = instance.getPublicIpAddress();
+        computeState.powerState = AWSUtils.mapToPowerState(instance.getState());
         computeState.customProperties = new HashMap<String, String>();
         computeState.customProperties.put(AWSConstants.AWS_INSTANCE_ID,
                 instance.getInstanceId());

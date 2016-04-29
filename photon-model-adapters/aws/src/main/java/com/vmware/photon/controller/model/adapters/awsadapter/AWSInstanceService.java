@@ -41,7 +41,6 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.OperationContext;
@@ -414,6 +413,7 @@ public class AWSInstanceService extends StatelessService {
                 networkState.tenantLinks = computeDesc.tenantLinks;
                 ComputeStateWithDescription resultDesc = new ComputeStateWithDescription();
                 resultDesc.address = instance.getPublicIpAddress();
+                resultDesc.powerState = AWSUtils.mapToPowerState(instance.getState());
                 if (computeDesc.customProperties == null) {
                     resultDesc.customProperties = new HashMap<String, String>();
                 } else {

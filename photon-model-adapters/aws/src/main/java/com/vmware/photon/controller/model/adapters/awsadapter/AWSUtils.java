@@ -29,9 +29,11 @@ import com.amazonaws.services.ec2.model.DescribeTagsRequest;
 import com.amazonaws.services.ec2.model.DescribeTagsResult;
 import com.amazonaws.services.ec2.model.Filter;
 import com.amazonaws.services.ec2.model.Instance;
+import com.amazonaws.services.ec2.model.InstanceState;
 import com.amazonaws.services.ec2.model.Tag;
 import com.amazonaws.services.ec2.model.TagDescription;
 
+import com.vmware.photon.controller.model.resources.ComputeService.PowerState;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
@@ -156,6 +158,26 @@ public class AWSUtils {
         String zoneId = i.getPlacement().getAvailabilityZone();
         String regiondId = zoneId.substring(0, zoneId.length() - 1);
         return regiondId;
+    }
+
+    /**
+     * Maps the Aws machine state to {@link PowerState}
+     * @param state
+     * @return the {@link PowerState} of the machine
+     */
+    public static PowerState mapToPowerState(InstanceState state) {
+        PowerState powerState = PowerState.UNKNOWN;
+        switch (state.getCode()) {
+        case 16:
+            powerState = PowerState.ON;
+            break;
+        case 80:
+            powerState = PowerState.OFF;
+            break;
+        default:
+            break;
+        }
+        return powerState;
     }
 
 }
