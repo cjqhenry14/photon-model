@@ -38,6 +38,7 @@ import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.BaseLineState;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService;
+import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAndCreationAdapterService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
@@ -99,7 +100,7 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
             host.startService(
                     Operation.createPost(UriUtils.buildUri(host,
                             AWSEnumerationAdapterService.class)),
-                    new AWSEnumerationAdapterService());
+                    new AWSEnumerationAndCreationAdapterService());
             serviceSelfLinks.add(AWSEnumerationAdapterService.SELF_LINK);
 
             ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
@@ -140,6 +141,7 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
     public void testEnumerationAtScale() throws Throwable {
         if (!isMock) {
             host.setTimeoutSeconds(600);
+            AWSEnumerationAndCreationAdapterService.AWS_PAGE_SIZE = 50;
             baseLineState = getBaseLineInstanceCount(host, client, testComputeDescriptions);
             host.log(baseLineState.toString());
             // Provision a single VM . Check initial state.

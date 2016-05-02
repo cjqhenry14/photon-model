@@ -17,6 +17,7 @@ import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetu
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSResourcePool;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSVMResource;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.deleteDocument;
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.deleteVMsUsingEC2Client;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.enumerateResources;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.getBaseLineInstanceCount;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.instanceType_t2_micro;
@@ -38,6 +39,7 @@ import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.BaseLineState;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService;
+import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAndCreationAdapterService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
@@ -53,7 +55,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  * directly creating instances on AWS using the EC2 client.It then invokes the AWS enumeration adapter to enumerate
  * all the resources on the AWS endpoint and validates that all the updates to the local state are as expected.If the 'isMock'
  * flag is set to true the test runs the adapter in mock mode and does not actually create a VM.
- * Minimally the accessKey and secretKey for AWS must be specified must be provided in the SetupUtils class to run the test.
+ * Minimally the accessKey and secretKey for AWS must be specified to run the test.
  *
  */
 public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
@@ -74,7 +76,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public static final String DEFAULT_SECURITY_GROUP_NAME = "cell-manager-security-group";
     public static List<String> instancesToCleanUp = new ArrayList<String>();
     public static List<String> instanceIds = new ArrayList<String>();
-    public List<String> instanceIdsToDelete = new ArrayList<String>();
+    public List<String> instanceIdsToDeleteFirstTime = new ArrayList<String>();
+    public List<String> instanceIdsToDeleteSecondTime = new ArrayList<String>();
     public AmazonEC2AsyncClient client;
     public static List<Boolean> provisioningFlags;
     public static List<Boolean> deletionFlags = new ArrayList<Boolean>();
@@ -110,6 +113,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
                             AWSEnumerationAdapterService.class)),
                     new AWSEnumerationAdapterService());
             serviceSelfLinks.add(AWSEnumerationAdapterService.SELF_LINK);
+
 
             // create the compute host, resource pool and the VM state to be used in the test.
             createResourcePoolComputeHostAndVMState();
@@ -153,7 +157,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // Overriding the page size to test the pagination logic with limited instances on AWS.
             // This is a functional test
             // so the latency numbers maybe higher from this test due to low page size.
-            AWSEnumerationAdapterService.AWS_PAGE_SIZE = 5;
+            AWSEnumerationAndCreationAdapterService.AWS_PAGE_SIZE = 5;
             baseLineState = getBaseLineInstanceCount(host, client, testComputeDescriptions);
             host.log(baseLineState.toString());
             // Provision a single VM . Check initial state.
@@ -162,9 +166,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             ProvisioningUtils.queryComputeDescriptions(this.host, instanceCount2);
 
             // CREATION directly on AWS
-            instanceIds = provisionAWSVMWithEC2Client(client, host, instanceCount5,
+            instanceIdsToDeleteFirstTime = provisionAWSVMWithEC2Client(client, host, instanceCount5,
                     T2_NANO_INSTANCE_TYPE);
-            instancesToCleanUp.addAll(instanceIds);
 
             // Xenon does not know about the new instances.
             ProvisioningUtils.queryComputeInstances(this.host, instanceCount2);
@@ -180,10 +183,9 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
 
             // Provision an additional VM that has a compute description already present in the
             // system.
-            instanceIds.clear();
-            instanceIds = provisionAWSVMWithEC2Client(client, host, instanceCount1,
+            instanceIdsToDeleteSecondTime = provisionAWSVMWithEC2Client(client, host,
+                    instanceCount1,
                     TestAWSSetupUtils.instanceType_t2_micro);
-            instancesToCleanUp.addAll(instanceIds);
             enumerateResources(host, isMock, outPool.documentSelfLink,
                     outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
             // One additional compute state and no new compute descriptions should be created.
@@ -191,6 +193,25 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
                     instanceCount3 + baseLineState.baselineComputeDescriptionCount);
             ProvisioningUtils.queryComputeInstances(this.host,
                     instanceCount8 + baseLineState.baselineVMCount);
+
+            // Verify Deletion flow
+            // Delete 5 VMs spawned above of type T2_NANO
+            deleteVMsUsingEC2Client(client, host, instanceIdsToDeleteFirstTime);
+            enumerateResources(host, isMock, outPool.documentSelfLink,
+                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
+            // Counts should go down 5 compute states.
+            ProvisioningUtils.queryComputeInstances(this.host,
+                    instanceCount3 + baseLineState.baselineVMCount);
+
+            // Verify Deletion flow
+            // Delete 1 VMs spawned above of type T2_Micro
+            deleteVMsUsingEC2Client(client, host, instanceIdsToDeleteSecondTime);
+            enumerateResources(host, isMock, outPool.documentSelfLink,
+                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
+            // Compute state count should go down by 1
+            ProvisioningUtils.queryComputeInstances(this.host,
+                    instanceCount2 + baseLineState.baselineVMCount);
+
         } else {
             // Create basic state for kicking off enumeration
             createResourcePoolComputeHostAndVMState();

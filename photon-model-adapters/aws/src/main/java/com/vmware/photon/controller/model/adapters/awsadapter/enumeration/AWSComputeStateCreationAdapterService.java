@@ -44,7 +44,7 @@ import com.vmware.xenon.common.Utils;
  */
 public class AWSComputeStateCreationAdapterService extends StatelessService {
 
-    public static final String SELF_LINK = AWSUriPaths.AWS_COMPUTE_STATE_SERVICE;
+    public static final String SELF_LINK = AWSUriPaths.AWS_COMPUTE_STATE_CREATION_SERVICE;
 
     public static enum AWSComputeStateCreationStage {
         POPULATE_COMPUTESTATES, CREATE_COMPUTESTATES, SIGNAL_COMPLETION
@@ -58,7 +58,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      * Data holder for information related a compute state that needs to be created in the local system.
      *
      */
-    public static class AWSComputeState {
+    public static class AWSComputeStateForCreation {
         public List<Instance> instancesToBeCreated;
         public String resourcePoolLink;
         public String parentComputeLink;
@@ -72,8 +72,8 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      * that will be persisted in the system.
      *
      */
-    public static class AWSComputeServiceContext {
-        AWSComputeState computeState;
+    public static class AWSComputeServiceCreationContext {
+        AWSComputeStateForCreation computeState;
         public List<Operation> createOperations;
         public int instanceToBeCreatedCounter = 0;
         public AWSComputeStateCreationStage creationStage;
@@ -82,7 +82,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         public Operation awsAdapterOperation;
         public long startTime;
 
-        public AWSComputeServiceContext(AWSComputeState computeState, Operation op) {
+        public AWSComputeServiceCreationContext(AWSComputeStateForCreation computeState, Operation op) {
             this.computeState = computeState;
             createOperations = new ArrayList<Operation>();
             creationStage = AWSComputeStateCreationStage.POPULATE_COMPUTESTATES;
@@ -97,8 +97,8 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
             op.fail(new IllegalArgumentException("body is required"));
             return;
         }
-        AWSComputeState cs = op.getBody(AWSComputeState.class);
-        AWSComputeServiceContext context = new AWSComputeServiceContext(cs, op);
+        AWSComputeStateForCreation cs = op.getBody(AWSComputeStateForCreation.class);
+        AWSComputeServiceCreationContext context = new AWSComputeServiceCreationContext(cs, op);
         if (cs.isMock) {
             op.complete();
         }
@@ -110,7 +110,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      * @param context The local service context that has all the information needed to create the additional compute states
      * in the local system.
      */
-    private void handleComputeStateCreation(AWSComputeServiceContext context) {
+    private void handleComputeStateCreation(AWSComputeServiceCreationContext context) {
         switch (context.creationStage) {
         case POPULATE_COMPUTESTATES:
             createComputeStates(context, AWSComputeStateCreationStage.CREATE_COMPUTESTATES);
@@ -136,7 +136,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      * @param next
      * @param instancesToBeCreated
      */
-    private void createComputeStates(AWSComputeServiceContext context,
+    private void createComputeStates(AWSComputeServiceCreationContext context,
             AWSComputeStateCreationStage next) {
         if (context.computeState.instancesToBeCreated == null
                 || context.computeState.instancesToBeCreated.size() == 0) {
@@ -160,7 +160,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      * Populates the compute state / network link associated with an AWS VM instance and creates an operation for posting it.
      * @param csDetails
      */
-    private void populateComputeState(AWSComputeServiceContext context) {
+    private void populateComputeState(AWSComputeServiceCreationContext context) {
         Instance instance = context.computeState.instancesToBeCreated
                 .get(context.instanceToBeCreatedCounter);
         ComputeService.ComputeState computeState = new ComputeService.ComputeState();
@@ -211,7 +211,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      * creates a join handler for the successful completion of each one of those.
      * Patches completion to parent once all the entities are created successfully.
      */
-    private void kickOffComputeStateCreation(AWSComputeServiceContext context,
+    private void kickOffComputeStateCreation(AWSComputeServiceCreationContext context,
             AWSComputeStateCreationStage next) {
         if (context.createOperations == null || context.createOperations.size() == 0) {
             logInfo("There are no compute states or networks to be created");

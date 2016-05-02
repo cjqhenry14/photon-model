@@ -13,7 +13,15 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_PENDING;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_RUNNING;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_SHUTTING_DOWN;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_STOPPED;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_STOPPING;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +42,7 @@ import com.amazonaws.services.ec2.model.Tag;
 import com.amazonaws.services.ec2.model.TagDescription;
 
 import com.vmware.photon.controller.model.resources.ComputeService.PowerState;
+
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
@@ -178,6 +187,21 @@ public class AWSUtils {
             break;
         }
         return powerState;
+    }
+
+    /**
+     * Creates a filter for the instances that are in non terminated state on the AWS endpoint.
+     * @return
+     */
+    public static Filter getAWSNonTerminatedInstancesFilter() {
+        // Create a filter to only get non terminated instances from the remote instance.
+        List<String> stateValues = new ArrayList<String>(Arrays.asList(INSTANCE_STATE_RUNNING,
+                INSTANCE_STATE_PENDING, INSTANCE_STATE_STOPPING, INSTANCE_STATE_STOPPED,
+                INSTANCE_STATE_SHUTTING_DOWN));
+        Filter runningInstanceFilter = new Filter();
+        runningInstanceFilter.setName(INSTANCE_STATE);
+        runningInstanceFilter.setValues(stateValues);
+        return runningInstanceFilter;
     }
 
 }

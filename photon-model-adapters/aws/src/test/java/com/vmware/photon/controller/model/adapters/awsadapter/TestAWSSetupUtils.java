@@ -13,16 +13,10 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_PENDING;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_RUNNING;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_SHUTTING_DOWN;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_STOPPED;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.INSTANCE_STATE_STOPPING;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getAWSNonTerminatedInstancesFilter;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,6 +42,8 @@ import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeDescriptionCreationAdapterService;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeStateCreationAdapterService;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService;
+import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAndCreationAdapterService;
+import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAndDeletionAdapterService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService;
@@ -158,6 +154,7 @@ public class TestAWSSetupUtils {
                 AWSUriPaths.AWS_ENUMERATION_SERVICE);
         awshostDescription.statsAdapterReference = UriUtils.buildUri(host,
                 AWSUriPaths.AWS_STATS_SERVICE);
+
         awshostDescription.zoneId = zoneId;
         awshostDescription.authCredentialsLink = authLink;
         TestUtils.doPost(host, awshostDescription,
@@ -542,12 +539,7 @@ public class TestAWSSetupUtils {
                 AWSEnumerationAsyncHandler.MODE.GET_COUNT, null, null, testComputeDescriptions,
                 baseLineState);
         DescribeInstancesRequest request = new DescribeInstancesRequest();
-        List<String> stateValues = new ArrayList<String>(Arrays.asList(INSTANCE_STATE_RUNNING,
-                INSTANCE_STATE_PENDING, INSTANCE_STATE_STOPPING, INSTANCE_STATE_STOPPED,
-                INSTANCE_STATE_SHUTTING_DOWN));
-        Filter runningInstanceFilter = new Filter();
-        runningInstanceFilter.setName(INSTANCE_STATE);
-        runningInstanceFilter.setValues(stateValues);
+        Filter runningInstanceFilter = getAWSNonTerminatedInstancesFilter();
         request.getFilters().add(runningInstanceFilter);
         client.describeInstancesAsync(request, enumerationHandler);
         host.waitFor("Error waiting to get base line instance count from AWS in test ", () -> {
@@ -571,13 +563,21 @@ public class TestAWSSetupUtils {
         ResourceEnumerationTaskService.ResourceEnumerationTaskState enumTask = performResourceEnumeration(
                 host, isMock, resourcePoolLink, computeHostLinkDescription, computeHostLink);
         // Wait for the enumeration task to be completed.
-        host.waitFor("Error waiting for enumeration task", () -> {
+        host.waitFor("Error waiting for enumeration task for creation", () -> {
             return checkEnumerationTaskCompletion(host, enumTask);
         });
+        host.log("\n==Total Time Spent in Enumeration\n");
         ServiceStats enumerationStats = host.getServiceState(null, ServiceStats.class, UriUtils
-                .buildStatsUri(UriUtils.buildUri(host, AWSEnumerationAdapterService.SELF_LINK)));
+                .buildStatsUri(UriUtils.buildUri(host,
+                        AWSEnumerationAdapterService.SELF_LINK)));
         host.log(Utils.toJsonHtml(enumerationStats));
-        host.log("==Time spent in individual services==\n");
+        host.log("\n==Total Time Spent in Creation Workflow\n");
+        ServiceStats enumerationCreationStats = host.getServiceState(null, ServiceStats.class,
+                UriUtils
+                        .buildStatsUri(UriUtils.buildUri(host,
+                        AWSEnumerationAndCreationAdapterService.SELF_LINK)));
+        host.log(Utils.toJsonHtml(enumerationCreationStats));
+        host.log("\n==Time spent in individual creation services==\n");
         ServiceStats computeDescriptionCreationStats = host.getServiceState(null,
                 ServiceStats.class, UriUtils
                         .buildStatsUri(UriUtils.buildUri(host,
@@ -588,6 +588,12 @@ public class TestAWSSetupUtils {
                         .buildStatsUri(UriUtils.buildUri(host,
                                 AWSComputeStateCreationAdapterService.SELF_LINK)));
         host.log(Utils.toJsonHtml(computeStateCreationStats));
+        host.log("\n==Total Time Spent in Deletion Workflow\n");
+        ServiceStats deletionEnumerationStats = host.getServiceState(null, ServiceStats.class,
+                UriUtils
+                .buildStatsUri(UriUtils.buildUri(host,
+                        AWSEnumerationAndDeletionAdapterService.SELF_LINK)));
+        host.log(Utils.toJsonHtml(deletionEnumerationStats));
     }
 
     /**
@@ -644,6 +650,7 @@ public class TestAWSSetupUtils {
         enumerationTaskState.enumerationAction = EnumerationAction.START;
         enumerationTaskState.adapterManagementReference = UriUtils
                 .buildUri(AWSEnumerationAdapterService.SELF_LINK);
+
         enumerationTaskState.resourcePoolLink = resourcePoolLink;
         enumerationTaskState.isMockRequest = isMock;
 
@@ -661,14 +668,13 @@ public class TestAWSSetupUtils {
      * Deletes instances on the AWS endpoint for the set of instance Ids that are passed in.
      * @param instanceIdsToDelete
      */
-    public static void deleteVMsUsingEC2Client(VerificationHost host, AmazonEC2AsyncClient client,
+    public static void deleteVMsUsingEC2Client(AmazonEC2AsyncClient client, VerificationHost host,
             List<String> instanceIdsToDelete) throws Throwable {
         ArrayList<Boolean> deletionFlags = new ArrayList<Boolean>(instanceIdsToDelete.size());
         for (int i = 0; i < instanceIdsToDelete.size(); i++) {
             deletionFlags.add(i, Boolean.FALSE);
         }
-        TerminateInstancesRequest termRequest = new TerminateInstancesRequest(
-                instanceIdsToDelete);
+        TerminateInstancesRequest termRequest = new TerminateInstancesRequest(instanceIdsToDelete);
         AsyncHandler<TerminateInstancesRequest, TerminateInstancesResult> terminateHandler = new AWSTerminateHandler(
                 host);
         client.terminateInstancesAsync(termRequest, terminateHandler);
@@ -792,7 +798,6 @@ public class TestAWSSetupUtils {
             case CHECK_TERMINATION:
                 for (Instance i : result.getReservations().get(0).getInstances()) {
                     if (i.getState().getCode() == AWS_TERMINATED_CODE) {
-                        host.log("Instance has stopped %d", counter);
                         deletionFlags.set(counter, Boolean.TRUE);
                         counter++;
                     }
