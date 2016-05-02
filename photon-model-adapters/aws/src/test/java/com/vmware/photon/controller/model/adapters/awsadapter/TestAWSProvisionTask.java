@@ -148,7 +148,16 @@ public class TestAWSProvisionTask  {
         host.setTimeoutSeconds(600);
         host.waitFor("Error waiting for stats", () -> {
             try {
-                issueStatsRequest(vmState);
+                issueStatsRequest(vmState, false);
+            } catch (Throwable t) {
+                return false;
+            }
+            return true;
+        });
+
+        host.waitFor("Error waiting for host cost stats", () -> {
+            try {
+                issueStatsRequest(outComputeHost, true);
             } catch (Throwable t) {
                 return false;
             }
@@ -161,7 +170,7 @@ public class TestAWSProvisionTask  {
     }
 
 
-    private void issueStatsRequest(ComputeState vm) throws Throwable {
+    private void issueStatsRequest(ComputeState vm, boolean isCostStats) throws Throwable {
         // spin up a stateless service that acts as the parent link to patch back to
         StatelessService parentService = new StatelessService() {
             public void handleRequest(Operation op) {
@@ -172,7 +181,9 @@ public class TestAWSProvisionTask  {
                             host.failIteration(new IllegalStateException("response size was incorrect."));
                             return;
                         }
-                        if (resp.statsList.get(0).statValues.size() == 0) {
+                        // Cost data is not updated very often, hence we can skip this check in
+                        // case of cost stats.
+                        if (!isCostStats && resp.statsList.get(0).statValues.size() == 0) {
                             host.failIteration(new IllegalStateException("incorrect number of metrics received."));
                             return;
                         }

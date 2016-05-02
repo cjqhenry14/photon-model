@@ -156,6 +156,8 @@ public class TestAWSSetupUtils {
                 AWSUriPaths.AWS_INSTANCE_SERVICE);
         awshostDescription.enumerationAdapterReference = UriUtils.buildUri(host,
                 AWSUriPaths.AWS_ENUMERATION_SERVICE);
+        awshostDescription.statsAdapterReference = UriUtils.buildUri(host,
+                AWSUriPaths.AWS_STATS_SERVICE);
         awshostDescription.zoneId = zoneId;
         awshostDescription.authCredentialsLink = authLink;
         TestUtils.doPost(host, awshostDescription,
