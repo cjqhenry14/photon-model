@@ -49,11 +49,16 @@ public class AWSStatsService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_STATS_SERVICE;
 
-    private static final String[] METRIC_NAMES = { "CPUUtilization", "DiskReadBytes",
-            "DiskWriteBytes", "NetworkIn", "NetworkOut" };
-    private static final String[] STATISTICS = { "Average" };
+    public static final String[] METRIC_NAMES = { "CPUUtilization", "DiskReadBytes",
+            "DiskWriteBytes", "NetworkIn", "NetworkOut", "CPUCreditUsage",
+            "CPUCreditBalance", "DiskReadOps", "DiskWriteOps", "NetworkPacketsIn",
+            "NetworkPacketsOut", "StatusCheckFailed", "StatusCheckFailed_Instance",
+            "StatusCheckFailed_System" };
+    private static final String[] STATISTICS = { "Average", "SampleCount" };
     private static final String NAMESPACE = "AWS/EC2";
     private static final String DIMENSION_INSTANCE_ID = "InstanceId";
+    private static final int METRIC_COLLECTION_WINDOW_IN_MINUTES = 10;
+    private static final int METRIC_COLLECTION_PERIOD_IN_SECONDS = 60;
 
     // Cost
     private static final String BILLING_NAMESPACE = "AWS/Billing";
@@ -169,11 +174,12 @@ public class AWSStatsService extends StatelessService {
 
             long endTimeMicros = Utils.getNowMicrosUtc();
             GetMetricStatisticsRequest request = new GetMetricStatisticsRequest();
-            // get one minute averages for the last 5 minutes
+            // get one minute averages for the last 10 minutes
             request.setEndTime(new Date(TimeUnit.MICROSECONDS.toMillis(endTimeMicros)));
             request.setStartTime(new Date(
-                    TimeUnit.MICROSECONDS.toMillis(endTimeMicros) - TimeUnit.MINUTES.toMillis(5)));
-            request.setPeriod(60);
+                    TimeUnit.MICROSECONDS.toMillis(endTimeMicros) -
+                    TimeUnit.MINUTES.toMillis(METRIC_COLLECTION_WINDOW_IN_MINUTES)));
+            request.setPeriod(METRIC_COLLECTION_PERIOD_IN_SECONDS);
             request.setStatistics(Arrays.asList(STATISTICS));
             request.setNamespace(BILLING_NAMESPACE);
             request.setDimensions(Collections.singletonList(dimension));
@@ -191,11 +197,12 @@ public class AWSStatsService extends StatelessService {
 
         for (String metricName : METRIC_NAMES) {
             GetMetricStatisticsRequest metricRequest = new GetMetricStatisticsRequest();
-            // get one minute averages for the last 5 minutes
+            // get one minute averages for the last 10 minutes
             metricRequest.setEndTime(new Date(TimeUnit.MICROSECONDS.toMillis(endTimeMicros)));
             metricRequest.setStartTime(new Date(
-                    TimeUnit.MICROSECONDS.toMillis(endTimeMicros) - TimeUnit.MINUTES.toMillis(5)));
-            metricRequest.setPeriod(60);
+                    TimeUnit.MICROSECONDS.toMillis(endTimeMicros) -
+                    TimeUnit.MINUTES.toMillis(METRIC_COLLECTION_WINDOW_IN_MINUTES)));
+            metricRequest.setPeriod(METRIC_COLLECTION_PERIOD_IN_SECONDS);
             metricRequest.setStatistics(Arrays.asList(STATISTICS));
             metricRequest.setNamespace(NAMESPACE);
             List<Dimension> dimensions = new ArrayList<>();
@@ -207,6 +214,8 @@ public class AWSStatsService extends StatelessService {
             dimensions.add(dimension);
             metricRequest.setDimensions(dimensions);
             metricRequest.setMetricName(metricName);
+
+            logInfo("Retrieving %s metric from AWS", metricName);
             AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler = new AWSStatsHandler(
                     this, statsData, METRIC_NAMES.length);
             statsData.statsClient.getMetricStatisticsAsync(metricRequest, resultHandler);
@@ -239,7 +248,6 @@ public class AWSStatsService extends StatelessService {
             this.statsData = statsData;
             this.service = service;
             this.numOfMetrics = numOfMetrics;
-
         }
 
         @Override
@@ -253,12 +261,14 @@ public class AWSStatsService extends StatelessService {
         public void onSuccess(GetMetricStatisticsRequest request,
                 GetMetricStatisticsResult result) {
             List<Datapoint> dpList = result.getDatapoints();
-            Double sum = 0d;
+            Double averageSum = 0d;
+            Double sampleCount = 0d;
             if (dpList != null && dpList.size() != 0) {
                 for (Datapoint dp : dpList) {
-                    sum += dp.getAverage();
+                    averageSum += dp.getAverage();
+                    sampleCount += dp.getSampleCount();
                 }
-                statsData.statsResponse.statValues.put(result.getLabel(), sum / dpList.size());
+                statsData.statsResponse.statValues.put(result.getLabel(), averageSum / sampleCount);
             }
 
             if (statsData.numResponses.incrementAndGet() == numOfMetrics) {
