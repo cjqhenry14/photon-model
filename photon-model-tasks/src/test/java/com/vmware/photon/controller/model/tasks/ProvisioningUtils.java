@@ -31,6 +31,7 @@ import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
 
+import com.vmware.photon.controller.model.tasks.monitoring.StatsCollectionTaskSchedulerService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.TaskState;
@@ -140,6 +141,12 @@ public class ProvisioningUtils {
                         ProvisionFirewallTaskService.FACTORY_LINK),
                 ProvisionFirewallTaskService.createFactory());
         serviceSelfLinks.add(ProvisionFirewallTaskService.FACTORY_LINK);
+
+        host.startService(
+                Operation.createPost(host,
+                        StatsCollectionTaskSchedulerService.FACTORY_LINK),
+                StatsCollectionTaskSchedulerService.createFactory());
+        serviceSelfLinks.add(StatsCollectionTaskSchedulerService.FACTORY_LINK);
 
         waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
 
