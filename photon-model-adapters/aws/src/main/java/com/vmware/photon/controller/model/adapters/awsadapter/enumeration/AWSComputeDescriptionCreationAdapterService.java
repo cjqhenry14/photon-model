@@ -69,6 +69,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         public URI parentTaskLink;
         public String authCredentiaslLink;
         public boolean isMock;
+        public List<String> tenantLinks;
     }
 
     /**
@@ -221,6 +222,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         q.querySpec.query.addBooleanClause(instanceTypeFilterParentQuery);
 
         q.documentSelfLink = UUID.randomUUID().toString();
+        q.tenantLinks = context.cdState.tenantLinks;
         // create the query to find an existing compute description
         this.sendRequest(Operation
                 .createPost(this, ServiceUriPaths.CORE_QUERY_TASKS)
@@ -331,6 +333,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         computeDescription.id = key.substring(key.indexOf("~") + 1);
         computeDescription.documentSelfLink = computeDescription.id;
         computeDescription.name = computeDescription.id;
+        computeDescription.tenantLinks = cd.cdState.tenantLinks;
 
         // security group is not being returned currently in the VM. Add additional logic VSYM-326.
 

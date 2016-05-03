@@ -55,6 +55,7 @@ import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.util.PhotonModelUtils;
 
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
@@ -403,15 +404,18 @@ public class AWSEnumerationAdapterService extends StatelessService {
 
         private AWSEnumerationAdapterService service;
         private EnumerationContext aws;
+        private OperationContext opContext;
 
         private AWSEnumerationAsyncHandler(AWSEnumerationAdapterService service,
                 EnumerationContext aws) {
             this.service = service;
             this.aws = aws;
+            this.opContext = OperationContext.getOperationContext();;
         }
 
         @Override
         public void onError(Exception exception) {
+            OperationContext.restoreOperationContext(opContext);
             AdapterUtils.sendFailurePatchToEnumerationTask(service,
                     aws.computeEnumerationRequest.enumerationTaskReference,
                     exception);
@@ -421,6 +425,7 @@ public class AWSEnumerationAdapterService extends StatelessService {
         @Override
         public void onSuccess(DescribeInstancesRequest request,
                 DescribeInstancesResult result) {
+            OperationContext.restoreOperationContext(opContext);
             int totalNumberOfInstances = 0;
             // Print the details of the instances discovered on the AWS endpoint
             for (Reservation r : result.getReservations()) {
@@ -534,6 +539,7 @@ public class AWSEnumerationAdapterService extends StatelessService {
             }
             q.querySpec.query.addBooleanClause(instanceIdFilterParentQuery);
             q.documentSelfLink = UUID.randomUUID().toString();
+            q.tenantLinks = aws.computeHostDescription.tenantLinks;
             // create the query to find resources
             service.sendRequest(Operation
                     .createPost(service, ServiceUriPaths.CORE_QUERY_TASKS)
@@ -601,6 +607,7 @@ public class AWSEnumerationAdapterService extends StatelessService {
             cd.instancesToBeCreated = aws.instancesToBeCreated;
             cd.parentTaskLink = aws.computeEnumerationRequest.enumerationTaskReference;
             cd.authCredentiaslLink = aws.parentAuth.documentSelfLink;
+            cd.tenantLinks = aws.computeHostDescription.tenantLinks;
 
             service.sendRequest(Operation
                     .createPatch(service, AWSComputeDescriptionCreationAdapterService.SELF_LINK)
@@ -632,6 +639,7 @@ public class AWSEnumerationAdapterService extends StatelessService {
             awsComputeState.parentComputeLink = aws.computeEnumerationRequest.parentComputeLink;
             awsComputeState.resourcePoolLink = aws.computeEnumerationRequest.resourcePoolLink;
             awsComputeState.parentTaskLink = aws.computeEnumerationRequest.enumerationTaskReference;
+            awsComputeState.tenantLinks = aws.computeHostDescription.tenantLinks;
 
             service.sendRequest(Operation
                     .createPatch(service, AWSComputeStateCreationAdapterService.SELF_LINK)

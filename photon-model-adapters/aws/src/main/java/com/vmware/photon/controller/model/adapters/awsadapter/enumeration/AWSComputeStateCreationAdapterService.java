@@ -64,6 +64,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         public String parentComputeLink;
         public URI parentTaskLink;
         boolean isMock;
+        public List<String> tenantLinks;
     }
 
     /**
@@ -183,11 +184,13 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         computeState.networkLinks.add(UriUtils.buildUriPath(
                 NetworkInterfaceService.FACTORY_LINK,
                 instance.getInstanceId()));
+        computeState.tenantLinks = context.computeState.tenantLinks;
 
         // network
         NetworkInterfaceState networkState = new NetworkInterfaceState();
         networkState.address = instance.getPrivateIpAddress();
         networkState.id = instance.getInstanceId();
+        networkState.tenantLinks = context.computeState.tenantLinks;
 
         Operation postComputeState = Operation
                 .createPost(this, ComputeService.FACTORY_LINK)
