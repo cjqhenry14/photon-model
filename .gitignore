@@ -20,4 +20,4 @@ tags
 bin
 
 # src/main/resources created after building
-**/src/main/resources/*
+**/photon-model.git.properties
