@@ -1,0 +1,463 @@
+{
+    "name": "agent",
+    "properties": {
+        "name": "agent",
+        "publicConfiguration": {
+            "odata.type": "Microsoft.Azure.Management.Insights.Models.PublicMonitoringConfiguration",
+            "diagnosticMonitorConfiguration": {
+                "overallQuotaInMB": 4096,
+                "metrics": {
+                    "resourceId": "",
+                    "aggregations": [
+                        {
+                            "scheduledTransferPeriod": "PT1H"
+                        },
+                        {
+                            "scheduledTransferPeriod": "PT1M"
+                        }
+                    ]
+                },
+                "diagnosticInfrastructureLogs": {
+                    "scheduledTransferLogLevelFilter": "Warning",
+                    "scheduledTransferPeriod": "PT1M"
+                },
+                "directories": {
+                     "iisLogs": "wad-iis-logfiles",
+                     "scheduledTransferPeriod": "PT1M"
+                },
+                "performanceCounters": {
+                    "counters": [
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Memory available",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\AvailableMemory",
+                            "sampleRate": "PT15S",
+                            "unit": "Bytes"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Mem. percent available",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\PercentAvailableMemory",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Memory used",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\UsedMemory",
+                            "sampleRate": "PT15S",
+                            "unit": "Bytes"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Memory percentage",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\PercentUsedMemory",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Mem. used by cache",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\PercentUsedByCache",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Pages",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\PagesPerSec",
+                            "sampleRate": "PT15S",
+                            "unit": "CountPerSecond"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Page reads",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\PagesReadPerSec",
+                            "sampleRate": "PT15S",
+                            "unit": "CountPerSecond"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Page writes",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\PagesWrittenPerSec",
+                            "sampleRate": "PT15S",
+                            "unit": "CountPerSecond"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Swap available",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\AvailableSwap",
+                            "sampleRate": "PT15S",
+                            "unit": "Bytes"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Swap percent available",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\PercentAvailableSwap",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Swap used",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\UsedSwap",
+                            "sampleRate": "PT15S",
+                            "unit": "Bytes"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Swap percent used",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Memory\\PercentUsedSwap",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "CPU idle time",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Processor\\PercentIdleTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "CPU user time",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Processor\\PercentUserTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "CPU nice time",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Processor\\PercentNiceTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "CPU privileged time",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Processor\\PercentPrivilegedTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "CPU interrupt time",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Processor\\PercentInterruptTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "CPU DPC time",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Processor\\PercentDPCTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "CPU percentage guest OS",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Processor\\PercentProcessorTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "CPU IO wait time",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\Processor\\PercentIOWaitTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Percent"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Disk total bytes",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\PhysicalDisk\\BytesPerSecond",
+                            "sampleRate": "PT15S",
+                            "unit": "BytesPerSecond"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Disk read guest OS",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\PhysicalDisk\\ReadBytesPerSecond",
+                            "sampleRate": "PT15S",
+                            "unit": "BytesPerSecond"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Disk write guest OS",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\PhysicalDisk\\WriteBytesPerSecond",
+                            "sampleRate": "PT15S",
+                            "unit": "BytesPerSecond"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Disk transfers",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\PhysicalDisk\\TransfersPerSecond",
+                            "sampleRate": "PT15S",
+                            "unit": "CountPerSecond"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Disk reads",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\PhysicalDisk\\ReadsPerSecond",
+                            "sampleRate": "PT15S",
+                            "unit": "CountPerSecond"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Disk writes",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\PhysicalDisk\\WritesPerSecond",
+                            "sampleRate": "PT15S",
+                            "unit": "CountPerSecond"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Disk read time",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\PhysicalDisk\\AverageReadTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Seconds"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Disk write time",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\PhysicalDisk\\AverageWriteTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Seconds"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Disk transfer time",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\PhysicalDisk\\AverageTransferTime",
+                            "sampleRate": "PT15S",
+                            "unit": "Seconds"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Disk queue length",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\PhysicalDisk\\AverageDiskQueueLength",
+                            "sampleRate": "PT15S",
+                            "unit": "Count"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Network out guest OS",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\NetworkInterface\\BytesTransmitted",
+                            "sampleRate": "PT15S",
+                            "unit": "Bytes"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Network in guest OS",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\NetworkInterface\\BytesReceived",
+                            "sampleRate": "PT15S",
+                            "unit": "Bytes"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Packets sent",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\NetworkInterface\\PacketsTransmitted",
+                            "sampleRate": "PT15S",
+                            "unit": "Count"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Packets received",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\NetworkInterface\\PacketsReceived",
+                            "sampleRate": "PT15S",
+                            "unit": "Count"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Network total bytes",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\NetworkInterface\\BytesTotal",
+                            "sampleRate": "PT15S",
+                            "unit": "Bytes"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Packets received errors",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\NetworkInterface\\TotalRxErrors",
+                            "sampleRate": "PT15S",
+                            "unit": "Count"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Packets sent errors",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\NetworkInterface\\TotalTxErrors",
+                            "sampleRate": "PT15S",
+                            "unit": "Count"
+                        },
+                        {
+                            "annotations": [
+                                {
+                                    "value": "Network collisions",
+                                    "locale": "en-us"
+                                }
+                            ],
+                            "counterSpecifier": "\\NetworkInterface\\TotalCollisions",
+                            "sampleRate": "PT15S",
+                            "unit": "Count"
+                        }
+                    ],
+                    "scheduledTransferPeriod": "PT1M"
+                },
+                "windowsEventLog": {
+                     "dataSources": [
+                        "System!*[System[(Level = 1 or Level = 2)]]",
+                        "System!*[System[Provider[@Name='Microsoft Antimalware']]]",
+                        "Security!*[System[(Level = 1 or Level = 2)]",
+                        "Application!*[System[(Level = 1 or Level = 2)]]" ],
+                     "scheduledTransferPeriod": "PT1M"
+                }
+            },
+            "storageAccount": ""
+        }
+    }
+}

@@ -47,6 +47,7 @@ public class AzureAllocationContext {
     public DiskState bootDisk;
     public List<DiskState> childDisks;
     public String vmName;
+    public String vmId;
 
     //Azure specific context
     public ApplicationTokenCredentials credentials;

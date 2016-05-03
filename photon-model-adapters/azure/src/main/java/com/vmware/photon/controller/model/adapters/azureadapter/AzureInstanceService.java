@@ -26,6 +26,7 @@ import static com.vmware.photon.controller.model.adapters.azureadapter.AzureCons
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.STORAGE_NAMESPACE;
 import static com.vmware.photon.controller.model.tasks.ResourceAllocationTaskService.CUSTOM_DISPLAY_NAME;
 
+import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -82,11 +83,13 @@ import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
+import com.vmware.photon.controller.model.adapters.azureadapter.diagnostic.settings.models.AzureDiagnosticSettings;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
+import com.vmware.xenon.common.FileUtils;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.OperationJoin;
@@ -241,6 +244,14 @@ public class AzureInstanceService extends StatelessService {
         case CREATE:
             createVM(ctx);
             break;
+        case ENABLE_MONITORING:
+            try {
+                enableMonitoring(ctx);
+            } catch (Throwable e) {
+                this.handleError(ctx, e);
+                return;
+            }
+            break;
         case DELETE:
             deleteVM(ctx);
             break;
@@ -255,6 +266,9 @@ public class AzureInstanceService extends StatelessService {
             cleanUpHttpClient(ctx);
             break;
         case FINISHED:
+            AdapterUtils.sendPatchToProvisioningTask(
+                    AzureInstanceService.this,
+                    ctx.computeRequest.provisioningTaskReference);
             cleanUpHttpClient(ctx);
             break;
         default:
@@ -677,6 +691,7 @@ public class AzureInstanceService extends StatelessService {
                         }
                         resultDesc.customProperties
                                 .put(AzureConstants.AZURE_INSTANCE_ID, vm.getId());
+                        ctx.vmId = vm.getId();
 
                         Operation.CompletionHandler completionHandler = (ox,
                                 exc) -> {
@@ -687,7 +702,7 @@ public class AzureInstanceService extends StatelessService {
                                 handleAllocation(ctx);
                                 return;
                             }
-                            ctx.stage = AzureStages.GET_STORAGE_KEYS;
+                            ctx.stage = AzureStages.ENABLE_MONITORING;
                             handleAllocation(ctx);
                         };
 
@@ -762,9 +777,6 @@ public class AzureInstanceService extends StatelessService {
                                                         return;
                                                     }
 
-                                                    AdapterUtils.sendPatchToProvisioningTask(
-                                                            AzureInstanceService.this,
-                                                            ctx.computeRequest.provisioningTaskReference);
                                                     ctx.stage = AzureStages.FINISHED;
                                                     handleAllocation(ctx);
                                                     return;
@@ -774,9 +786,6 @@ public class AzureInstanceService extends StatelessService {
                                         return;
                                     }
 
-                                    AdapterUtils
-                                            .sendPatchToProvisioningTask(AzureInstanceService.this,
-                                                    ctx.computeRequest.provisioningTaskReference);
                                     ctx.stage = AzureStages.FINISHED;
                                     handleAllocation(ctx);
                                 }));
@@ -1132,5 +1141,69 @@ public class AzureInstanceService extends StatelessService {
                             handleAllocation(ctx);
                         });
         operationJoin.sendWith(this);
+    }
+
+    private void enableMonitoring(AzureAllocationContext ctx) {
+        String fileUri = getClass().getResource(AzureConstants.DIAGNOSTIC_SETTINGS_JSON_FILE_NAME).getFile();
+        File jsonPayloadFile = new File(fileUri);
+        Operation readFile = Operation.createGet(null).setCompletion((o, e) -> {
+            if (e != null) {
+                this.handleError(ctx, e);
+            }
+            AzureDiagnosticSettings azureDiagnosticSettings = o.getBody(AzureDiagnosticSettings.class);
+            String vmName = ctx.vmName;
+            String azureInstanceId = ctx.vmId;
+            String storageAccountName = ctx.storageAccountName;
+
+            // Replace the resourceId and storageAccount keys with correct values
+            azureDiagnosticSettings.getProperties()
+                                   .getPublicConfiguration()
+                                   .getDiagnosticMonitorConfiguration()
+                                   .getMetrics()
+                                   .setResourceId(azureInstanceId);
+            azureDiagnosticSettings.getProperties()
+                                   .getPublicConfiguration()
+                                   .setStorageAccount(storageAccountName);
+
+            ApplicationTokenCredentials credentials = ctx.credentials;
+
+            StringBuilder restUriString = new StringBuilder();
+            restUriString.append(AzureConstants.BASE_URI_FOR_REST)
+                   .append(azureInstanceId).append("/")
+                   .append(AzureConstants.DIAGNOSTIC_SETTING_ENDPOINT).append("/")
+                   .append(AzureConstants.DIAGNOSTIC_SETTING_AGENT);
+            URI uri = UriUtils.buildUri(restUriString.toString());
+            uri = UriUtils.extendUriWithQuery(uri, "api-version",
+                    AzureConstants.DIAGNOSTIC_SETTING_API_VERSION);
+            Operation operation = Operation.createPut(uri);
+            operation.setBody(azureDiagnosticSettings);
+            operation.addRequestHeader("Accept", "application/json");
+            operation.addRequestHeader("Content-type", "application/json");
+            try {
+                operation.addRequestHeader("Authorization", "Bearer " + credentials.getToken());
+            } catch (Exception ex) {
+                this.handleError(ctx, ex);
+            }
+
+            logInfo("Enabling monitoring on the VM [%s]", vmName);
+            operation.setCompletion((op, er) -> {
+                if (er != null) {
+                    this.handleError(ctx, er);
+                }
+                try {
+                    logInfo("Successfully enabled monitoring on the VM [%s]", vmName);
+                    ctx.stage = AzureStages.GET_STORAGE_KEYS;
+                    handleAllocation(ctx);
+                } catch (Exception ex) {
+                    this.handleError(ctx, ex);
+                }
+            });
+            sendRequest(operation);
+        });
+        try {
+            FileUtils.readFileAndComplete(readFile, jsonPayloadFile);
+        } catch (Exception e) {
+            handleError(ctx, e);;
+        }
     }
 }

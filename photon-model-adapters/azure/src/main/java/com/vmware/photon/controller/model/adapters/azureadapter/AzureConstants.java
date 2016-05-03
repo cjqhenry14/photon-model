@@ -68,4 +68,11 @@ public class AzureConstants {
     public static final String AZURE_WINDOWS_SECURITY_GROUP_SOURCE_PORT_RANGE = "*";
     public static final String AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX = "*";
     public static final String AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_PORT_RANGE = "3389";
+
+    // Monitoring Constants
+    public static final String DIAGNOSTIC_SETTINGS_JSON_FILE_NAME = "diagnosticSettings.json";
+    public static final String BASE_URI_FOR_REST = "https://management.azure.com";
+    public static final String DIAGNOSTIC_SETTING_AGENT = "agent";
+    public static final String DIAGNOSTIC_SETTING_API_VERSION = "2014-04-01";
+    public static final String DIAGNOSTIC_SETTING_ENDPOINT = "diagnosticSettings";
 }

@@ -101,6 +101,11 @@ public enum AzureStages {
     /**
      * The finished stage.
      */
-    FINISHED
+    FINISHED,
+
+    /**
+     * Enable monitoring on a VM.
+     */
+    ENABLE_MONITORING
 
 }

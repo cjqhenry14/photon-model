@@ -8,6 +8,13 @@
     <version>0.3.3-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
+  <build>
+    <resources>
+        <resource>
+            <directory>src/main/resources</directory>
+        </resource>
+    </resources>
+  </build>
 
   <artifactId>photon-azure-adapter</artifactId>
 
