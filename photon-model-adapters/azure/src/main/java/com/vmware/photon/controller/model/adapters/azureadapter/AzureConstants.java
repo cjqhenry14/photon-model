@@ -75,4 +75,22 @@ public class AzureConstants {
     public static final String DIAGNOSTIC_SETTING_AGENT = "agent";
     public static final String DIAGNOSTIC_SETTING_API_VERSION = "2014-04-01";
     public static final String DIAGNOSTIC_SETTING_ENDPOINT = "diagnosticSettings";
+
+    // Stats Constants
+    public static final String QUERY_PARAM_API_VERSION = "api-version";
+    public static final String QUERY_PARAM_FILTER = "$filter";
+    public static final String AUTH_HEADER_BEARER_PREFIX = "Bearer ";
+    public static final String METRIC_DEFINITIONS_ENDPOINT = "metricDefinitions";
+    public static final String METRIC_DEFINITIONS_MEMORY_FILTER = "name.value eq '\\Memory\\AvailableMemory'";
+    public static final String METRIC_TIME_GRAIN_1_MINUTE = "PT1M";
+    public static final int METRIC_COLLECTION_PERIOD = 5;
+    public static final String METRIC_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZ";
+    public static final String METRIC_KEY_LAST = "Last";
+    public static final String METRIC_KEY_MAXIMUM = "Maximum";
+    public static final String METRIC_KEY_MINIMUM = "Minimum";
+    public static final String METRIC_KEY_COUNTER_NAME = "CounterName";
+    public static final String METRIC_KEY_TIMESTAMP = "TIMESTAMP";
+    public static final String METRIC_KEY_TOTAL = "Total";
+    public static final String METRIC_KEY_AVERAGE = "Average";
+    public static final String METRIC_KEY_COUNT = "Count";
 }

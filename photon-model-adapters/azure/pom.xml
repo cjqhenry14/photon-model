@@ -65,6 +65,11 @@
       <version>1.0.0-beta1</version>
     </dependency>
     <dependency>
+      <groupId>com.microsoft.azure</groupId>
+      <artifactId>azure-storage</artifactId>
+      <version>4.0.0</version>
+    </dependency>
+    <dependency>
       <groupId>com.vmware.photon.controller</groupId>
       <artifactId>photon-model</artifactId>
       <version>${project.version}</version>

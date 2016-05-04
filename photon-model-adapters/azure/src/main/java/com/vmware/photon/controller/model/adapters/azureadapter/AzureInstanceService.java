@@ -105,7 +105,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  */
 public class AzureInstanceService extends StatelessService {
 
-    public static final String SELF_LINK = AzureUriPaths.AZURE_INSTANCE_SERVICE;
+    public static final String SELF_LINK = AzureUriPaths.AZURE_INSTANCE_ADAPTER;
 
     // TODO VSYM-322: Remove unused default properties from AzureInstanceService
     // Name prefixes
@@ -691,6 +691,9 @@ public class AzureInstanceService extends StatelessService {
                         }
                         resultDesc.customProperties
                                 .put(AzureConstants.AZURE_INSTANCE_ID, vm.getId());
+                        resultDesc.customProperties
+                                .put(AzureConstants.AZURE_RESOURCE_GROUP_NAME,
+                                        ctx.resourceGroup.getName());
                         ctx.vmId = vm.getId();
 
                         Operation.CompletionHandler completionHandler = (ox,
@@ -1173,14 +1176,15 @@ public class AzureInstanceService extends StatelessService {
                    .append(AzureConstants.DIAGNOSTIC_SETTING_ENDPOINT).append("/")
                    .append(AzureConstants.DIAGNOSTIC_SETTING_AGENT);
             URI uri = UriUtils.buildUri(restUriString.toString());
-            uri = UriUtils.extendUriWithQuery(uri, "api-version",
+            uri = UriUtils.extendUriWithQuery(uri, AzureConstants.QUERY_PARAM_API_VERSION,
                     AzureConstants.DIAGNOSTIC_SETTING_API_VERSION);
             Operation operation = Operation.createPut(uri);
             operation.setBody(azureDiagnosticSettings);
-            operation.addRequestHeader("Accept", "application/json");
-            operation.addRequestHeader("Content-type", "application/json");
+            operation.addRequestHeader(Operation.ACCEPT_HEADER, Operation.MEDIA_TYPE_APPLICATION_JSON);
+            operation.addRequestHeader(Operation.CONTENT_TYPE_HEADER, Operation.MEDIA_TYPE_APPLICATION_JSON);
             try {
-                operation.addRequestHeader("Authorization", "Bearer " + credentials.getToken());
+                operation.addRequestHeader(Operation.AUTHORIZATION_HEADER,
+                        AzureConstants.AUTH_HEADER_BEARER_PREFIX + credentials.getToken());
             } catch (Exception ex) {
                 this.handleError(ctx, ex);
             }

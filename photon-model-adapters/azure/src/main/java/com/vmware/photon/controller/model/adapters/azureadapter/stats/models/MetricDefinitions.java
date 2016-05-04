@@ -11,19 +11,20 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.azureadapter;
+package com.vmware.photon.controller.model.adapters.azureadapter.stats.models;
 
-import com.vmware.photon.controller.model.UriPaths;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * URI definitions for Azure adapter.
+ * PODO equivalent of the JSON returned by /metricDefinitions endpoint
+ *
  */
-public class AzureUriPaths {
+public class MetricDefinitions {
+    private String id;
+    private List<Value> value = new ArrayList<Value>();
 
-    public static final String PROVISIONING_AZURE = UriPaths.PROVISIONING
-            + "/azure";
-    public static final String AZURE_INSTANCE_ADAPTER = PROVISIONING_AZURE
-            + "/instance-adapter";
-    public static final String AZURE_STATS_ADAPTER = PROVISIONING_AZURE
-            + "/stats-adapter";
+    public List<Value> getValues() {
+        return this.value;
+    }
 }

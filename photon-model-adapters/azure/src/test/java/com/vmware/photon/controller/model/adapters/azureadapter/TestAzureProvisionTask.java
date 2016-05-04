@@ -33,8 +33,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
+import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.DiskService;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
@@ -46,6 +49,7 @@ import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
+import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.QueryTask;
@@ -80,11 +84,18 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         try {
             ProvisioningUtils.startProvisioningServices(this.host);
             this.host.setTimeoutSeconds(1200);
+            List<String> serviceSelfLinks = new ArrayList<String>();
             host.startService(
                     Operation.createPost(UriUtils.buildUri(host,
                             AzureInstanceService.class)),
                     new AzureInstanceService());
-            ProvisioningUtils.waitForServiceStart(host, AzureInstanceService.SELF_LINK);
+            serviceSelfLinks.add(AzureInstanceService.SELF_LINK);
+            host.startService(
+                    Operation.createPost(UriUtils.buildUri(host,
+                            AzureStatsService.class)),
+                    new AzureStatsService());
+            serviceSelfLinks.add(AzureStatsService.SELF_LINK);
+            ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
         } catch (Throwable e) {
             throw new Exception(e);
         }
@@ -142,11 +153,58 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         // check that the VM has been created
         ProvisioningUtils.queryComputeInstances(this.host, 2);
 
+        host.setTimeoutSeconds(600);
+        host.waitFor("Error waiting for stats", () -> {
+            try {
+                issueStatsRequest(vmState);
+            } catch (Throwable t) {
+                return false;
+            }
+            return true;
+        });
+
         // delete vm
         deleteVMs(vmState.documentSelfLink);
         vmState = null;
         // check that the VMs are gone
         ProvisioningUtils.queryComputeInstances(this.host, 1);
+    }
+
+    private void issueStatsRequest(ComputeState vm) throws Throwable {
+        // spin up a stateless service that acts as the parent link to patch back to
+        StatelessService parentService = new StatelessService() {
+            public void handleRequest(Operation op) {
+                if (op.getAction() == Action.PATCH) {
+                    if (!isMock) {
+                        ComputeStatsResponse resp = op.getBody(ComputeStatsResponse.class);
+                        if (resp.statsList.size() != 1) {
+                            host.failIteration(new IllegalStateException("response size was incorrect."));
+                            return;
+                        }
+                        if (resp.statsList.get(0).statValues.size() == 0) {
+                            host.failIteration(new IllegalStateException("incorrect number of metrics received."));
+                            return;
+                        }
+                        if (!resp.statsList.get(0).computeLink.equals(vm.documentSelfLink)) {
+                            host.failIteration(new IllegalStateException("Incorrect computeLink returned."));
+                            return;
+                        }
+                    }
+                    host.completeIteration();
+                }
+            }
+        };
+        String servicePath = UUID.randomUUID().toString();
+        Operation startOp = Operation.createPost(UriUtils.buildUri(this.host, servicePath));
+        this.host.startService(startOp, parentService);
+        ComputeStatsRequest statsRequest = new ComputeStatsRequest();
+        statsRequest.computeLink = vm.documentSelfLink;
+        statsRequest.isMockRequest = isMock;
+        statsRequest.parentTaskLink = servicePath;
+        this.host.sendAndWait(Operation.createPatch(UriUtils.buildUri(
+                this.host, AzureUriPaths.AZURE_STATS_ADAPTER))
+                .setBody(statsRequest)
+                .setReferer(this.host.getUri()));
     }
 
     private ResourcePoolService.ResourcePoolState createAzureResourcePool()
@@ -190,7 +248,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         azureHostDescription.supportedChildren.add(
                 ComputeDescriptionService.ComputeDescription.ComputeType.VM_GUEST.name());
         azureHostDescription.instanceAdapterReference = UriUtils.buildUri(this.host,
-                AzureUriPaths.AZURE_INSTANCE_SERVICE);
+                AzureUriPaths.AZURE_INSTANCE_ADAPTER);
         azureHostDescription.authCredentialsLink = authLink;
         TestUtils.doPost(this.host, azureHostDescription,
                 ComputeDescriptionService.ComputeDescription.class,
@@ -232,12 +290,17 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         azureVMDesc.documentSelfLink = azureVMDesc.id;
         azureVMDesc.environmentName = ENVIRONMENT_NAME_AZURE;
 
+        azureVMDesc.instanceAdapterReference = UriUtils.buildUri(this.host,
+                AzureUriPaths.AZURE_INSTANCE_ADAPTER);
+        azureVMDesc.statsAdapterReference = UriUtils.buildUri(this.host,
+                AzureUriPaths.AZURE_STATS_ADAPTER);
+
         azureVMDesc.customProperties = new HashMap<>();
         azureVMDesc.customProperties.put(AZURE_VM_SIZE, azureVMSize);
 
         // set the create service to the azure instance service
         azureVMDesc.instanceAdapterReference = UriUtils.buildUri(this.host,
-                AzureUriPaths.AZURE_INSTANCE_SERVICE);
+                AzureUriPaths.AZURE_INSTANCE_ADAPTER);
 
         ComputeDescriptionService.ComputeDescription vmComputeDesc = TestUtils
                 .doPost(this.host, azureVMDesc,
