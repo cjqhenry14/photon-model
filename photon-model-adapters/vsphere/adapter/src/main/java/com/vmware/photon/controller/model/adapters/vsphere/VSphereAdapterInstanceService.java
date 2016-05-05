@@ -96,7 +96,8 @@ public class VSphereAdapterInstanceService extends StatelessService {
                     }
 
                     try {
-                        InstanceClient client = new InstanceClient(connection, ctx.child, ctx.parent);
+                        InstanceClient client = new InstanceClient(connection, ctx.child,
+                                ctx.parent);
                         ComputeState state = client.createInstance();
                         if (state == null) {
                             // someone else won the race to create the vim
@@ -109,8 +110,8 @@ public class VSphereAdapterInstanceService extends StatelessService {
 
                         // all sides effect collected, patch model:
 
-                        OperationJoin patchDisks = diskPatches(ctx.disks);
-                        Operation patchResource = patchComputeResource(state, ctx.computeReference);
+                        OperationJoin patchDisks = createDiskPatch(ctx.disks);
+                        Operation patchResource = createComputeResourcePatch(state, ctx.computeReference);
                         Operation finishTask = mgr.createTaskPatch(TaskStage.FINISHED);
 
                         OperationSequence
@@ -129,12 +130,12 @@ public class VSphereAdapterInstanceService extends StatelessService {
         return Operation.createPatch(this, doc.documentSelfLink).setBody(doc);
     }
 
-    private OperationJoin diskPatches(List<DiskState> disks) {
+    private OperationJoin createDiskPatch(List<DiskState> disks) {
         return OperationJoin.create()
                 .setOperations(disks.stream().map(this::selfPatch));
     }
 
-    private Operation patchComputeResource(ComputeState state, URI computeReference) {
+    private Operation createComputeResourcePatch(ComputeState state, URI computeReference) {
         return Operation.createPatch(computeReference)
                 .setBody(state);
     }
@@ -152,8 +153,14 @@ public class VSphereAdapterInstanceService extends StatelessService {
                         InstanceClient client = new InstanceClient(conn, ctx.child, ctx.parent);
                         client.deleteInstance();
 
-                        // complete task
-                        mgr.patchTask(TaskStage.FINISHED);
+                        OperationJoin deleteComputeState = createComputeStateDelete(ctx);
+                        Operation finishTask = mgr.createTaskPatch(TaskStage.FINISHED);
+
+                        OperationSequence
+                                .create(deleteComputeState)
+                                .next(finishTask)
+                                .setCompletion(ctx.failOnError())
+                                .sendWith(this);
                     } catch (Exception e) {
                         ctx.fail(e);
                     }
@@ -164,14 +171,13 @@ public class VSphereAdapterInstanceService extends StatelessService {
             ProvisionContext ctx) {
         // clean up the compute state
         if (req.requestType == InstanceRequestType.DELETE) {
-            deleteComputeState(ctx);
-        } else {
-            // just report the task as finished
-            mgr.patchTask(TaskStage.FINISHED);
+            createComputeStateDelete(ctx).sendWith(this);
         }
+
+        mgr.patchTask(TaskStage.FINISHED);
     }
 
-    private void deleteComputeState(ProvisionContext ctx) {
+    private OperationJoin createComputeStateDelete(ProvisionContext ctx) {
         List<Operation> deleteOps = new ArrayList<>();
 
         if (ctx.child.diskLinks != null) {
@@ -183,12 +189,11 @@ public class VSphereAdapterInstanceService extends StatelessService {
         deleteOps.add(Operation
                 .createDelete(UriUtils.buildUri(this.getHost(), ctx.child.documentSelfLink)));
 
-        OperationJoin.create(deleteOps)
+        return OperationJoin.create(deleteOps)
                 .setCompletion((os, es) -> {
                     if (es != null && !es.isEmpty()) {
                         ctx.fail(es.values().iterator().next());
                     }
-                })
-                .sendWith(this);
+                });
     }
 }

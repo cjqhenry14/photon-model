@@ -116,8 +116,33 @@ public class InstanceClient extends BaseHelper {
         this.get = new GetMoRef(this.connection);
     }
 
-    public void deleteInstance() {
-        // TODO
+    public void deleteInstance() throws Exception {
+        ManagedObjectReference vm = CustomProperties.of(state)
+                .getMoRef(CustomProperties.VM_MOREF);
+
+        TaskInfo info;
+        // power off
+        ManagedObjectReference task = getVimPort().powerOffVMTask(vm);
+        info = waitTaskEnd(task);
+        ignoreError("Ignore error powering off VM", info);
+
+        // delete vm
+        task = getVimPort().destroyTask(vm);
+        info = waitTaskEnd(task);
+        ignoreError("Ignore error deleting VM", info);
+        // delete resource pool
+        ManagedObjectReference resourcePool = getOrCreateResourcePoolForVm(false);
+        if (resourcePool != null) {
+            task = getVimPort().destroyTask(resourcePool);
+            info = waitTaskEnd(task);
+            ignoreError("Ignore error deleting ResourcePool", info);
+        }
+    }
+
+    private void ignoreError(String s, TaskInfo info) {
+        if (info.getState() == TaskInfoState.ERROR) {
+            logger.info(s + ": " + info.getError().getLocalizedMessage());
+        }
     }
 
     /**
@@ -503,7 +528,7 @@ public class InstanceClient extends BaseHelper {
      */
     private ManagedObjectReference createVm() throws FinderException, Exception {
         ManagedObjectReference folder = getVmFolder();
-        ManagedObjectReference resourcePool = getOrCreateResourcePoolForVm();
+        ManagedObjectReference resourcePool = getOrCreateResourcePoolForVm(true);
         ManagedObjectReference datastore = getDatastore();
 
         String datastoreName = get.entityProp(datastore, "name");
@@ -665,14 +690,15 @@ public class InstanceClient extends BaseHelper {
     /**
      * Creates a resource pool for the VM. The created resource pool is a child of the resource
      * pool (zoneId) specified in the {@link #state} or {@link #parent}, whichever is defined first.
-     * @return
+     * @param create will create a reseource pool for the compute state only of create is true
+     * @return the created resource pool, null if create is false and no resource pool was found
      * @throws RuntimeFaultFaultMsg
      * @throws InvalidPropertyFaultMsg
      * @throws FinderException
      * @throws InvalidNameFaultMsg
      * @throws InsufficientResourcesFaultFaultMsg
      */
-    private ManagedObjectReference getOrCreateResourcePoolForVm()
+    private ManagedObjectReference getOrCreateResourcePoolForVm(boolean create)
             throws RuntimeFaultFaultMsg, InvalidPropertyFaultMsg, FinderException,
             InvalidNameFaultMsg, InsufficientResourcesFaultFaultMsg {
         Element parentResourcePool;
@@ -693,15 +719,20 @@ public class InstanceClient extends BaseHelper {
         // try to build a resource pool for the requested vm
         String resourcePoolPath = parentResourcePool.path + "/" + vmName;
 
+        ManagedObjectReference result = null;
+
         try {
-            finder.resourcePool(resourcePoolPath);
+            result = finder.resourcePool(resourcePoolPath).object;
         } catch (FinderException e) {
             logger.log(Level.INFO, "cannot find ResourcePool " + resourcePoolPath);
             // resource pool not found
+
+            if (create) {
+                result = createResourcePool(parentResourcePool.object, vmName, resourcePoolPath);
+            }
         }
 
-        return createResourcePool(parentResourcePool.object, vmName,
-                resourcePoolPath);
+        return result;
     }
 
     /**

@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.vsphere;
 
+import static org.junit.Assert.fail;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +24,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BasicConnection;
+import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
@@ -36,12 +40,18 @@ import com.vmware.photon.controller.model.resources.ResourcePoolService.Resource
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
+import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
+import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
+import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
+import com.vmware.xenon.services.common.QueryTask;
+import com.vmware.xenon.services.common.QueryTask.QuerySpecification;
 
 /**
  * Test to provision a VM instance and tear it down.
@@ -155,6 +165,48 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         List<URI> uris = new ArrayList<>();
         uris.add(UriUtils.buildUri(this.host, outTask.documentSelfLink));
         ProvisioningUtils.waitForTaskCompletion(this.host, uris, ProvisionComputeTaskState.class);
+
+
+        vm = host.getServiceState(null, ComputeState.class, UriUtils.buildUri(host, vm.documentSelfLink));
+
+        ResourceRemovalTaskState deletionState = new ResourceRemovalTaskState();
+        QuerySpecification resourceQuerySpec = new QueryTask.QuerySpecification();
+        // query all ComputeState resources for the cluster
+        resourceQuerySpec.query
+                .setTermPropertyName(ServiceDocument.FIELD_NAME_SELF_LINK)
+                .setTermMatchValue(vm.documentSelfLink);
+
+        deletionState.resourceQuerySpec = resourceQuerySpec;
+        deletionState.isMockRequest = isMock();
+        ResourceRemovalTaskState outDelete = TestUtils.doPost(this.host,
+                deletionState,
+                ResourceRemovalTaskState.class,
+                UriUtils.buildUri(this.host,
+                        ResourceRemovalTaskService.FACTORY_LINK));
+
+        uris = new ArrayList<>();
+        uris.add(UriUtils.buildUri(this.host, outDelete.documentSelfLink));
+        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ResourceRemovalTaskState.class);
+
+        if (!isMock()) {
+            BasicConnection connection =  new BasicConnection();
+            connection.setIgnoreSslErrors(true);
+            connection.setUsername(vcUsername);
+            connection.setPassword(vcPassword);
+            connection.setURI(URI.create(vcUrl));
+            connection.connect();
+
+            GetMoRef get = new GetMoRef(connection);
+            ManagedObjectReference moref = CustomProperties.of(vm)
+                    .getMoRef(CustomProperties.VM_MOREF);
+
+            // try getting a property of vm: this must fail because vm is deleted
+            try {
+                get.entityProp(moref, "name");
+                fail("VM must have been deleted");
+            } catch (Exception e) {
+            }
+        }
     }
 
     private ComputeState createVmState() throws Throwable {

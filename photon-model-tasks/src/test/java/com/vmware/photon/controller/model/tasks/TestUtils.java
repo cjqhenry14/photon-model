@@ -44,6 +44,43 @@ public class TestUtils {
      * @throws Throwable
      */
     public static <T extends ServiceDocument, B extends ServiceDocument> B doPost(
+            VerificationHost host, Class<B> type, URI uri) throws Throwable {
+        final ServiceDocument[] doc = { null };
+        host.testStart(1);
+        Operation post = Operation
+                .createPost(uri)
+                .setCompletion(
+                        (o, e) -> {
+                            if (e != null) {
+                                host.failIteration(e);
+                                return;
+                            }
+                            doc[0] = o.getBody(ServiceDocument.class);
+                            host.completeIteration();
+                        });
+        host.send(post);
+        host.testWait();
+        host.logThroughput();
+
+        B outState = host.getServiceState(null,
+                type,
+                UriUtils.buildUri(uri.getHost(), uri.getPort(), doc[0].documentSelfLink, null));
+
+        return outState;
+    }
+
+    /**
+     * Generic doPost.
+     *
+     * @param host VerificationHost
+     * @param inState Body to POST
+     * @param type Body type to return
+     * @param uri URI to post to
+     * @param <T> type
+     * @return State of service after POST
+     * @throws Throwable
+     */
+    public static <T extends ServiceDocument, B extends ServiceDocument> B doPost(
             VerificationHost host, T inState, Class<B> type, URI uri) throws Throwable {
         final ServiceDocument[] doc = { null };
         host.testStart(1);
