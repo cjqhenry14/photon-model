@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.tasks;
 
+import java.util.List;
+
 import com.vmware.photon.controller.model.UriPaths;
 
 import com.vmware.xenon.common.FactoryService;
@@ -47,6 +49,11 @@ public class ScheduledTaskService extends TaskService<ScheduledTaskService.Sched
          * Interval for task execution
          */
         public Long intervalMicros;
+
+        /**
+         * A list of tenant links which can access this task.
+         */
+        public List<String> tenantLinks;
     }
 
     public ScheduledTaskService() {
