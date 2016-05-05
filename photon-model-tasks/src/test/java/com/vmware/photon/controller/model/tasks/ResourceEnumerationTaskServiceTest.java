@@ -35,7 +35,10 @@ import com.vmware.photon.controller.model.helpers.BaseModelTest;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionServiceTest;
 import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService.ResourceEnumerationTaskState;
+
 import com.vmware.xenon.common.Service;
+import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
 
@@ -232,9 +235,26 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
                             startState.documentSelfLink,
                             state -> TaskState.TaskStage.FINISHED.ordinal() <= state.taskInfo.stage
                                     .ordinal());
-
             assertThat(newState.taskInfo.stage,
                     is(TaskState.TaskStage.FINISHED));
+
+            ServiceDocumentQueryResult resBeforeTask =
+                    this.host.getFactoryState(UriUtils.buildUri(this.host, ResourceEnumerationTaskService.FACTORY_LINK));
+            ResourceEnumerationTaskState postState = buildValidStartState(computeHost);
+            postState.deleteOnCompletion = true;
+            startState = this
+                    .postServiceSynchronously(
+                            ResourceEnumerationTaskService.FACTORY_LINK,
+                            postState,
+                            ResourceEnumerationTaskService.ResourceEnumerationTaskState.class);
+            this.host.waitFor("Timeout waiting for enum task to be deleted", () -> {
+                ServiceDocumentQueryResult res =
+                        this.host.getFactoryState(UriUtils.buildUri(this.host, ResourceEnumerationTaskService.FACTORY_LINK));
+                if (resBeforeTask.documentCount == res.documentCount) {
+                    return true;
+                }
+                return false;
+            });
         }
 
         @Test

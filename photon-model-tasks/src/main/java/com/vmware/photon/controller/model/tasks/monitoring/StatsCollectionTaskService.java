@@ -199,9 +199,13 @@ public class StatsCollectionTaskService extends StatefulService {
                     }
                     QueryTask rsp = queryOp.getBody(QueryTask.class);
                     StatsCollectionTaskState patchBody = new StatsCollectionTaskState();
-                    patchBody.taskInfo = TaskUtils.createTaskState(TaskStage.STARTED);
-                    patchBody.taskStage = StatsCollectionStage.GET_RESOURCES;
-                    patchBody.nextPageLink = rsp.results.nextPageLink;
+                    if (rsp.results.nextPageLink == null) {
+                        patchBody.taskInfo = TaskUtils.createTaskState(TaskStage.FINISHED);
+                    } else {
+                        patchBody.taskInfo = TaskUtils.createTaskState(TaskStage.STARTED);
+                        patchBody.taskStage = StatsCollectionStage.GET_RESOURCES;
+                        patchBody.nextPageLink = rsp.results.nextPageLink;
+                    }
                     TaskUtils.sendPatch(this, patchBody);
                 }));
 

@@ -85,6 +85,11 @@ public class ResourceEnumerationTaskService extends TaskService<ResourceEnumerat
          * infrastructure.
          */
         public boolean isMockRequest;
+
+        /**
+         * Delete self on completion
+         */
+        public boolean deleteOnCompletion = false;
     }
 
     public ResourceEnumerationTaskService() {
@@ -149,6 +154,8 @@ public class ResourceEnumerationTaskService extends TaskService<ResourceEnumerat
 
         logInfo("Moving from %s to %s", currentState.taskInfo.stage.toString(),
                 body.taskInfo.stage.toString());
+
+        currentState.taskInfo = body.taskInfo;
         // go-dcp will actuate the state. When the document is created, the
         // enumeration service in
         // go-dcp will be PATCH'ed with the enumeration request, then it will
@@ -161,15 +168,22 @@ public class ResourceEnumerationTaskService extends TaskService<ResourceEnumerat
             break;
         case FINISHED:
             logInfo("task is complete");
+            if (currentState.deleteOnCompletion) {
+                sendRequest(Operation
+                        .createDelete(getUri()));
+            }
             break;
         case FAILED:
         case CANCELLED:
+            if (currentState.deleteOnCompletion) {
+                sendRequest(Operation
+                        .createDelete(getUri()));
+            }
             break;
         default:
             break;
         }
 
-        currentState.taskInfo = body.taskInfo;
         patch.setBody(currentState).complete();
     }
 
