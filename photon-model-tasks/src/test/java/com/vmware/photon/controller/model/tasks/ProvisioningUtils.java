@@ -96,6 +96,12 @@ public class ProvisioningUtils {
 
         host.startService(
                 Operation.createPost(host,
+                        ScheduledTaskService.FACTORY_LINK),
+                        ScheduledTaskService.createFactory());
+        serviceSelfLinks.add(ScheduledTaskService.FACTORY_LINK);
+
+        host.startService(
+                Operation.createPost(host,
                         ComputeDescriptionService.FACTORY_LINK),
                 ComputeDescriptionService.createFactory());
         serviceSelfLinks.add(ComputeDescriptionService.FACTORY_LINK);

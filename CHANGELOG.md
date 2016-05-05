@@ -2,6 +2,8 @@
 
 ## 0.3.3
 
+* Add ScheduledTaskService to run tasks periodically
+
 * Remove all template factory services from resource services,
   replace them with concise FactoryService.createFactory() pattern
 

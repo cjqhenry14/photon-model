@@ -32,6 +32,7 @@ public class TaskServices {
                 ResourceAllocationTaskService.createFactory(),
                 ResourceEnumerationTaskService.createFactory(),
                 ResourceRemovalTaskService.createFactory(),
-                SnapshotTaskService.createFactory());
+                SnapshotTaskService.createFactory(),
+                ScheduledTaskService.createFactory());
     }
 }
