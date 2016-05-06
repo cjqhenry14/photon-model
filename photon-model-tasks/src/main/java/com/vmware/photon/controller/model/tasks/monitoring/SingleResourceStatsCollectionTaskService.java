@@ -29,14 +29,14 @@ import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.Service;
-import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.ServiceStats;
-import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
+import com.vmware.xenon.services.common.TaskService;
+import com.vmware.xenon.services.common.TaskService.TaskServiceState;
 
 /**
  * Task service to kick off stats collection at a resource level.
@@ -44,7 +44,7 @@ import com.vmware.xenon.common.Utils;
  * data for a set of resources
  *
  */
-public class SingleResourceStatsCollectionTaskService extends StatefulService {
+public class SingleResourceStatsCollectionTaskService extends TaskService<SingleResourceStatsCollectionTaskService.SingleResourceStatsCollectionTaskState> {
 
     public static final String FACTORY_LINK = UriPaths.MONITORING
             + "/stats-collection-resource-tasks";
@@ -59,7 +59,7 @@ public class SingleResourceStatsCollectionTaskService extends StatefulService {
         GET_DESCRIPTIONS, UPDATE_STATS
     }
 
-    public static class SingleResourceStatsCollectionTaskState extends ServiceDocument {
+    public static class SingleResourceStatsCollectionTaskState extends TaskServiceState {
         /**
          * compute resource link
          */
@@ -68,7 +68,6 @@ public class SingleResourceStatsCollectionTaskService extends StatefulService {
         /**
          * Task state
          */
-        public TaskState taskInfo;
         public SingleResourceTaskCollectionStage taskStage;
 
         /**
@@ -165,7 +164,8 @@ public class SingleResourceStatsCollectionTaskService extends StatefulService {
         }
     }
 
-    private void updateState(SingleResourceStatsCollectionTaskState currentState,
+    @Override
+    public void updateState(SingleResourceStatsCollectionTaskState currentState,
             SingleResourceStatsCollectionTaskState patchState) {
         if (patchState.taskInfo != null) {
             currentState.taskInfo = patchState.taskInfo;
@@ -213,6 +213,7 @@ public class SingleResourceStatsCollectionTaskService extends StatefulService {
                             } else {
                                 // no adapter associated with this resource, just patch completion
                                 SingleResourceStatsCollectionTaskState nextStageState = new SingleResourceStatsCollectionTaskState();
+                                nextStageState.taskInfo = new TaskState();
                                 nextStageState.taskInfo.stage = TaskStage.FINISHED;
                                 patchUri = getUri();
                                 patchBody = nextStageState;
@@ -221,7 +222,7 @@ public class SingleResourceStatsCollectionTaskService extends StatefulService {
                                     .setBody(patchBody)
                                     .setCompletion((patchOp, patchEx) -> {
                                         if (patchEx != null) {
-                                            TaskUtils.sendFailurePatch(this, patchEx);
+                                            TaskUtils.sendFailurePatch(this, new SingleResourceStatsCollectionTaskState(), patchEx);
                                         }
                                     }));
                         }));
@@ -245,7 +246,7 @@ public class SingleResourceStatsCollectionTaskService extends StatefulService {
                 .setCompletion(
                         (ops, exc) -> {
                             if (exc != null) {
-                                TaskUtils.sendFailurePatch(this, exc.values());
+                                TaskUtils.sendFailurePatch(this, new SingleResourceStatsCollectionTaskState(), exc.values());
                                 return;
                             }
                             SingleResourceStatsCollectionTaskState nextStatePatch = new SingleResourceStatsCollectionTaskState();

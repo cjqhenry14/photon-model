@@ -38,7 +38,9 @@ import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
+
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
@@ -242,16 +244,19 @@ public class AWSStatsService extends StatelessService {
         private final int numOfMetrics;
         private AWSStatsDataHolder statsData;
         private StatelessService service;
+        private OperationContext opContext;
 
         public AWSStatsHandler(StatelessService service, AWSStatsDataHolder statsData,
                 int numOfMetrics) {
             this.statsData = statsData;
             this.service = service;
             this.numOfMetrics = numOfMetrics;
+            this.opContext = OperationContext.getOperationContext();
         }
 
         @Override
         public void onError(Exception exception) {
+            OperationContext.restoreOperationContext(opContext);
             AdapterUtils.sendFailurePatchToProvisioningTask(service,
                     UriUtils.buildUri(service.getHost(), statsData.statsRequest.parentTaskLink),
                     exception);
@@ -260,6 +265,7 @@ public class AWSStatsService extends StatelessService {
         @Override
         public void onSuccess(GetMetricStatisticsRequest request,
                 GetMetricStatisticsResult result) {
+            OperationContext.restoreOperationContext(opContext);
             List<Datapoint> dpList = result.getDatapoints();
             Double averageSum = 0d;
             Double sampleCount = 0d;

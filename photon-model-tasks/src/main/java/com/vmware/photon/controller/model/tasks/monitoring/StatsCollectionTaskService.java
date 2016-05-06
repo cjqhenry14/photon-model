@@ -27,16 +27,15 @@ import com.vmware.photon.controller.model.tasks.monitoring.SingleResourceStatsCo
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
-import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
-import com.vmware.xenon.common.StatefulService;
-import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.QueryTask;
 import com.vmware.xenon.services.common.QueryTask.Query;
 import com.vmware.xenon.services.common.ServiceUriPaths;
+import com.vmware.xenon.services.common.TaskService;
+import com.vmware.xenon.services.common.TaskService.TaskServiceState;
 
 /**
  * Service to collect stats from compute instances under the resource pool. This task is a one shot
@@ -44,7 +43,7 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  * periodically
  *
  */
-public class StatsCollectionTaskService extends StatefulService {
+public class StatsCollectionTaskService extends TaskService<StatsCollectionTaskService.StatsCollectionTaskState> {
 
     public static final String FACTORY_LINK = UriPaths.MONITORING + "/stats-collection-tasks";
 
@@ -66,18 +65,13 @@ public class StatsCollectionTaskService extends StatefulService {
      * This class defines the document state associated with a single StatsCollectionTaskService
      * instance.
      */
-    public static class StatsCollectionTaskState extends ServiceDocument {
+    public static class StatsCollectionTaskState extends TaskServiceState {
 
         /**
          * Reference URI to the resource pool.
          */
         public String resourcePoolLink;
 
-        /**
-         * task state
-         */
-        @UsageOption(option = PropertyUsageOption.SERVICE_USE)
-        public TaskState taskInfo;
         public StatsCollectionStage taskStage;
 
         /**
@@ -144,7 +138,8 @@ public class StatsCollectionTaskService extends StatefulService {
         }
     }
 
-    private void updateState(StatsCollectionTaskState currentState,
+    @Override
+    public void updateState(StatsCollectionTaskState currentState,
             StatsCollectionTaskState patchState) {
         if (patchState.taskInfo != null) {
             currentState.taskInfo = patchState.taskInfo;
@@ -194,7 +189,7 @@ public class StatsCollectionTaskService extends StatefulService {
                 .setBody(queryTaskBuilder.build())
                 .setCompletion((queryOp, queryEx) -> {
                     if (queryEx != null) {
-                        TaskUtils.sendFailurePatch(this, queryEx);
+                        TaskUtils.sendFailurePatch(this, new StatsCollectionTaskState(), queryEx);
                         return;
                     }
                     QueryTask rsp = queryOp.getBody(QueryTask.class);
@@ -217,7 +212,7 @@ public class StatsCollectionTaskService extends StatefulService {
                 .setCompletion(
                         (getOp, getEx) -> {
                             if (getEx != null) {
-                                TaskUtils.sendFailurePatch(this, getEx);
+                                TaskUtils.sendFailurePatch(this, new StatsCollectionTaskState(), getEx);
                                 return;
                             }
                             QueryTask page = getOp.getBody(QueryTask.class);
@@ -249,7 +244,7 @@ public class StatsCollectionTaskService extends StatefulService {
                 .setBody(subTaskInitState)
                 .setCompletion((postOp, postEx) -> {
                     if (postEx != null) {
-                        TaskUtils.sendFailurePatch(this, postEx);
+                        TaskUtils.sendFailurePatch(this, new StatsCollectionTaskState(), postEx);
                         return;
                     }
                     ComputeSubTaskService.ComputeSubTaskState body = postOp
@@ -276,7 +271,7 @@ public class StatsCollectionTaskService extends StatefulService {
                     .setBody(initState)
                     .setCompletion((factoryPostOp, factoryPostEx) -> {
                         if (factoryPostEx != null) {
-                            TaskUtils.sendFailurePatch(this, factoryPostEx);
+                            TaskUtils.sendFailurePatch(this, new StatsCollectionTaskState(), factoryPostEx);
                         }
                     }));
     }

@@ -107,6 +107,7 @@ public class ScheduledTaskService extends TaskService<ScheduledTaskService.Sched
                     sendRequest(Operation
                             .createPost(this, state.factoryLink)
                             .setBody(state.initialStateJson)
+                            .addPragmaDirective(Operation.PRAGMA_DIRECTIVE_FORCE_INDEX_UPDATE)
                             .setCompletion(
                                     (o, e) -> {
                                         // if a task instance is already running, just log the fact

@@ -22,6 +22,7 @@ import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.Utils;
+import com.vmware.xenon.services.common.TaskService.TaskServiceState;
 
 /**
  * Utility functions used in provisioning hosts.
@@ -138,13 +139,13 @@ public class TaskUtils {
      * @param service Service to patch
      * @param tList List of throwable objects
      */
-    public static void sendFailurePatch(StatefulService service, Collection<Throwable> tList) {
+    public static void sendFailurePatch(StatefulService service, TaskServiceState taskState, Collection<Throwable> tList) {
         Throwable errorToPatch = null;
         for (Throwable t: tList) {
             errorToPatch = t;
             service.logWarning("Operation failed: %s", Utils.toString(t));
         }
-        sendFailurePatch(service, errorToPatch);
+        sendFailurePatch(service, taskState, errorToPatch);
     }
 
     /**
@@ -152,12 +153,13 @@ public class TaskUtils {
      * @param service Service to patch
      * @param t Throwable object
      */
-    public static void sendFailurePatch(StatefulService service, Throwable t) {
+    public static void sendFailurePatch(StatefulService service, TaskServiceState taskState, Throwable t) {
         TaskState state = new TaskState();
         state.stage = TaskStage.FAILED;
         state.failure = Utils.toServiceErrorResponse(t);
         service.logWarning("Operation failed: %s", Utils.toString(t));
-        sendPatch(service, state);
+        taskState.taskInfo = state;
+        sendPatch(service, taskState);
     }
 
     /**
