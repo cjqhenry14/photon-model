@@ -14,6 +14,7 @@
 package com.vmware.photon.controller.model.tasks;
 
 import java.util.List;
+import java.util.Map;
 
 import com.vmware.photon.controller.model.UriPaths;
 
@@ -54,6 +55,12 @@ public class ScheduledTaskService extends TaskService<ScheduledTaskService.Sched
          * A list of tenant links which can access this task.
          */
         public List<String> tenantLinks;
+
+        /**
+         * Custom properties associated with the task
+         */
+        public Map<String, String> customProperties;
+
     }
 
     public ScheduledTaskService() {

@@ -15,8 +15,10 @@ package com.vmware.photon.controller.model.tasks;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -57,6 +59,9 @@ public class ScheduledTaskServiceTest extends Suite {
         ScheduledTaskService.ScheduledTaskState state = new ScheduledTaskService.ScheduledTaskState();
         state.factoryLink = "factoryLink";
         state.initialStateJson = "some string";
+        state.customProperties = new HashMap<String, String>();
+        state.customProperties.put("testKey", "testValue");
+        state.intervalMicros = 100L;
         return state;
     }
     /**
@@ -114,6 +119,18 @@ public class ScheduledTaskServiceTest extends Suite {
                     ScheduledTaskService.FACTORY_LINK, taskState,
                     ScheduledTaskService.ScheduledTaskState.class,
                     IllegalArgumentException.class);
+        }
+
+        @Test
+        public void testDefaultState() throws Throwable {
+            ScheduledTaskService.ScheduledTaskState taskState = buildValidStartState();
+            ScheduledTaskService.ScheduledTaskState returnState = this.postServiceSynchronously(
+                    ScheduledTaskService.FACTORY_LINK, taskState,
+                    ScheduledTaskService.ScheduledTaskState.class);
+            assertEquals(taskState.customProperties, returnState.customProperties);
+            assertEquals(taskState.initialStateJson, returnState.initialStateJson);
+            assertEquals(taskState.factoryLink, returnState.factoryLink);
+            assertEquals(taskState.intervalMicros, returnState.intervalMicros);
         }
     }
 
