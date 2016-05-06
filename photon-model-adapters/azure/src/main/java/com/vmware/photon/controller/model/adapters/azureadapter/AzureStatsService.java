@@ -337,7 +337,6 @@ public class AzureStatsService extends StatelessService {
             }
         });
         sendRequest(operation);
-        return;
     }
 
     private void getMetrics(AzureStatsDataHolder statsData)
@@ -361,7 +360,6 @@ public class AzureStatsService extends StatelessService {
             AzureMetricsHandler handler = new AzureMetricsHandler(this, statsData);
             getMetricStatisticsAsync(request, handler);
         }
-        return;
     }
 
     private class AzureMetricsHandler

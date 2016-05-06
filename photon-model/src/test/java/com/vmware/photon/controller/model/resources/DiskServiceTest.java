@@ -13,15 +13,15 @@
 
 package com.vmware.photon.controller.model.resources;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertNotNull;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.UUID;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertNotNull;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -361,13 +361,37 @@ public class DiskServiceTest extends Suite {
         }
 
         @Test
+        public void testPatchCustomProperties() throws Throwable {
+            DiskService.DiskState startState = buildValidStartState();
+            startState.customProperties = new HashMap<>();
+            startState.customProperties.put("cp1-key", "cp1-value");
+
+            DiskService.DiskState returnState = postServiceSynchronously(
+                    DiskService.FACTORY_LINK, startState,
+                    DiskService.DiskState.class);
+
+            DiskService.DiskState patchState = new DiskService.DiskState();
+            patchState.customProperties = new HashMap<>();
+            patchState.customProperties.put("cp2-key", "cp2-value");
+
+            patchServiceSynchronously(returnState.documentSelfLink,
+                    patchState);
+
+            returnState = getServiceSynchronously(
+                    returnState.documentSelfLink, DiskService.DiskState.class);
+            HashMap<Object, Object> expectedCustomProperties = new HashMap<>();
+            expectedCustomProperties.putAll(startState.customProperties);
+            expectedCustomProperties.putAll(patchState.customProperties);
+
+            assertThat(returnState.customProperties, is(expectedCustomProperties));
+        }
+
+        @Test
         public void testPatchOtherFields() throws Throwable {
             DiskService.DiskState startState = buildValidStartState();
             startState.dataCenterId = "data-center-id1";
             startState.resourcePoolLink = "resource-pool-link1";
             startState.authCredentialsLink = "auth-credentials-link1";
-            startState.customProperties = new HashMap<>();
-            startState.customProperties.put("cp1-key", "cp1-value");
             startState.tenantLinks = new ArrayList<>();
             startState.tenantLinks.add("tenant-link1");
             startState.bootOrder = 1;
@@ -382,8 +406,6 @@ public class DiskServiceTest extends Suite {
             patchState.dataCenterId = "data-center-id2";
             patchState.resourcePoolLink = "resource-pool-link2";
             patchState.authCredentialsLink = "auth-credentials-link2";
-            patchState.customProperties = new HashMap<>();
-            patchState.customProperties.put("cp2-key", "cp2-value");
             patchState.tenantLinks = new ArrayList<>();
             patchState.tenantLinks.add("tenant-link2");
             patchState.bootOrder = 2;
@@ -399,8 +421,6 @@ public class DiskServiceTest extends Suite {
                     is(startState.resourcePoolLink));
             assertThat(returnState.authCredentialsLink,
                     is(startState.authCredentialsLink));
-            assertThat(returnState.customProperties,
-                    is(startState.customProperties));
             assertThat(returnState.tenantLinks, is(startState.tenantLinks));
             assertThat(returnState.bootOrder, is(startState.bootOrder));
             assertThat(returnState.bootArguments, is(startState.bootArguments));

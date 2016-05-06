@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.azureadapter;
+package com.vmware.photon.controller.model.adapters.azureadapter.enumeration;
 
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_OSDISK_CACHING;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_NAME;
@@ -29,34 +29,49 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.logging.Level;
 
+import com.microsoft.azure.credentials.ApplicationTokenCredentials;
+import com.microsoft.azure.credentials.AzureEnvironment;
+import com.microsoft.azure.management.compute.ComputeManagementClient;
+import com.microsoft.azure.management.compute.ComputeManagementClientImpl;
+import com.microsoft.azure.management.compute.models.VirtualMachine;
+import com.microsoft.azure.management.resources.ResourceManagementClient;
+import com.microsoft.azure.management.resources.ResourceManagementClientImpl;
+import com.microsoft.rest.ServiceResponse;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
-import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
+import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
+import com.vmware.photon.controller.model.adapters.azureadapter.AzureInstanceService;
+import com.vmware.photon.controller.model.adapters.azureadapter.AzureUriPaths;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.DiskService;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
+import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
+import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
+import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState.SubStage;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
+import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService;
+import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService.ResourceEnumerationTaskState;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
+import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
-import com.vmware.xenon.services.common.QueryTask;
+import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
+import com.vmware.xenon.services.common.QueryTask.QuerySpecification;
 
-public class TestAzureProvisionTask extends BasicReusableHostTestCase {
-
-    public static final String DEFAULT_ROOT_DISK_NAME = "root-disk";
+public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
     public static final String DEFAULT_OS_DISK_CACHING = "None";
 
     public String clientID = "clientID";
@@ -64,7 +79,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     public String subscriptionId = "subscriptionId";
     public String tenantId = "tenantId";
 
-    public String azureVMNamePrefix = "test-";
+    public String azureVMNamePrefix = "enumtest-";
     public String azureVMName;
     public String azureAdminUsername = "azureuser";
     public String azureAdminPassword = "Pa$$word1";
@@ -78,7 +93,10 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     // fields that are used across method calls, stash them as private fields
     private String resourcePoolLink;
     private String parentResourceId;
-    private ComputeService.ComputeState vmState;
+    private ComputeState vmState;
+    private ComputeState computeHost;
+    private ComputeManagementClient computeManagementClient;
+    private ResourceManagementClient resourceManagementClient;
 
     @Before
     public void setUp() throws Exception {
@@ -86,18 +104,26 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
             azureVMName = azureVMName == null ? generateName(azureVMNamePrefix) : azureVMName;
             ProvisioningUtils.startProvisioningServices(this.host);
             this.host.setTimeoutSeconds(1200);
-            List<String> serviceSelfLinks = new ArrayList<String>();
             host.startService(
                     Operation.createPost(UriUtils.buildUri(host,
                             AzureInstanceService.class)),
                     new AzureInstanceService());
-            serviceSelfLinks.add(AzureInstanceService.SELF_LINK);
+
             host.startService(
                     Operation.createPost(UriUtils.buildUri(host,
-                            AzureStatsService.class)),
-                    new AzureStatsService());
-            serviceSelfLinks.add(AzureStatsService.SELF_LINK);
-            ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
+                            AzureEnumerationAdapterService.class)),
+                    new AzureEnumerationAdapterService());
+
+            ProvisioningUtils.waitForServiceStart(host, AzureInstanceService.SELF_LINK,
+                    AzureEnumerationAdapterService.SELF_LINK);
+
+            ApplicationTokenCredentials credentials = new ApplicationTokenCredentials(clientID,
+                    tenantId, clientKey, AzureEnvironment.AZURE);
+            computeManagementClient = new ComputeManagementClientImpl(credentials);
+            computeManagementClient.setSubscriptionId(subscriptionId);
+
+            resourceManagementClient = new ResourceManagementClientImpl(credentials);
+            resourceManagementClient.setSubscriptionId(subscriptionId);
         } catch (Throwable e) {
             throw new Exception(e);
         }
@@ -118,108 +144,109 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
 
     // Creates a Azure instance via a provision task.
     @Test
-    public void testProvision() throws Throwable {
-
+    public void testEnumeration() throws Throwable {
         // Create a resource pool where the VM will be housed
-        ResourcePoolService.ResourcePoolState outPool =
-                createAzureResourcePool();
+        ResourcePoolState outPool = createAzureResourcePool();
         this.resourcePoolLink = outPool.documentSelfLink;
 
         // create a compute host for the Azure
-        ComputeService.ComputeState outComputeHost =
-                createAzureComputeHost();
-        parentResourceId = outComputeHost.documentSelfLink;
+        computeHost = createAzureComputeHost();
+        parentResourceId = computeHost.documentSelfLink;
 
         // create a Azure VM compute resoruce
         vmState = createAzureVMResource();
 
         // kick off a provision task to do the actual VM creation
-        ProvisionComputeTaskService.ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskService.ProvisionComputeTaskState();
+        ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskState();
 
         provisionTask.computeLink = vmState.documentSelfLink;
         provisionTask.isMockRequest = isMock;
-        provisionTask.taskSubStage =
-                ProvisionComputeTaskService.ProvisionComputeTaskState.SubStage.CREATING_HOST;
+        provisionTask.taskSubStage = SubStage.CREATING_HOST;
 
-        ProvisionComputeTaskService.ProvisionComputeTaskState outTask = TestUtils.doPost(this.host,
-                provisionTask,
-                ProvisionComputeTaskService.ProvisionComputeTaskState.class,
-                UriUtils.buildUri(this.host,
-                        ProvisionComputeTaskService.FACTORY_LINK));
+        ProvisionComputeTaskState outTask = TestUtils
+                .doPost(this.host, provisionTask, ProvisionComputeTaskState.class,
+                        UriUtils.buildUri(this.host, ProvisionComputeTaskService.FACTORY_LINK));
 
         List<URI> uris = new ArrayList<>();
         uris.add(UriUtils.buildUri(this.host, outTask.documentSelfLink));
-        ProvisioningUtils.waitForTaskCompletion(this.host, uris,
-                ProvisionComputeTaskService.ProvisionComputeTaskState.class);
+        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ProvisionComputeTaskState.class);
 
         // check that the VM has been created
+        // 1 compute host instance + 1 vm compute state
         ProvisioningUtils.queryComputeInstances(this.host, 2);
 
-        host.setTimeoutSeconds(600);
-        host.waitFor("Error waiting for stats", () -> {
+        if (isMock) {
+            runEnumeration();
+            deleteVMs(vmState.documentSelfLink);
+            vmState = null;
+            ProvisioningUtils.queryComputeInstances(this.host, 1);
+            return;
+        }
+
+        int count = getAzureVMCount();
+
+        runEnumeration();
+
+        // VM count + 1 compute host instance
+        count = count + 1;
+
+        ProvisioningUtils.queryComputeInstances(this.host, count);
+
+        // delete vm directly on azure
+        computeManagementClient.getVirtualMachinesOperations().beginDelete(azureVMName, azureVMName);
+
+        runEnumeration();
+
+        // after data collection the deleted vm should go away
+        count = count - 1;
+        ProvisioningUtils.queryComputeInstances(this.host, count);
+
+        // clean up
+        vmState = null;
+        resourceManagementClient.getResourceGroupsOperations().beginDelete(azureVMName);
+    }
+
+    private void runEnumeration() throws Throwable {
+        ResourceEnumerationTaskState enumerationTaskState = new ResourceEnumerationTaskState();
+
+        enumerationTaskState.computeDescriptionLink = computeHost.descriptionLink;
+        enumerationTaskState.parentComputeLink = computeHost.documentSelfLink;
+        enumerationTaskState.enumerationAction = EnumerationAction.START;
+        enumerationTaskState.adapterManagementReference = UriUtils
+                .buildUri(AzureEnumerationAdapterService.SELF_LINK);
+        enumerationTaskState.resourcePoolLink = resourcePoolLink;
+        enumerationTaskState.isMockRequest = isMock;
+
+        ResourceEnumerationTaskState enumTask = TestUtils
+                .doPost(host, enumerationTaskState, ResourceEnumerationTaskState.class,
+                        UriUtils.buildUri(host, ResourceEnumerationTaskService.FACTORY_LINK));
+
+        host.waitFor("Error waiting for enumeration task", () -> {
             try {
-                issueStatsRequest(vmState);
-            } catch (Throwable t) {
+                ResourceEnumerationTaskState state = host
+                        .waitForFinishedTask(ResourceEnumerationTaskState.class,
+                                enumTask.documentSelfLink);
+                if (state != null) {
+                    return true;
+                }
+            } catch (Throwable e) {
                 return false;
             }
-            return true;
+            return false;
         });
-
-        // delete vm
-        deleteVMs(vmState.documentSelfLink);
-        vmState = null;
-        // check that the VMs are gone
-        ProvisioningUtils.queryComputeInstances(this.host, 1);
     }
 
-    private void issueStatsRequest(ComputeState vm) throws Throwable {
-        // spin up a stateless service that acts as the parent link to patch back to
-        StatelessService parentService = new StatelessService() {
-            public void handleRequest(Operation op) {
-                if (op.getAction() == Action.PATCH) {
-                    if (!isMock) {
-                        ComputeStatsResponse resp = op.getBody(ComputeStatsResponse.class);
-                        if (resp.statsList.size() != 1) {
-                            host.failIteration(new IllegalStateException("response size was incorrect."));
-                            return;
-                        }
-                        if (resp.statsList.get(0).statValues.size() == 0) {
-                            host.failIteration(new IllegalStateException("incorrect number of metrics received."));
-                            return;
-                        }
-                        if (!resp.statsList.get(0).computeLink.equals(vm.documentSelfLink)) {
-                            host.failIteration(new IllegalStateException("Incorrect computeLink returned."));
-                            return;
-                        }
-                    }
-                    host.completeIteration();
-                }
-            }
-        };
-        String servicePath = UUID.randomUUID().toString();
-        Operation startOp = Operation.createPost(UriUtils.buildUri(this.host, servicePath));
-        this.host.startService(startOp, parentService);
-        ComputeStatsRequest statsRequest = new ComputeStatsRequest();
-        statsRequest.computeLink = vm.documentSelfLink;
-        statsRequest.isMockRequest = isMock;
-        statsRequest.parentTaskLink = servicePath;
-        this.host.sendAndWait(Operation.createPatch(UriUtils.buildUri(
-                this.host, AzureUriPaths.AZURE_STATS_ADAPTER))
-                .setBody(statsRequest)
-                .setReferer(this.host.getUri()));
-    }
-
-    private ResourcePoolService.ResourcePoolState createAzureResourcePool()
+    private ResourcePoolState createAzureResourcePool()
             throws Throwable {
-        ResourcePoolService.ResourcePoolState inPool = new ResourcePoolService.ResourcePoolState();
+        ResourcePoolState inPool = new ResourcePoolState();
         inPool.name = UUID.randomUUID().toString();
         inPool.id = inPool.name;
 
         inPool.minCpuCount = 1;
         inPool.minMemoryBytes = 1024;
 
-        ResourcePoolService.ResourcePoolState returnPool =
-                TestUtils.doPost(this.host, inPool, ResourcePoolService.ResourcePoolState.class,
+        ResourcePoolState returnPool =
+                TestUtils.doPost(this.host, inPool, ResourcePoolState.class,
                         UriUtils.buildUri(this.host, ResourcePoolService.FACTORY_LINK));
 
         return returnPool;
@@ -228,75 +255,66 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     /**
      * Create a compute host description for an Azure instance
      */
-    private ComputeService.ComputeState createAzureComputeHost() throws Throwable {
-        AuthCredentialsService.AuthCredentialsServiceState auth = new AuthCredentialsService.AuthCredentialsServiceState();
+    private ComputeState createAzureComputeHost() throws Throwable {
+        AuthCredentialsServiceState auth = new AuthCredentialsServiceState();
         auth.privateKeyId = clientID;
         auth.privateKey = clientKey;
         auth.userLink = subscriptionId;
         auth.customProperties = new HashMap<>();
         auth.customProperties.put(AZURE_TENANT_ID, tenantId);
         auth.documentSelfLink = UUID.randomUUID().toString();
-        TestUtils.doPost(this.host, auth, AuthCredentialsService.AuthCredentialsServiceState.class,
+
+        TestUtils.doPost(this.host, auth, AuthCredentialsServiceState.class,
                 UriUtils.buildUri(this.host, AuthCredentialsService.FACTORY_LINK));
         String authLink = UriUtils.buildUriPath(AuthCredentialsService.FACTORY_LINK,
                 auth.documentSelfLink);
 
-        ComputeDescriptionService.ComputeDescription azureHostDescription =
-                new ComputeDescriptionService.ComputeDescription();
-
+        ComputeDescription azureHostDescription = new ComputeDescription();
         azureHostDescription.id = UUID.randomUUID().toString();
         azureHostDescription.documentSelfLink = azureHostDescription.id;
         azureHostDescription.supportedChildren = new ArrayList<>();
-        azureHostDescription.supportedChildren.add(
-                ComputeDescriptionService.ComputeDescription.ComputeType.VM_GUEST.name());
+        azureHostDescription.supportedChildren.add(ComputeType.VM_GUEST.name());
         azureHostDescription.instanceAdapterReference = UriUtils.buildUri(this.host,
                 AzureUriPaths.AZURE_INSTANCE_ADAPTER);
+        azureHostDescription.enumerationAdapterReference = UriUtils.buildUri(this.host,
+                AzureUriPaths.AZURE_ENUMERATION_ADAPTER);
         azureHostDescription.authCredentialsLink = authLink;
+
         TestUtils.doPost(this.host, azureHostDescription,
-                ComputeDescriptionService.ComputeDescription.class,
+                ComputeDescription.class,
                 UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
 
-        ComputeService.ComputeState azureComputeHost =
-                new ComputeService.ComputeState();
-
+        ComputeState azureComputeHost = new ComputeState();
         azureComputeHost.id = UUID.randomUUID().toString();
         azureComputeHost.documentSelfLink = azureComputeHost.id;
         azureComputeHost.descriptionLink = UriUtils.buildUriPath(
                 ComputeDescriptionService.FACTORY_LINK, azureHostDescription.id);
         azureComputeHost.resourcePoolLink = this.resourcePoolLink;
 
-        ComputeService.ComputeState returnState = TestUtils.doPost(this.host, azureComputeHost,
-                ComputeService.ComputeState.class,
+        ComputeState returnState = TestUtils.doPost(this.host, azureComputeHost, ComputeState.class,
                 UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
         return returnState;
     }
 
-    private ComputeService.ComputeState createAzureVMResource() throws Throwable {
-        AuthCredentialsService.AuthCredentialsServiceState auth = new AuthCredentialsService.AuthCredentialsServiceState();
+    private ComputeState createAzureVMResource() throws Throwable {
+        AuthCredentialsServiceState auth = new AuthCredentialsServiceState();
         auth.userEmail = azureAdminUsername;
         auth.privateKey = azureAdminPassword;
         auth.documentSelfLink = UUID.randomUUID().toString();
-        TestUtils.doPost(this.host, auth, AuthCredentialsService.AuthCredentialsServiceState.class,
+
+        TestUtils.doPost(this.host, auth, AuthCredentialsServiceState.class,
                 UriUtils.buildUri(this.host, AuthCredentialsService.FACTORY_LINK));
         String authLink = UriUtils.buildUriPath(AuthCredentialsService.FACTORY_LINK,
                 auth.documentSelfLink);
 
         // Create a VM desc
-        ComputeDescriptionService.ComputeDescription azureVMDesc =
-                new ComputeDescriptionService.ComputeDescription();
-
+        ComputeDescription azureVMDesc = new ComputeDescription();
         azureVMDesc.id = UUID.randomUUID().toString();
         azureVMDesc.name = azureVMDesc.id;
         azureVMDesc.regionId = azureResourceGroupLocation;
         azureVMDesc.authCredentialsLink = authLink;
         azureVMDesc.documentSelfLink = azureVMDesc.id;
         azureVMDesc.environmentName = ENVIRONMENT_NAME_AZURE;
-
-        azureVMDesc.instanceAdapterReference = UriUtils.buildUri(this.host,
-                AzureUriPaths.AZURE_INSTANCE_ADAPTER);
-        azureVMDesc.statsAdapterReference = UriUtils.buildUri(this.host,
-                AzureUriPaths.AZURE_STATS_ADAPTER);
-
         azureVMDesc.customProperties = new HashMap<>();
         azureVMDesc.customProperties.put(AZURE_VM_SIZE, azureVMSize);
 
@@ -304,23 +322,23 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         azureVMDesc.instanceAdapterReference = UriUtils.buildUri(this.host,
                 AzureUriPaths.AZURE_INSTANCE_ADAPTER);
 
-        ComputeDescriptionService.ComputeDescription vmComputeDesc = TestUtils
-                .doPost(this.host, azureVMDesc,
-                        ComputeDescriptionService.ComputeDescription.class,
+        ComputeDescription vmComputeDesc = TestUtils
+                .doPost(this.host, azureVMDesc, ComputeDescription.class,
                         UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
 
         List<String> vmDisks = new ArrayList<>();
         DiskState rootDisk = new DiskState();
+        rootDisk.name = azureVMName + "-boot-disk";
         rootDisk.id = UUID.randomUUID().toString();
         rootDisk.documentSelfLink = rootDisk.id;
-        rootDisk.name = DEFAULT_ROOT_DISK_NAME;
         rootDisk.type = DiskType.HDD;
         rootDisk.sourceImageReference = URI.create(imageReference);
         rootDisk.bootOrder = 1;
-
+        rootDisk.documentSelfLink = rootDisk.id;
         rootDisk.customProperties = new HashMap<>();
         rootDisk.customProperties.put(AZURE_OSDISK_CACHING, DEFAULT_OS_DISK_CACHING);
-        rootDisk.customProperties.put(AZURE_STORAGE_ACCOUNT_NAME, generateName(azureStorageAccountName));
+        rootDisk.customProperties
+                .put(AZURE_STORAGE_ACCOUNT_NAME, generateName(azureStorageAccountName));
         rootDisk.customProperties.put(AZURE_STORAGE_ACCOUNT_TYPE, azureStorageAccountType);
 
         TestUtils.doPost(host, rootDisk,
@@ -328,17 +346,18 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
                 UriUtils.buildUri(host, DiskService.FACTORY_LINK));
         vmDisks.add(UriUtils.buildUriPath(DiskService.FACTORY_LINK, rootDisk.id));
 
-        ComputeService.ComputeState resource = new ComputeService.ComputeState();
+        ComputeState resource = new ComputeState();
         resource.id = UUID.randomUUID().toString();
         resource.parentLink = parentResourceId;
         resource.descriptionLink = vmComputeDesc.documentSelfLink;
         resource.resourcePoolLink = this.resourcePoolLink;
         resource.diskLinks = vmDisks;
+        resource.documentSelfLink = resource.id;
         resource.customProperties = new HashMap<>();
         resource.customProperties.put(CUSTOM_DISPLAY_NAME, azureVMName);
 
-        ComputeService.ComputeState vmComputeState = TestUtils.doPost(this.host, resource,
-                ComputeService.ComputeState.class,
+        ComputeState vmComputeState = TestUtils.doPost(this.host, resource,
+                ComputeState.class,
                 UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
         return vmComputeState;
     }
@@ -346,8 +365,8 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     private void deleteVMs(String documentSelfLink)
             throws Throwable {
         this.host.testStart(1);
-        ResourceRemovalTaskService.ResourceRemovalTaskState deletionState = new ResourceRemovalTaskService.ResourceRemovalTaskState();
-        QueryTask.QuerySpecification resourceQuerySpec = new QueryTask.QuerySpecification();
+        ResourceRemovalTaskState deletionState = new ResourceRemovalTaskState();
+        QuerySpecification resourceQuerySpec = new QuerySpecification();
         // query all ComputeState resources for the cluster
         resourceQuerySpec.query
                 .setTermPropertyName(ServiceDocument.FIELD_NAME_SELF_LINK)
@@ -378,5 +397,22 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
             stringBuilder.append((char) ('a' + random.nextInt(26)));
         }
         return stringBuilder.toString();
+    }
+
+    private int getAzureVMCount() throws Exception {
+        ServiceResponse<List<VirtualMachine>> response = computeManagementClient
+                .getVirtualMachinesOperations().listAll();
+
+        int count = 0;
+        for (VirtualMachine virtualMachine : response.getBody()) {
+            if (AzureEnumerationAdapterService.AZURE_VM_TERMINATION_STATES
+                    .contains(virtualMachine.getProvisioningState())) {
+                continue;
+            }
+            count++;
+        }
+
+        host.log("Initial VM count: %d", count);
+        return count;
     }
 }

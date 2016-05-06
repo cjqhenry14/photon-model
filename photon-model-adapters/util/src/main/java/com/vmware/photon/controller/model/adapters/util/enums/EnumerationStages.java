@@ -11,21 +11,40 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.azureadapter;
+package com.vmware.photon.controller.model.adapters.util.enums;
 
-import com.vmware.photon.controller.model.UriPaths;
 
 /**
- * URI definitions for Azure adapter.
+ * Common stages for enumeration adapters.
  */
-public class AzureUriPaths {
+public enum EnumerationStages {
+    /**
+     * Stage to lookup compute host for enumeration.
+     */
+    HOSTDESC,
 
-    public static final String PROVISIONING_AZURE = UriPaths.PROVISIONING
-            + "/azure";
-    public static final String AZURE_INSTANCE_ADAPTER = PROVISIONING_AZURE
-            + "/instance-adapter";
-    public static final String AZURE_STATS_ADAPTER = PROVISIONING_AZURE
-            + "/stats-adapter";
-    public static final String AZURE_ENUMERATION_ADAPTER =
-            PROVISIONING_AZURE + "/enumeration-adapter";
+    /**
+     * Stage to lookup auth information for compute host.
+     */
+    PARENTAUTH,
+
+    /**
+     * Stage to get client for enumeration.
+     */
+    CLIENT,
+
+    /**
+     * Stage to start enumeration of resources.
+     */
+    ENUMERATE,
+
+    /**
+     * Stage to indicate that enumeration is finished.
+     */
+    FINISHED,
+
+    /**
+     * Stage to indicate error in enumeration.
+     */
+    ERROR
 }

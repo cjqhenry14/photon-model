@@ -24,6 +24,9 @@ import static com.vmware.photon.controller.model.adapters.azureadapter.AzureCons
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.NETWORK_NAMESPACE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.PROVIDER_REGISTRED_STATE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.STORAGE_NAMESPACE;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.awaitTermination;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.cleanUpHttpClient;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.getAzureConfig;
 import static com.vmware.photon.controller.model.tasks.ResourceAllocationTaskService.CUSTOM_DISPLAY_NAME;
 
 import java.io.File;
@@ -45,7 +48,6 @@ import java.util.stream.Collectors;
 import com.microsoft.azure.CloudError;
 import com.microsoft.azure.CloudException;
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
-import com.microsoft.azure.credentials.AzureEnvironment;
 import com.microsoft.azure.management.compute.ComputeManagementClient;
 import com.microsoft.azure.management.compute.ComputeManagementClientImpl;
 import com.microsoft.azure.management.compute.models.HardwareProfile;
@@ -92,6 +94,7 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.xenon.common.FileUtils;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
+import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.StatelessService;
@@ -126,7 +129,6 @@ public class AzureInstanceService extends StatelessService {
 
     private static final long DEFAULT_EXPIRATION_INTERVAL_MICROS = TimeUnit.MINUTES.toMicros(5);
     private static final int RETRY_INTERVAL_SECONDS = 30;
-    private static final int EXECUTOR_SHUTDOWN_INTERVAL_MINUTES = 5;
 
     private ExecutorService executorService;
 
@@ -140,7 +142,7 @@ public class AzureInstanceService extends StatelessService {
     @Override
     public void handleStop(Operation delete) {
         executorService.shutdown();
-        awaitTermination(executorService);
+        awaitTermination(this, executorService);
         super.handleStop(delete);
     }
 
@@ -263,17 +265,17 @@ public class AzureInstanceService extends StatelessService {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         ctx.computeRequest.provisioningTaskReference, ctx.error);
             }
-            cleanUpHttpClient(ctx);
+            cleanUpHttpClient(this, ctx.httpClient);
             break;
         case FINISHED:
             AdapterUtils.sendPatchToProvisioningTask(
                     AzureInstanceService.this,
                     ctx.computeRequest.provisioningTaskReference);
-            cleanUpHttpClient(ctx);
+            cleanUpHttpClient(this, ctx.httpClient);
             break;
         default:
             logSevere("Unhandled stage: %s", ctx.stage.toString());
-            cleanUpHttpClient(ctx);
+            cleanUpHttpClient(this, ctx.httpClient);
             break;
         }
     }
@@ -294,10 +296,10 @@ public class AzureInstanceService extends StatelessService {
 
         ResourceManagementClient client = getResourceManagementClient(ctx);
 
-        client.getResourceGroupsOperations().deleteAsync(resourceGroupName,
-                new ServiceCallback<Void>() {
+        client.getResourceGroupsOperations().beginDeleteAsync(resourceGroupName,
+                new AzureAsyncCallback<Void>() {
                     @Override
-                    public void failure(Throwable e) {
+                    public void onError(Throwable e) {
                         logSevere(e);
                         ctx.error = e;
                         ctx.stage = AzureStages.ERROR;
@@ -305,7 +307,7 @@ public class AzureInstanceService extends StatelessService {
                     }
 
                     @Override
-                    public void success(ServiceResponse<Void> result) {
+                    public void onSuccess(ServiceResponse<Void> result) {
                         logInfo("Successfully deleted resource group [%s]", resourceGroupName);
                         deleteComputeResource(ctx);
                     }
@@ -357,9 +359,9 @@ public class AzureInstanceService extends StatelessService {
         ResourceManagementClient client = getResourceManagementClient(ctx);
 
         client.getResourceGroupsOperations().createOrUpdateAsync(resourceGroupName, group,
-                new ServiceCallback<ResourceGroup>() {
+                new AzureAsyncCallback<ResourceGroup>() {
                     @Override
-                    public void failure(Throwable e) {
+                    public void onError(Throwable e) {
                         logSevere(e);
                         ctx.error = e;
                         ctx.stage = AzureStages.ERROR;
@@ -367,7 +369,7 @@ public class AzureInstanceService extends StatelessService {
                     }
 
                     @Override
-                    public void success(ServiceResponse<ResourceGroup> result) {
+                    public void onSuccess(ServiceResponse<ResourceGroup> result) {
                         ctx.stage = AzureStages.INIT_STORAGE;
                         ctx.resourceGroup = result.getBody();
                         logInfo("Successfully created resource group [%s]",
@@ -406,16 +408,16 @@ public class AzureInstanceService extends StatelessService {
 
         StorageManagementClient client = getStorageManagementClient(ctx);
 
-        client.getStorageAccountsOperations().createAsync(ctx.resourceGroup.getName(),
+        client.getStorageAccountsOperations().beginCreateAsync(ctx.resourceGroup.getName(),
                 ctx.storageAccountName, storageParameters,
-                new ServiceCallback<StorageAccount>() {
+                new AzureAsyncCallback<StorageAccount>() {
                     @Override
-                    public void failure(Throwable e) {
+                    public void onError(Throwable e) {
                         handleSubscriptionError(ctx, STORAGE_NAMESPACE, e);
                     }
 
                     @Override
-                    public void success(ServiceResponse<StorageAccount> result) {
+                    public void onSuccess(ServiceResponse<StorageAccount> result) {
                         ctx.stage = AzureStages.INIT_NETWORK;
                         ctx.storage = result.getBody();
                         logInfo("Successfully created storage account [%s]",
@@ -444,16 +446,16 @@ public class AzureInstanceService extends StatelessService {
 
         NetworkManagementClient client = getNetworkManagementClient(ctx);
 
-        client.getVirtualNetworksOperations().createOrUpdateAsync(
+        client.getVirtualNetworksOperations().beginCreateOrUpdateAsync(
                 ctx.resourceGroup.getName(), vNetName, vnet,
-                new ServiceCallback<VirtualNetwork>() {
+                new AzureAsyncCallback<VirtualNetwork>() {
                     @Override
-                    public void failure(Throwable e) {
+                    public void onError(Throwable e) {
                         handleSubscriptionError(ctx, NETWORK_NAMESPACE, e);
                     }
 
                     @Override
-                    public void success(ServiceResponse<VirtualNetwork> result) {
+                    public void onSuccess(ServiceResponse<VirtualNetwork> result) {
                         ctx.stage = AzureStages.INIT_PUBLIC_IP;
                         ctx.network = result.getBody();
                         logInfo("Successfully created virtual network [%s]",
@@ -474,11 +476,11 @@ public class AzureInstanceService extends StatelessService {
 
         NetworkManagementClient client = getNetworkManagementClient(ctx);
 
-        client.getPublicIPAddressesOperations().createOrUpdateAsync(
+        client.getPublicIPAddressesOperations().beginCreateOrUpdateAsync(
                 ctx.resourceGroup.getName(), publicIPName, publicIPAddress,
-                new ServiceCallback<PublicIPAddress>() {
+                new AzureAsyncCallback<PublicIPAddress>() {
                     @Override
-                    public void failure(Throwable e) {
+                    public void onError(Throwable e) {
                         logSevere(e);
                         ctx.error = e;
                         ctx.stage = AzureStages.ERROR;
@@ -486,7 +488,7 @@ public class AzureInstanceService extends StatelessService {
                     }
 
                     @Override
-                    public void success(ServiceResponse<PublicIPAddress> result) {
+                    public void onSuccess(ServiceResponse<PublicIPAddress> result) {
                         ctx.stage = AzureStages.INIT_SEC_GROUP;
                         ctx.publicIP = result.getBody();
                         logInfo("Successfully created public IP address with name [%s]",
@@ -508,10 +510,14 @@ public class AzureInstanceService extends StatelessService {
         linuxSecurityRule.setAccess(AzureConstants.AZURE_LINUX_SECURITY_GROUP_ACCESS);
         linuxSecurityRule.setProtocol(AzureConstants.AZURE_LINUX_SECURITY_GROUP_PROTOCOL);
         linuxSecurityRule.setDirection(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DIRECTION);
-        linuxSecurityRule.setSourceAddressPrefix(AzureConstants.AZURE_LINUX_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX);
-        linuxSecurityRule.setDestinationAddressPrefix(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX);
-        linuxSecurityRule.setSourcePortRange(AzureConstants.AZURE_LINUX_SECURITY_GROUP_SOURCE_PORT_RANGE);
-        linuxSecurityRule.setDestinationPortRange(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESTINATION_PORT_RANGE);
+        linuxSecurityRule.setSourceAddressPrefix(
+                AzureConstants.AZURE_LINUX_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX);
+        linuxSecurityRule.setDestinationAddressPrefix(
+                AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX);
+        linuxSecurityRule
+                .setSourcePortRange(AzureConstants.AZURE_LINUX_SECURITY_GROUP_SOURCE_PORT_RANGE);
+        linuxSecurityRule.setDestinationPortRange(
+                AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESTINATION_PORT_RANGE);
 
         // Set the windows security rule to allow SSH traffic
         SecurityRule windowsSecurityRule = new SecurityRule();
@@ -521,10 +527,14 @@ public class AzureInstanceService extends StatelessService {
         windowsSecurityRule.setAccess(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_ACCESS);
         windowsSecurityRule.setProtocol(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_PROTOCOL);
         windowsSecurityRule.setDirection(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DIRECTION);
-        windowsSecurityRule.setSourceAddressPrefix(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX);
-        windowsSecurityRule.setDestinationAddressPrefix(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX);
-        windowsSecurityRule.setSourcePortRange(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_SOURCE_PORT_RANGE);
-        windowsSecurityRule.setDestinationPortRange(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_PORT_RANGE);
+        windowsSecurityRule.setSourceAddressPrefix(
+                AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX);
+        windowsSecurityRule.setDestinationAddressPrefix(
+                AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX);
+        windowsSecurityRule
+                .setSourcePortRange(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_SOURCE_PORT_RANGE);
+        windowsSecurityRule.setDestinationPortRange(
+                AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_PORT_RANGE);
 
         List<SecurityRule> securityRules = new ArrayList<>();
         securityRules.add(linuxSecurityRule);
@@ -539,9 +549,9 @@ public class AzureInstanceService extends StatelessService {
 
         client.getNetworkSecurityGroupsOperations().createOrUpdateAsync(
                 ctx.resourceGroup.getName(), secGroupName, group,
-                new ServiceCallback<NetworkSecurityGroup>() {
+                new AzureAsyncCallback<NetworkSecurityGroup>() {
                     @Override
-                    public void failure(Throwable e) {
+                    public void onError(Throwable e) {
                         logSevere(e);
                         ctx.error = e;
                         ctx.stage = AzureStages.ERROR;
@@ -549,7 +559,7 @@ public class AzureInstanceService extends StatelessService {
                     }
 
                     @Override
-                    public void success(ServiceResponse<NetworkSecurityGroup> result) {
+                    public void onSuccess(ServiceResponse<NetworkSecurityGroup> result) {
                         ctx.stage = AzureStages.INIT_NIC;
                         ctx.securityGroup = result.getBody();
                         logInfo("Successfully created security group with name [%s]",
@@ -575,11 +585,11 @@ public class AzureInstanceService extends StatelessService {
 
         NetworkManagementClient client = getNetworkManagementClient(ctx);
 
-        client.getNetworkInterfacesOperations().createOrUpdateAsync(
+        client.getNetworkInterfacesOperations().beginCreateOrUpdateAsync(
                 ctx.resourceGroup.getName(), nicName, nic,
-                new ServiceCallback<NetworkInterface>() {
+                new AzureAsyncCallback<NetworkInterface>() {
                     @Override
-                    public void failure(Throwable e) {
+                    public void onError(Throwable e) {
                         logSevere(e);
                         ctx.error = e;
                         ctx.stage = AzureStages.ERROR;
@@ -587,7 +597,7 @@ public class AzureInstanceService extends StatelessService {
                     }
 
                     @Override
-                    public void success(ServiceResponse<NetworkInterface> result) {
+                    public void onSuccess(ServiceResponse<NetworkInterface> result) {
                         ctx.stage = AzureStages.CREATE;
                         ctx.nic = result.getBody();
                         logInfo("Successfully created NIC with name [%s]",
@@ -671,14 +681,14 @@ public class AzureInstanceService extends StatelessService {
 
         client.getVirtualMachinesOperations().createOrUpdateAsync(
                 ctx.resourceGroup.getName(), vmName, request,
-                new ServiceCallback<VirtualMachine>() {
+                new AzureAsyncCallback<VirtualMachine>() {
                     @Override
-                    public void failure(Throwable e) {
+                    public void onError(Throwable e) {
                         handleSubscriptionError(ctx, COMPUTE_NAMESPACE, e);
                     }
 
                     @Override
-                    public void success(ServiceResponse<VirtualMachine> result) {
+                    public void onSuccess(ServiceResponse<VirtualMachine> result) {
                         VirtualMachine vm = result.getBody();
                         logInfo("Successfully created vm [%s]", vm.getName());
 
@@ -689,12 +699,13 @@ public class AzureInstanceService extends StatelessService {
                         } else {
                             resultDesc.customProperties = ctx.child.customProperties;
                         }
+                        // Azure for some case changes the case of the vm id.
+                        ctx.vmId = vm.getId().toLowerCase();
                         resultDesc.customProperties
-                                .put(AzureConstants.AZURE_INSTANCE_ID, vm.getId());
+                                .put(AzureConstants.AZURE_INSTANCE_ID, ctx.vmId);
                         resultDesc.customProperties
                                 .put(AzureConstants.AZURE_RESOURCE_GROUP_NAME,
                                         ctx.resourceGroup.getName());
-                        ctx.vmId = vm.getId();
 
                         Operation.CompletionHandler completionHandler = (ox,
                                 exc) -> {
@@ -724,13 +735,14 @@ public class AzureInstanceService extends StatelessService {
         StorageManagementClient client = getStorageManagementClient(ctx);
 
         client.getStorageAccountsOperations().listKeysAsync(ctx.resourceGroup.getName(),
-                ctx.storageAccountName, new ServiceCallback<StorageAccountKeys>() {
-                    @Override public void failure(Throwable e) {
+                ctx.storageAccountName, new AzureAsyncCallback<StorageAccountKeys>() {
+                    @Override
+                    public void onError(Throwable e) {
                         handleError(ctx, e);
                     }
 
                     @Override
-                    public void success(ServiceResponse<StorageAccountKeys> result) {
+                    public void onSuccess(ServiceResponse<StorageAccountKeys> result) {
                         StorageAccountKeys keys = result.getBody();
                         String key1 = keys.getKey1();
                         String key2 = keys.getKey2();
@@ -782,8 +794,6 @@ public class AzureInstanceService extends StatelessService {
 
                                                     ctx.stage = AzureStages.FINISHED;
                                                     handleAllocation(ctx);
-                                                    return;
-
                                                 }));
                                         sendRequest(patch);
                                         return;
@@ -846,9 +856,9 @@ public class AzureInstanceService extends StatelessService {
 
     private void registerSubscription(AzureAllocationContext ctx, String namespace) {
         ResourceManagementClient client = getResourceManagementClient(ctx);
-        client.getProvidersOperations().registerAsync(namespace, new ServiceCallback<Provider>() {
+        client.getProvidersOperations().registerAsync(namespace, new AzureAsyncCallback<Provider>() {
             @Override
-            public void failure(Throwable e) {
+            public void onError(Throwable e) {
                 logSevere(e);
                 ctx.error = e;
                 ctx.stage = AzureStages.ERROR;
@@ -856,7 +866,7 @@ public class AzureInstanceService extends StatelessService {
             }
 
             @Override
-            public void success(ServiceResponse<Provider> result) {
+            public void onSuccess(ServiceResponse<Provider> result) {
                 Provider provider = result.getBody();
                 String registrationState = provider.getRegistrationState();
                 if (!PROVIDER_REGISTRED_STATE.equalsIgnoreCase(registrationState)) {
@@ -889,9 +899,9 @@ public class AzureInstanceService extends StatelessService {
 
         getHost().schedule(
                 () -> client.getProvidersOperations().getAsync(namespace,
-                        new ServiceCallback<Provider>() {
+                        new AzureAsyncCallback<Provider>() {
                             @Override
-                            public void failure(Throwable e) {
+                            public void onError(Throwable e) {
                                 logSevere(e);
                                 ctx.error = e;
                                 ctx.stage = AzureStages.ERROR;
@@ -899,7 +909,7 @@ public class AzureInstanceService extends StatelessService {
                             }
 
                             @Override
-                            public void success(ServiceResponse<Provider> result) {
+                            public void onSuccess(ServiceResponse<Provider> result) {
                                 Provider provider = result.getBody();
                                 String registrationState = provider.getRegistrationState();
                                 if (!PROVIDER_REGISTRED_STATE.equalsIgnoreCase(registrationState)) {
@@ -990,20 +1000,6 @@ public class AzureInstanceService extends StatelessService {
         };
     }
 
-    /**
-     * Configures authentication credential for Azure.
-     */
-    private ApplicationTokenCredentials getAzureConfig(
-            AuthCredentialsService.AuthCredentialsServiceState parentAuth) throws Exception {
-
-        String clientId = parentAuth.privateKeyId;
-        String clientKey = parentAuth.privateKey;
-        String tenantId = parentAuth.customProperties.get(AzureConstants.AZURE_TENANT_ID);
-
-        return new ApplicationTokenCredentials(clientId, tenantId, clientKey,
-                AzureEnvironment.AZURE);
-    }
-
     private Retrofit.Builder getRetrofitBuilder() {
         Retrofit.Builder builder = new Retrofit.Builder();
         builder.callbackExecutor(executorService);
@@ -1021,34 +1017,6 @@ public class AzureInstanceService extends StatelessService {
             stringBuilder.append((char) ('a' + random.nextInt(26)));
         }
         return stringBuilder.toString();
-    }
-
-    private void cleanUpHttpClient(AzureAllocationContext ctx) {
-        if (ctx.httpClient == null) {
-            return;
-        }
-
-        ctx.httpClient.connectionPool().evictAll();
-        ExecutorService httpClientExecutor = ctx.httpClient.dispatcher().executorService();
-        httpClientExecutor.shutdown();
-
-        awaitTermination(httpClientExecutor);
-    }
-
-    private void awaitTermination(ExecutorService executor) {
-        try {
-            if (!executor.awaitTermination(EXECUTOR_SHUTDOWN_INTERVAL_MINUTES, TimeUnit.MINUTES)) {
-                logWarning(
-                        "Executor service can't be shutdown for Azure. Trying to shutdown now...");
-                executor.shutdownNow();
-            }
-            logFine("Executor service shutdown for Azure");
-        } catch (InterruptedException e) {
-            logSevere(e);
-            Thread.currentThread().interrupt();
-        } catch (Exception e) {
-            logSevere(e);
-        }
     }
 
     private ResourceManagementClient getResourceManagementClient(AzureAllocationContext ctx) {
@@ -1145,26 +1113,26 @@ public class AzureInstanceService extends StatelessService {
     }
 
     private void enableMonitoring(AzureAllocationContext ctx) {
-        String fileUri = getClass().getResource(AzureConstants.DIAGNOSTIC_SETTINGS_JSON_FILE_NAME).getFile();
-        File jsonPayloadFile = new File(fileUri);
         Operation readFile = Operation.createGet(null).setCompletion((o, e) -> {
             if (e != null) {
-                this.handleError(ctx, e);
+                handleError(ctx, e);
+                return;
             }
-            AzureDiagnosticSettings azureDiagnosticSettings = o.getBody(AzureDiagnosticSettings.class);
+            AzureDiagnosticSettings azureDiagnosticSettings = o
+                    .getBody(AzureDiagnosticSettings.class);
             String vmName = ctx.vmName;
             String azureInstanceId = ctx.vmId;
             String storageAccountName = ctx.storageAccountName;
 
             // Replace the resourceId and storageAccount keys with correct values
             azureDiagnosticSettings.getProperties()
-                                   .getPublicConfiguration()
-                                   .getDiagnosticMonitorConfiguration()
-                                   .getMetrics()
-                                   .setResourceId(azureInstanceId);
+                    .getPublicConfiguration()
+                    .getDiagnosticMonitorConfiguration()
+                    .getMetrics()
+                    .setResourceId(azureInstanceId);
             azureDiagnosticSettings.getProperties()
-                                   .getPublicConfiguration()
-                                   .setStorageAccount(storageAccountName);
+                    .getPublicConfiguration()
+                    .setStorageAccount(storageAccountName);
 
             ApplicationTokenCredentials credentials = ctx.credentials;
 
@@ -1189,22 +1157,57 @@ public class AzureInstanceService extends StatelessService {
             logInfo("Enabling monitoring on the VM [%s]", vmName);
             operation.setCompletion((op, er) -> {
                 if (er != null) {
-                    this.handleError(ctx, er);
+                    handleError(ctx, er);
+                    return;
                 }
-                try {
-                    logInfo("Successfully enabled monitoring on the VM [%s]", vmName);
-                    ctx.stage = AzureStages.GET_STORAGE_KEYS;
-                    handleAllocation(ctx);
-                } catch (Exception ex) {
-                    this.handleError(ctx, ex);
-                }
+
+                logInfo("Successfully enabled monitoring on the VM [%s]", vmName);
+                ctx.stage = AzureStages.GET_STORAGE_KEYS;
+                handleAllocation(ctx);
             });
             sendRequest(operation);
         });
+
+        String fileUri = getClass().getResource(AzureConstants.DIAGNOSTIC_SETTINGS_JSON_FILE_NAME)
+                .getFile();
+        File jsonPayloadFile = new File(fileUri);
         try {
             FileUtils.readFileAndComplete(readFile, jsonPayloadFile);
         } catch (Exception e) {
-            handleError(ctx, e);;
+            handleError(ctx, e);
+        }
+    }
+
+    /**
+     * Operation context aware service callback handler.
+     */
+    private abstract class AzureAsyncCallback<T> extends ServiceCallback<T> {
+        OperationContext opContext;
+
+        public AzureAsyncCallback() {
+            opContext = OperationContext.getOperationContext();
+        }
+
+        /**
+         * Invoked when a failure happens during service call.
+         */
+        abstract void onError(Throwable e);
+
+        /**
+         * Invoked when a service call is successful.
+         */
+        abstract void onSuccess(ServiceResponse<T> result);
+
+        @Override
+        public void failure(Throwable t) {
+            OperationContext.restoreOperationContext(opContext);
+            onError(t);
+        }
+
+        @Override
+        public void success(ServiceResponse<T> result) {
+            OperationContext.restoreOperationContext(opContext);
+            onSuccess(result);
         }
     }
 }

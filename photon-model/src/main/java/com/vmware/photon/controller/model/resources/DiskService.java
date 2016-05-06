@@ -304,6 +304,20 @@ public class DiskService extends StatefulService {
             isChanged = true;
         }
 
+        if (patchBody.customProperties != null
+                && !patchBody.customProperties.isEmpty()) {
+            if (currentState.customProperties == null
+                    || currentState.customProperties.isEmpty()) {
+                currentState.customProperties = patchBody.customProperties;
+            } else {
+                for (Map.Entry<String, String> e : patchBody.customProperties
+                        .entrySet()) {
+                    currentState.customProperties.put(e.getKey(), e.getValue());
+                }
+            }
+            isChanged = true;
+        }
+
         if (!isChanged) {
             patch.setStatusCode(Operation.STATUS_CODE_NOT_MODIFIED);
         }
