@@ -22,7 +22,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import com.amazonaws.handlers.AsyncHandler;
@@ -66,14 +65,14 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
 public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_DELETION_SERVICE;
-    public static Integer AWS_PAGE_SIZE = 50;
+    public static Integer DEFAULT_QUERY_RESULT_LIMIT = 50;
 
     public static enum AWSEnumerationDeletionStages {
         ENUMERATE, ERROR
     }
 
     public static enum AWSEnumerationDeletionSubStage {
-        GET_LOCAL_RESOURCES, GET_REMOTE_RESOURCES, COMPARE, DELETE_COMPUTE_STATES, ENUMERATION_STOP
+        GET_LOCAL_RESOURCES, GET_REMOTE_RESOURCES, COMPARE, DELETE_COMPUTE_STATES, GET_NEXT_PAGE, ENUMERATION_STOP
     }
 
     public AWSEnumerationAndDeletionAdapterService() {
@@ -105,6 +104,9 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
         public Map<String, Boolean> enumerationHostMap;
         public Operation awsAdapterOperation;
         public List<Operation> deleteOperations;
+        // The next page link for the next set of results to fetch from the local system.
+        public String nextPageLink;
+        public int pageNo = 0;
 
         public EnumerationDeletionContext(AWSEnumerationRequest request, Operation op) {
             computeEnumerationRequest = request.computeEnumerateResourceRequest;
@@ -231,15 +233,30 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
             compareResources(aws, AWSEnumerationDeletionSubStage.DELETE_COMPUTE_STATES);
             break;
         case DELETE_COMPUTE_STATES:
+            AWSEnumerationDeletionSubStage next;
             if (aws.instancesToBeDeleted == null || aws.instancesToBeDeleted.size() == 0) {
                 logInfo("There are no compute states to be deleted in the system");
-                aws.subStage = AWSEnumerationDeletionSubStage.ENUMERATION_STOP;
+                if (aws.nextPageLink == null) {
+                    aws.subStage = AWSEnumerationDeletionSubStage.ENUMERATION_STOP;
+                } else {
+                    aws.subStage = AWSEnumerationDeletionSubStage.GET_NEXT_PAGE;
+                }
                 deleteResourcesInLocalSystem(aws);
                 return;
+            } else {
+                if (aws.nextPageLink == null) {
+                    next = AWSEnumerationDeletionSubStage.ENUMERATION_STOP;
+                } else {
+                    next = AWSEnumerationDeletionSubStage.GET_NEXT_PAGE;
+                }
+                deleteComputeStates(aws, next);
             }
-            deleteComputeStates(aws, AWSEnumerationDeletionSubStage.ENUMERATION_STOP);
+            break;
+        case GET_NEXT_PAGE:
+            getNextPageFromLocalSystem(aws, AWSEnumerationDeletionSubStage.GET_REMOTE_RESOURCES);
             break;
         case ENUMERATION_STOP:
+            logInfo("Stopping enumeration");
             cleanupEC2ClientResources(aws.amazonEC2Client);
             stopEnumeration(aws);
             break;
@@ -251,28 +268,27 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
     }
 
     /**
-     * Get the list of compute states already known to the local system. Filter them by parent compute link : AWS.
+     * Get the list of compute states already known to the local system. Filter them by parent compute
+     * link : AWS.
      */
     public void getLocalResources(EnumerationDeletionContext aws,
             AWSEnumerationDeletionSubStage next) {
-        // TODO VSYM-609 add pagination logic
         // query all ComputeState resources known to the local system.
         logInfo("Getting local resources for which state has to be re-conciled with the remote system.");
-        QueryTask q = new QueryTask();
-        q.setDirect(true);
-        q.querySpec = new QueryTask.QuerySpecification();
-        q.querySpec.options.add(QueryOption.EXPAND_CONTENT);
-        q.querySpec.query = Query.Builder.create()
+        int resultLimit = DEFAULT_QUERY_RESULT_LIMIT;
+        Query query = Query.Builder.create()
                 .addKindFieldClause(ComputeService.ComputeState.class)
                 .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,
                         aws.computeEnumerationRequest.parentComputeLink)
                 .build();
+        QueryTask.Builder queryTaskBuilder = QueryTask.Builder.createDirectTask()
+                .setQuery(query).setResultLimit(resultLimit);
+        queryTaskBuilder.addOption(QueryOption.EXPAND_CONTENT);
 
-        q.documentSelfLink = UUID.randomUUID().toString();
         // create the query to find resources
         sendRequest(Operation
                 .createPost(this, ServiceUriPaths.CORE_QUERY_TASKS)
-                .setBody(q)
+                .setBody(queryTaskBuilder.build())
                 .setCompletion((o, e) -> {
                     if (e != null) {
                         logSevere("Failure retrieving query results: %s",
@@ -280,18 +296,11 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
                         signalErrorToEnumerationAdapter(aws, e);
                         return;
                     }
-                    QueryTask responseTask = o.getBody(QueryTask.class);
-                    for (Object s : responseTask.results.documents.values()) {
-                        ComputeState localInstance = Utils.fromJson(s,
-                                ComputeService.ComputeState.class);
-                        aws.localInstanceIds.put(
-                                localInstance.customProperties
-                                        .get(AWSConstants.AWS_INSTANCE_ID),
-                                localInstance);
-                    }
-                    logInfo(
-                            "Got result of the query to get local resources. There are %d instances known to the system.",
-                            responseTask.results.documentCount);
+                    QueryTask responseTask = populateLocalInstanceInformationFromQueryResults(aws,
+                            o);
+                    logInfo("Got result of the query to get local resources for page No. %d "
+                            + "There are %d instances known to the system.",
+                            aws.pageNo, responseTask.results.documentCount);
                     aws.subStage = next;
                     deleteResourcesInLocalSystem(aws);
                     return;
@@ -299,10 +308,36 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
     }
 
     /**
+     * Populates the local instance information from the query results.
+     */
+    public QueryTask populateLocalInstanceInformationFromQueryResults(
+            EnumerationDeletionContext aws, Operation op) {
+        QueryTask responseTask = op.getBody(QueryTask.class);
+        for (Object s : responseTask.results.documents.values()) {
+            ComputeState localInstance = Utils.fromJson(s,
+                    ComputeService.ComputeState.class);
+            aws.localInstanceIds.put(
+                    localInstance.customProperties
+                            .get(AWSConstants.AWS_INSTANCE_ID),
+                    localInstance);
+        }
+        aws.pageNo++;
+        aws.nextPageLink = responseTask.results.nextPageLink;
+        logInfo("Next page link is %s", aws.nextPageLink);
+        return responseTask;
+    }
+
+    /**
      * Get the instances from AWS filtered by the instances Ids known to the local system.
      */
     public void getRemoteInstances(EnumerationDeletionContext aws,
             AWSEnumerationDeletionSubStage next) {
+        if (aws.localInstanceIds == null || aws.localInstanceIds.size() == 0) {
+            logInfo("There are no local records found for which state needs to be fetched from the remote system.");
+            aws.subStage = next;
+            deleteResourcesInLocalSystem(aws);
+            return;
+        }
         DescribeInstancesRequest request = new DescribeInstancesRequest();
         Filter runningInstanceFilter = getAWSNonTerminatedInstancesFilter();
         request.getFilters().add(runningInstanceFilter);
@@ -325,9 +360,9 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
                         aws.computeEnumerationRequest.enumerationTaskReference,
                         e);
             }
-            aws.amazonEC2Client.describeInstancesAsync(request,
-                    resultHandler);
         }
+        aws.amazonEC2Client.describeInstancesAsync(request,
+                resultHandler);
     }
 
     /**
@@ -348,7 +383,6 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
             this.aws = aws;
             this.next = next;
             this.opContext = OperationContext.getOperationContext();
-            ;
         }
 
         @Override
@@ -377,7 +411,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
             }
             service.logInfo("Successfully enumerated %d instances on the AWS host",
                     totalNumberOfInstances);
-            aws.subStage = AWSEnumerationDeletionSubStage.COMPARE;
+            aws.subStage = next;
             ((AWSEnumerationAndDeletionAdapterService) service).deleteResourcesInLocalSystem(aws);
             return;
         }
@@ -396,11 +430,14 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
         } else if (aws.remoteInstanceIds == null || aws.remoteInstanceIds.size() == 0) {
             logInfo("No resources discovered on the remote system. Everything (if existing) on the local system should be deleted.");
             aws.instancesToBeDeleted.addAll(aws.localInstanceIds.values());
+            logInfo("====Deleting compute state for instance Ids %s ====",
+                    aws.localInstanceIds.keySet().toString());
         } else { // compare and mark the instances for deletion that have been terminated from the
                  // AWS endpoint.
             for (String key : aws.localInstanceIds.keySet()) {
                 if (!aws.remoteInstanceIds.contains(key)) {
                     aws.instancesToBeDeleted.add(aws.localInstanceIds.get(key));
+                    logInfo("====Deleting compute state for instance Id %s ====", key);
                 }
             }
             logInfo("%d instances need to be deleted from the local system as they have been terminated on the remote endpoint.",
@@ -477,6 +514,36 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
         aws.error = t;
         aws.stage = AWSEnumerationDeletionStages.ERROR;
         handleEnumerationRequestForDeletion(aws);
+    }
+
+    /**
+     * Gets the next page from the local system for which the state has to be reconciled after comparison with the remote AWS endpoint.
+     */
+    private void getNextPageFromLocalSystem(EnumerationDeletionContext aws,
+            AWSEnumerationDeletionSubStage next) {
+        aws.localInstanceIds.clear();
+        aws.remoteInstanceIds.clear();
+        aws.instancesToBeDeleted.clear();
+        aws.deleteOperations.clear();
+        logInfo("Getting next page of local records.");
+        sendRequest(Operation
+                .createGet(UriUtils.buildUri(getHost(), aws.nextPageLink))
+                .setCompletion((o, e) -> {
+                    if (e != null) {
+                        logSevere("Failure retrieving next page from the local system: %s",
+                                e.toString());
+                        signalErrorToEnumerationAdapter(aws, e);
+                        return;
+                    }
+                    QueryTask responseTask = populateLocalInstanceInformationFromQueryResults(aws,
+                            o);
+                    logInfo("Got page No. %d of local resources. "
+                            + "There are %d instances in this page.", aws.pageNo,
+                            responseTask.results.documentCount);
+                    aws.subStage = next;
+                    deleteResourcesInLocalSystem(aws);
+                    return;
+                }));
     }
 
 }
