@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import com.vmware.photon.controller.model.UriPaths;
+
 public class AWSConstants {
     public static final String AWS_SECURITY_GROUP = "awsSecurityGroup";
     public static final String AWS_SECURITY_GROUP_ID = "awsSecurityGroupId";
@@ -25,4 +27,27 @@ public class AWSConstants {
     public static final String INSTANCE_STATE_STOPPING = "stopping";
     public static final String INSTANCE_STATE_STOPPED = "stopped";
     public static final String INSTANCE_STATE_SHUTTING_DOWN = "shutting-down";
+    public static final String PROPERTY_NAME_QUERY_PAGE_SIZE = UriPaths.PROPERTY_PREFIX
+            + AWSConstants.QUERY_PAGE_SIZE;
+    private static int QUERY_PAGE_SIZE = Integer.getInteger(PROPERTY_NAME_QUERY_PAGE_SIZE, 50);
+    public static final String PROPERTY_NAME_QUERY_RESULT_LIMIT = UriPaths.PROPERTY_PREFIX
+            + AWSConstants.QUERY_PAGE_SIZE;
+    private static int QUERY_RESULT_LIMIT = Integer.getInteger(PROPERTY_NAME_QUERY_RESULT_LIMIT,
+            50);
+
+    public static void setQueryPageSize(int size) {
+        QUERY_PAGE_SIZE = size;
+    }
+
+    public static int getQueryPageSize() {
+        return QUERY_PAGE_SIZE;
+    }
+
+    public static void setQueryResultLimit(int resultLimit) {
+        QUERY_RESULT_LIMIT = resultLimit;
+    }
+
+    public static int getQueryResultLimit() {
+        return QUERY_RESULT_LIMIT;
+    }
 }

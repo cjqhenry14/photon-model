@@ -47,7 +47,7 @@ public class StatsCollectionTaskService extends TaskService<StatsCollectionTaskS
 
     public static final String FACTORY_LINK = UriPaths.MONITORING + "/stats-collection-tasks";
 
-    public static final String STATS_QUERY_RESULT_LIMIT = UriPaths.PROPERTY_PRFIX + "StatsCollectionTaskService.query.resultLimit";
+    public static final String STATS_QUERY_RESULT_LIMIT = UriPaths.PROPERTY_PREFIX + "StatsCollectionTaskService.query.resultLimit";
     private static final String QUERY_RESULT_LIMIT = System.getProperty(STATS_QUERY_RESULT_LIMIT);
     private static final int DEFAULT_QUERY_RESULT_LIMIT = 100;
 

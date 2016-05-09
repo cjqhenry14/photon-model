@@ -13,6 +13,7 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.getQueryPageSize;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getAWSNonTerminatedInstancesFilter;
 import static com.vmware.photon.controller.model.adapters.util.AdapterUtils.updateDurationStats;
@@ -70,7 +71,6 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
 public class AWSEnumerationAndCreationAdapterService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_CREATION_SERVICE;
-    public static Integer AWS_PAGE_SIZE = 50;
 
     public static enum AWSEnumerationCreationStages {
         CLIENT, ENUMERATE, ERROR
@@ -113,9 +113,6 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         // The token to use to retrieve the next page of results from AWS. This value is null when
         // there are no more results to return.
         public String nextToken;
-        // The maximum number of results to return for the request in a single page from AWS. This
-        // value can be between 5 and 1000.
-        public Integer maxResults;
         public Operation awsAdapterOperation;
 
         public EnumerationCreationContext(AWSEnumerationRequest request, Operation op) {
@@ -129,7 +126,6 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             instancesToBeCreated = new ArrayList<Instance>();
             stage = AWSEnumerationCreationStages.CLIENT;
             subStage = AWSEnumerationCreationSubStage.QUERY_LOCAL_RESOURCES;
-            maxResults = AWS_PAGE_SIZE;
             pageNo = 1;
             startTime = Utils.getNowMicrosUtc();
         }
@@ -304,7 +300,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         DescribeInstancesRequest request = new DescribeInstancesRequest();
         Filter runningInstanceFilter = getAWSNonTerminatedInstancesFilter();
         request.getFilters().add(runningInstanceFilter);
-        request.setMaxResults(AWS_PAGE_SIZE);
+        request.setMaxResults(getQueryPageSize());
         request.setNextToken(aws.nextToken);
         aws.describeInstancesRequest = request;
         AsyncHandler<DescribeInstancesRequest, DescribeInstancesResult> resultHandler = new AWSEnumerationAsyncHandler(

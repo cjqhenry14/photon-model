@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.setQueryPageSize;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.setQueryResultLimit;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSComputeHost;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSResourcePool;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSVMResource;
@@ -39,8 +41,6 @@ import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.BaseLineState;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService;
-import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAndCreationAdapterService;
-import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAndDeletionAdapterService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
@@ -158,8 +158,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // Overriding the page size to test the pagination logic with limited instances on AWS.
             // This is a functional test
             // so the latency numbers maybe higher from this test due to low page size.
-            AWSEnumerationAndCreationAdapterService.AWS_PAGE_SIZE = 5;
-            AWSEnumerationAndDeletionAdapterService.DEFAULT_QUERY_RESULT_LIMIT = 5;
+            setQueryPageSize(5);
+            setQueryResultLimit(5);
             baseLineState = getBaseLineInstanceCount(host, client, testComputeDescriptions);
             host.log(baseLineState.toString());
             // Provision a single VM . Check initial state.

@@ -13,6 +13,7 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.getQueryResultLimit;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getAWSNonTerminatedInstancesFilter;
 import static com.vmware.photon.controller.model.adapters.util.AdapterUtils.updateDurationStats;
@@ -65,7 +66,6 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
 public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_DELETION_SERVICE;
-    public static Integer DEFAULT_QUERY_RESULT_LIMIT = 50;
 
     public static enum AWSEnumerationDeletionStages {
         ENUMERATE, ERROR
@@ -275,7 +275,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
             AWSEnumerationDeletionSubStage next) {
         // query all ComputeState resources known to the local system.
         logInfo("Getting local resources for which state has to be re-conciled with the remote system.");
-        int resultLimit = DEFAULT_QUERY_RESULT_LIMIT;
+        int resultLimit = getQueryResultLimit();
         Query query = Query.Builder.create()
                 .addKindFieldClause(ComputeService.ComputeState.class)
                 .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,

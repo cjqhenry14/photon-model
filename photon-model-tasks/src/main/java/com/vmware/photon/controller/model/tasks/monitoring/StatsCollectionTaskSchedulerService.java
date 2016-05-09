@@ -33,7 +33,7 @@ public class StatsCollectionTaskSchedulerService extends StatefulService {
 
     public static final String FACTORY_LINK = UriPaths.MONITORING + "/stats-collection-scheduler-tasks";
 
-    public static final String STATS_MONITORING_INTERVAL = UriPaths.PROPERTY_PRFIX + "StatsCollectionTaskSchedulerService.monitoringInterval";
+    public static final String STATS_MONITORING_INTERVAL = UriPaths.PROPERTY_PREFIX + "StatsCollectionTaskSchedulerService.monitoringInterval";
     private static final String MONITORING_INTERVAL = System.getProperty(STATS_MONITORING_INTERVAL);
 
     public static Service createFactory() {
