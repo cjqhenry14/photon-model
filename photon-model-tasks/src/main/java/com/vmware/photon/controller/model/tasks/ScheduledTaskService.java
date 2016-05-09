@@ -13,13 +13,17 @@
 
 package com.vmware.photon.controller.model.tasks;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
 import com.vmware.photon.controller.model.UriPaths;
+import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.ServiceDocument;
+import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.services.common.TaskService;
 import com.vmware.xenon.services.common.TaskService.TaskServiceState;
 
@@ -134,5 +138,21 @@ public class ScheduledTaskService extends TaskService<ScheduledTaskService.Sched
                                                 .setBody(patchState));
                                     }));
                 }));
+    }
+
+    @Override
+    public ServiceDocument getDocumentTemplate() {
+        ServiceDocument td = super.getDocumentTemplate();
+
+        // enable indexing of custom properties map.
+        ServiceDocumentDescription.PropertyDescription pdCustomProperties = td.documentDescription.propertyDescriptions
+                .get(ComputeState.FIELD_NAME_CUSTOM_PROPERTIES);
+        pdCustomProperties.indexingOptions = EnumSet
+                .of(ServiceDocumentDescription.PropertyIndexingOption.EXPAND);
+
+        ServiceDocumentDescription.expandTenantLinks(td.documentDescription);
+
+        ScheduledTaskState template = (ScheduledTaskState) td;
+        return template;
     }
 }
