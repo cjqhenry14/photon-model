@@ -14,6 +14,7 @@
 package com.vmware.photon.controller.model.tasks;
 
 import java.net.URI;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -88,6 +89,11 @@ public class ResourceRemovalTaskService extends TaskService<ResourceRemovalTaskS
          * The error threshold.
          */
         public double errorThreshold;
+
+        /**
+         * Task options
+         */
+        public EnumSet<TaskOptions> options;
     }
 
     public ResourceRemovalTaskService() {
@@ -269,7 +275,7 @@ public class ResourceRemovalTaskService extends TaskService<ResourceRemovalTaskS
                             return;
                         }
                         sendInstanceDelete(resourceLink, subTaskLink, o,
-                                currentState.isMockRequest);
+                                currentState);
                     }));
         }
         sendRequest(Operation
@@ -318,15 +324,17 @@ public class ResourceRemovalTaskService extends TaskService<ResourceRemovalTaskS
     }
 
     private void sendInstanceDelete(String resourceLink, String subTaskLink,
-            Operation o, boolean isMockRequest) {
+            Operation o, ResourceRemovalTaskState currentState) {
         ComputeService.ComputeStateWithDescription chd = o
                 .getBody(ComputeService.ComputeStateWithDescription.class);
         ComputeInstanceRequest deleteReq = new ComputeInstanceRequest();
         deleteReq.computeReference = UriUtils.buildUri(getHost(), resourceLink);
         deleteReq.provisioningTaskReference = UriUtils.buildUri(getHost(),
                 subTaskLink);
-        deleteReq.requestType = ComputeInstanceRequest.InstanceRequestType.DELETE;
-        deleteReq.isMockRequest = isMockRequest;
+        deleteReq.requestType =
+                (currentState.options != null && currentState.options.contains(TaskOptions.DOCUMENT_CHANGES_ONLY))
+                ? ComputeInstanceRequest.InstanceRequestType.DELETE_DOCUMENTS_ONLY : ComputeInstanceRequest.InstanceRequestType.DELETE;
+        deleteReq.isMockRequest = currentState.isMockRequest;
         sendRequest(Operation
                 .createPatch(chd.description.instanceAdapterReference)
                 .setBody(deleteReq)

@@ -130,6 +130,7 @@ public class AWSInstanceService extends StatelessService {
                 handleAllocation(aws);
                 break;
             case DELETE:
+            case DELETE_DOCUMENTS_ONLY:
                 aws.stage = AWSStages.DELETE;
                 handleAllocation(aws);
                 break;
@@ -474,7 +475,8 @@ public class AWSInstanceService extends StatelessService {
 
     private void deleteInstance(AWSAllocation aws) {
 
-        if (aws.computeRequest.isMockRequest) {
+        if (aws.computeRequest.isMockRequest ||
+                aws.computeRequest.requestType == InstanceRequestType.DELETE_DOCUMENTS_ONLY) {
             deleteComputeResource(this, aws.child, aws.computeRequest);
             return;
         }

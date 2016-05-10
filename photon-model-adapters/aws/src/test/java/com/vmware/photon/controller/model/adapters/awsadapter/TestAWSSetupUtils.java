@@ -17,6 +17,7 @@ import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.ge
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -60,6 +61,7 @@ import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService.ResourceEnumerationTaskState;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
+import com.vmware.photon.controller.model.tasks.TaskOptions;
 import com.vmware.photon.controller.model.tasks.TestUtils;
 
 import com.vmware.xenon.common.Operation;
@@ -281,7 +283,20 @@ public class TestAWSSetupUtils {
      * @param host
      * @throws Throwable
      */
-    public static void deleteVMs(String documentSelfLink, boolean isMock, VerificationHost host)
+    public static void deleteVMs(String documentSelfLink, boolean isMock, VerificationHost host) throws Throwable {
+        deleteVMs(documentSelfLink, isMock, host, false);
+    }
+
+    /**
+     * Deletes the VM that is present on an endpoint and represented by the passed in ID.
+     * @param documentSelfLink
+     * @param isMock
+     * @param host
+     * @param deleteDocumentOnly
+     * @throws Throwable
+     */
+    public static void deleteVMs(String documentSelfLink, boolean isMock, VerificationHost host,
+            boolean deleteDocumentOnly)
             throws Throwable {
         host.testStart(1);
         ResourceRemovalTaskState deletionState = new ResourceRemovalTaskState();
@@ -292,6 +307,9 @@ public class TestAWSSetupUtils {
                 .setTermMatchValue(documentSelfLink);
         deletionState.resourceQuerySpec = resourceQuerySpec;
         deletionState.isMockRequest = isMock;
+        if (deleteDocumentOnly) {
+            deletionState.options = EnumSet.of(TaskOptions.DOCUMENT_CHANGES_ONLY);
+        }
         host.send(Operation
                 .createPost(
                         UriUtils.buildUri(host,
@@ -817,12 +835,15 @@ public class TestAWSSetupUtils {
                 }
                 // If the discovered resources on the endpoint already map to a test compute
                 // description then we will not be creating a new CD for it.
-                for (String testCD : testComputeDescriptions) {
-                    if (computeDescriptionSet.contains(testCD)) {
-                        computeDescriptionSet.remove(testCD);
+                if (testComputeDescriptions != null) {
+                    for (String testCD : testComputeDescriptions) {
+                        if (computeDescriptionSet.contains(testCD)) {
+                            computeDescriptionSet.remove(testCD);
+                        }
                     }
-                    baseLineState.baselineComputeDescriptionCount = computeDescriptionSet.size();
                 }
+                baseLineState.baselineComputeDescriptionCount = computeDescriptionSet.size();
+
                 host.log("The baseline instance count on AWS is %d ",
                         baseLineState.baselineVMCount);
                 host.log("These instances will be represented by %d additional compute "

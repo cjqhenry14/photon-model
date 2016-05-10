@@ -25,7 +25,7 @@ public class ComputeInstanceRequest {
      * Instance request type.
      */
     public enum InstanceRequestType {
-        CREATE, DELETE, VALIDATE_CREDENTIALS
+        CREATE, DELETE, VALIDATE_CREDENTIALS, DELETE_DOCUMENTS_ONLY
     }
 
     /**

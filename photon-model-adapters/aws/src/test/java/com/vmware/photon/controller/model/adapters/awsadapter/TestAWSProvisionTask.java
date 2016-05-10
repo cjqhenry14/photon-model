@@ -13,6 +13,10 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static org.junit.Assert.assertEquals;
+
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.getExecutor;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,12 +24,15 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
+import com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.BaseLineState;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
@@ -39,6 +46,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.test.VerificationHost;
+import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
  * Test to provision a VM instance on AWS and tear it down
@@ -166,6 +174,33 @@ public class TestAWSProvisionTask  {
 
         // delete vm
         TestAWSSetupUtils.deleteVMs(vmState.documentSelfLink, isMock, this.host);
+
+        // create another AWS VM
+        List<String> instanceIdList = new ArrayList<String>();
+        vmState = TestAWSSetupUtils.createAWSVMResource(this.host, outComputeHost.documentSelfLink,
+                outPool.documentSelfLink, this.getClass());
+        TestAWSSetupUtils.provisionMachine(host, vmState, isMock, instanceIdList);
+        AmazonEC2AsyncClient client = null;
+        BaseLineState remoteStateBefore = null;
+        if (!isMock) {
+            // reach out to AWS and get the current state
+            AuthCredentialsServiceState creds = new AuthCredentialsServiceState();
+            creds.privateKey = secretKey;
+            creds.privateKeyId = accessKey;
+            client = AWSUtils.getAsyncClient(creds, TestAWSSetupUtils.zoneId,
+                isMock, getExecutor());
+            remoteStateBefore = TestAWSSetupUtils.getBaseLineInstanceCount(this.host, client, null);
+        }
+        // delete just the local representation of the resource
+        TestAWSSetupUtils.deleteVMs(vmState.documentSelfLink, isMock, this.host, true);
+        if (!isMock) {
+            try {
+                BaseLineState remoteStateAfter = TestAWSSetupUtils.getBaseLineInstanceCount(this.host, client, null);
+                assertEquals(remoteStateBefore.baselineVMCount, remoteStateAfter.baselineVMCount);
+            } finally {
+                TestAWSSetupUtils.deleteVMsUsingEC2Client(client, this.host, instanceIdList);
+            }
+        }
         vmState  = null;
     }
 
