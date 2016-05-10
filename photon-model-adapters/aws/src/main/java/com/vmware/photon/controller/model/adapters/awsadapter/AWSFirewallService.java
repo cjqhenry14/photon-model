@@ -52,7 +52,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  * which will be the primary artifact created and managed.
  */
 public class AWSFirewallService extends StatelessService {
-    public static final String SELF_LINK = AWSUriPaths.AWS_FIREWALL_SERVICE;
+    public static final String SELF_LINK = AWSUriPaths.AWS_FIREWALL_ADAPTER;
     public static final String SECURITY_GROUP_ID = "awsSecurityGroupID";
     public static final String DEFAULT_SECURITY_GROUP_NAME = "cell-manager-security-group";
     public static final String DEFAULT_SECURITY_GROUP_DESC = "VMware Cell Manager security group";

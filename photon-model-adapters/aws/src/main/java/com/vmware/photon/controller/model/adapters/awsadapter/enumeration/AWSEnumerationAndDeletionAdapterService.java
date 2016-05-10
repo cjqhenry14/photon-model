@@ -64,8 +64,7 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  *
  */
 public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
-
-    public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_DELETION_SERVICE;
+    public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_DELETION_ADAPTER;
 
     public static enum AWSEnumerationDeletionStages {
         ENUMERATE, ERROR

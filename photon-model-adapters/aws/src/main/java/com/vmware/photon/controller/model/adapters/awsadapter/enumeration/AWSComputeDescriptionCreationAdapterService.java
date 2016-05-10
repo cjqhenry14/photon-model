@@ -51,7 +51,7 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  */
 public class AWSComputeDescriptionCreationAdapterService extends StatelessService {
 
-    public static final String SELF_LINK = AWSUriPaths.AWS_COMPUTE_DESCRIPTION_CREATION_SERVICE;
+    public static final String SELF_LINK = AWSUriPaths.AWS_COMPUTE_DESCRIPTION_CREATION_ADAPTER;
 
     public static enum AWSComputeDescCreationStage {
         GET_REPRESENTATIVE_LIST, QUERY_LOCAL_COMPUTE_DESCRIPTIONS, COMPARE, POPULATE_COMPUTEDESC, CREATE_COMPUTEDESC, SIGNAL_COMPLETION
@@ -321,11 +321,11 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         String key = cd.computeDescriptionsToBeCreatedList.get(cd.instanceToBeCreatedCounter);
         ComputeDescriptionService.ComputeDescription computeDescription = new ComputeDescriptionService.ComputeDescription();
         computeDescription.instanceAdapterReference = UriUtils.buildUri(getHost(),
-                AWSUriPaths.AWS_INSTANCE_SERVICE);
+                AWSUriPaths.AWS_INSTANCE_ADAPTER);
         computeDescription.enumerationAdapterReference = UriUtils.buildUri(getHost(),
-                AWSUriPaths.AWS_ENUMERATION_CREATION_SERVICE);
+                AWSUriPaths.AWS_ENUMERATION_CREATION_ADAPTER);
         computeDescription.statsAdapterReference = UriUtils.buildUri(getHost(),
-                AWSUriPaths.AWS_STATS_SERVICE);
+                AWSUriPaths.AWS_STATS_ADAPTER);
         computeDescription.supportedChildren = new ArrayList<>();
         computeDescription.supportedChildren.add(ComputeType.DOCKER_CONTAINER.toString());
         computeDescription.environmentName = AWSInstanceService.AWS_ENVIRONMENT_NAME;

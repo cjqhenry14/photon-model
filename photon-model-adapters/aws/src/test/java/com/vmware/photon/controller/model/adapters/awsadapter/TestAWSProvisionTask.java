@@ -239,7 +239,7 @@ public class TestAWSProvisionTask  {
         statsRequest.isMockRequest = isMock;
         statsRequest.parentTaskLink = servicePath;
         this.host.sendAndWait(Operation.createPatch(UriUtils.buildUri(
-                this.host, AWSUriPaths.AWS_STATS_SERVICE))
+                this.host, AWSUriPaths.AWS_STATS_ADAPTER))
                 .setBody(statsRequest)
                 .setReferer(this.host.getUri()));
     }

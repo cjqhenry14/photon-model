@@ -49,7 +49,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
 
 public class AWSStatsService extends StatelessService {
 
-    public static final String SELF_LINK = AWSUriPaths.AWS_STATS_SERVICE;
+    public static final String SELF_LINK = AWSUriPaths.AWS_STATS_ADAPTER;
 
     public static final String[] METRIC_NAMES = { "CPUUtilization", "DiskReadBytes",
             "DiskWriteBytes", "NetworkIn", "NetworkOut", "CPUCreditUsage",

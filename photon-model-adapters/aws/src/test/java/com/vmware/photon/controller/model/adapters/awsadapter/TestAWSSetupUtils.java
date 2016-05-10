@@ -151,11 +151,11 @@ public class TestAWSSetupUtils {
         awshostDescription.supportedChildren = new ArrayList<String>();
         awshostDescription.supportedChildren.add(ComputeType.VM_GUEST.name());
         awshostDescription.instanceAdapterReference = UriUtils.buildUri(host,
-                AWSUriPaths.AWS_INSTANCE_SERVICE);
+                AWSUriPaths.AWS_INSTANCE_ADAPTER);
         awshostDescription.enumerationAdapterReference = UriUtils.buildUri(host,
-                AWSUriPaths.AWS_ENUMERATION_SERVICE);
+                AWSUriPaths.AWS_ENUMERATION_ADAPTER);
         awshostDescription.statsAdapterReference = UriUtils.buildUri(host,
-                AWSUriPaths.AWS_STATS_SERVICE);
+                AWSUriPaths.AWS_STATS_ADAPTER);
 
         awshostDescription.zoneId = zoneId;
         awshostDescription.authCredentialsLink = authLink;
@@ -235,9 +235,9 @@ public class TestAWSSetupUtils {
 
         // set the create service to the aws instance service
         awsVMDesc.instanceAdapterReference = UriUtils.buildUri(host,
-                AWSUriPaths.AWS_INSTANCE_SERVICE);
+                AWSUriPaths.AWS_INSTANCE_ADAPTER);
         awsVMDesc.statsAdapterReference = UriUtils.buildUri(host,
-                AWSUriPaths.AWS_STATS_SERVICE);
+                AWSUriPaths.AWS_STATS_ADAPTER);
 
         ComputeDescriptionService.ComputeDescription vmComputeDesc = TestUtils.doPost(host,
                 awsVMDesc,

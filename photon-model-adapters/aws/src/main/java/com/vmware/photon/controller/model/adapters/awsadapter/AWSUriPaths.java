@@ -22,22 +22,22 @@ public class AWSUriPaths {
 
     public static final String PROVISIONING_AWS = UriPaths.PROVISIONING
             + "/aws";
-    public static final String AWS_INSTANCE_SERVICE = PROVISIONING_AWS
-            + "/instance-service";
-    public static final String AWS_NETWORK_SERVICE = PROVISIONING_AWS
-            + "/network-service";
-    public static final String AWS_FIREWALL_SERVICE = PROVISIONING_AWS
-            + "/firewall-service";
-    public static final String AWS_STATS_SERVICE = PROVISIONING_AWS
-            + "/stats-service";
-    public static final String AWS_ENUMERATION_SERVICE = PROVISIONING_AWS
-            + "/enumeration-service";
-    public static final String AWS_ENUMERATION_CREATION_SERVICE = PROVISIONING_AWS
-            + "/enumeration-creation-service";
-    public static final String AWS_ENUMERATION_DELETION_SERVICE = PROVISIONING_AWS
-            + "/enumeration-deletion-service";
-    public static final String AWS_COMPUTE_DESCRIPTION_CREATION_SERVICE = PROVISIONING_AWS
-            + "/compute-description-creation-service";
-    public static final String AWS_COMPUTE_STATE_CREATION_SERVICE = PROVISIONING_AWS
-            + "/compute-state-creation-service";
+    public static final String AWS_INSTANCE_ADAPTER = PROVISIONING_AWS
+            + "/instance-adapter";
+    public static final String AWS_NETWORK_ADAPTER = PROVISIONING_AWS
+            + "/network-adapter";
+    public static final String AWS_FIREWALL_ADAPTER = PROVISIONING_AWS
+            + "/firewall-adapter";
+    public static final String AWS_STATS_ADAPTER = PROVISIONING_AWS
+            + "/stats-adapter";
+    public static final String AWS_ENUMERATION_ADAPTER = PROVISIONING_AWS
+            + "/enumeration-adapter";
+    public static final String AWS_ENUMERATION_CREATION_ADAPTER = PROVISIONING_AWS
+            + "/enumeration-creation-adapter";
+    public static final String AWS_ENUMERATION_DELETION_ADAPTER = PROVISIONING_AWS
+            + "/enumeration-deletion-adapter";
+    public static final String AWS_COMPUTE_DESCRIPTION_CREATION_ADAPTER = PROVISIONING_AWS
+            + "/compute-description-creation-adapter";
+    public static final String AWS_COMPUTE_STATE_CREATION_ADAPTER = PROVISIONING_AWS
+            + "/compute-state-creation-adapter";
 }

@@ -115,7 +115,7 @@ public class TestProvisionAWSNetwork {
         initialState.regionID = this.region;
         initialState.instanceAdapterReference = UriUtils.buildUri(ServiceHost.LOCAL_HOST,
                 this.host.getPort(),
-                AWSUriPaths.AWS_NETWORK_SERVICE,
+                AWSUriPaths.AWS_NETWORK_ADAPTER,
                 null);
 
         TestUtils.postNetwork(this.host, initialState, response);
@@ -164,7 +164,7 @@ public class TestProvisionAWSNetwork {
         initialState.regionID = this.region;
         initialState.instanceAdapterReference = UriUtils.buildUri(ServiceHost.LOCAL_HOST,
                 this.host.getPort(),
-                AWSUriPaths.AWS_NETWORK_SERVICE,
+                AWSUriPaths.AWS_NETWORK_ADAPTER,
                 null);
 
         TestUtils.postNetwork(this.host, initialState, response);

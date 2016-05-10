@@ -119,7 +119,7 @@ public class TestProvisionAWSFirewall {
         initialState.resourcePoolLink = pool.documentSelfLink;
         initialState.instanceAdapterReference = UriUtils.buildUri(ServiceHost.LOCAL_HOST,
                 this.host.getPort(),
-                AWSUriPaths.AWS_FIREWALL_SERVICE,
+                AWSUriPaths.AWS_FIREWALL_ADAPTER,
                 null);
         TestUtils.postNetwork(this.host, initialState, response);
         NetworkState networkState = response.getBody(NetworkState.class);
@@ -137,7 +137,7 @@ public class TestProvisionAWSFirewall {
         fwInitialState.regionID = this.region;
         fwInitialState.instanceAdapterReference = UriUtils.buildUri(ServiceHost.LOCAL_HOST,
                 this.host.getPort(),
-                AWSUriPaths.AWS_FIREWALL_SERVICE,
+                AWSUriPaths.AWS_FIREWALL_ADAPTER,
                 null);
 
         TestUtils.postFirewall(this.host, fwInitialState, fwResponse);
@@ -187,7 +187,7 @@ public class TestProvisionAWSFirewall {
         initialState.resourcePoolLink = pool.documentSelfLink;
         initialState.instanceAdapterReference = UriUtils.buildUri(ServiceHost.LOCAL_HOST,
                 this.host.getPort(),
-                AWSUriPaths.AWS_FIREWALL_SERVICE,
+                AWSUriPaths.AWS_FIREWALL_ADAPTER,
                 null);
         TestUtils.postNetwork(this.host, initialState, response);
         NetworkState networkState = response.getBody(NetworkState.class);
@@ -203,7 +203,7 @@ public class TestProvisionAWSFirewall {
         fwInitialState.regionID = this.region;
         fwInitialState.instanceAdapterReference = UriUtils.buildUri(ServiceHost.LOCAL_HOST,
                 this.host.getPort(),
-                AWSUriPaths.AWS_FIREWALL_SERVICE,
+                AWSUriPaths.AWS_FIREWALL_ADAPTER,
                 null);
 
         TestUtils.postFirewall(this.host, fwInitialState, fwResponse);

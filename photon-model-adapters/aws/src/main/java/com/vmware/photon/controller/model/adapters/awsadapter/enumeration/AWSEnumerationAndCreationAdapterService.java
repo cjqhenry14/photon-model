@@ -69,8 +69,7 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  *
  */
 public class AWSEnumerationAndCreationAdapterService extends StatelessService {
-
-    public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_CREATION_SERVICE;
+    public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_CREATION_ADAPTER;
 
     public static enum AWSEnumerationCreationStages {
         CLIENT, ENUMERATE, ERROR

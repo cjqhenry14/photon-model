@@ -45,7 +45,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  */
 public class AWSEnumerationAdapterService extends StatelessService {
 
-    public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_SERVICE;
+    public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_ADAPTER;
     public static Integer AWS_PAGE_SIZE = 50;
 
     public AWSEnumerationAdapterService() {

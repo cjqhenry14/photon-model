@@ -57,7 +57,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  */
 public class AWSInstanceService extends StatelessService {
 
-    public static final String SELF_LINK = AWSUriPaths.AWS_INSTANCE_SERVICE;
+    public static final String SELF_LINK = AWSUriPaths.AWS_INSTANCE_ADAPTER;
 
     public static final String AWS_ENVIRONMENT_NAME = "AWS_EC2";
 

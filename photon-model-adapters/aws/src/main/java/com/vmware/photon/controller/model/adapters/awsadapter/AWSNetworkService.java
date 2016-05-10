@@ -61,7 +61,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  */
 public class AWSNetworkService extends StatelessService {
 
-    public static final String SELF_LINK = AWSUriPaths.AWS_NETWORK_SERVICE;
+    public static final String SELF_LINK = AWSUriPaths.AWS_NETWORK_ADAPTER;
 
     public static final String MAIN_ROUTE_ASSOCIATION = "association.main";
     public static final String VPC_ID = "awsVpcID";

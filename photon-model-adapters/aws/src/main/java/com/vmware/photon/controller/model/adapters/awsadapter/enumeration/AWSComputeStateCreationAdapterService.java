@@ -44,7 +44,7 @@ import com.vmware.xenon.common.Utils;
  */
 public class AWSComputeStateCreationAdapterService extends StatelessService {
 
-    public static final String SELF_LINK = AWSUriPaths.AWS_COMPUTE_STATE_CREATION_SERVICE;
+    public static final String SELF_LINK = AWSUriPaths.AWS_COMPUTE_STATE_CREATION_ADAPTER;
 
     public static enum AWSComputeStateCreationStage {
         POPULATE_COMPUTESTATES, CREATE_COMPUTESTATES, SIGNAL_COMPLETION
