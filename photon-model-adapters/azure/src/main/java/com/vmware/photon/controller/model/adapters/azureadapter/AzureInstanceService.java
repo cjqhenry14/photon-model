@@ -922,13 +922,12 @@ public class AzureInstanceService extends StatelessService {
         }
 
         String childAuthLink = ctx.child.description.authCredentialsLink;
-        URI authUri = UriUtils.buildUri(this.getHost(), childAuthLink);
         Consumer<Operation> onSuccess = (op) -> {
             ctx.childAuth = op.getBody(AuthCredentialsService.AuthCredentialsServiceState.class);
             ctx.stage = next;
             handleAllocation(ctx);
         };
-        AdapterUtils.getServiceState(this, authUri, onSuccess, getFailureConsumer(ctx));
+        AdapterUtils.getServiceState(this, childAuthLink, onSuccess, getFailureConsumer(ctx));
     }
 
     private void getParentAuth(AzureAllocationContext ctx, AzureStages next) {
@@ -939,13 +938,12 @@ public class AzureInstanceService extends StatelessService {
         } else {
             parentAuthLink = ctx.parent.description.authCredentialsLink;
         }
-        URI authUri = UriUtils.buildUri(this.getHost(), parentAuthLink);
         Consumer<Operation> onSuccess = (op) -> {
             ctx.parentAuth = op.getBody(AuthCredentialsService.AuthCredentialsServiceState.class);
             ctx.stage = next;
             handleAllocation(ctx);
         };
-        AdapterUtils.getServiceState(this, authUri, onSuccess, getFailureConsumer(ctx));
+        AdapterUtils.getServiceState(this, parentAuthLink, onSuccess, getFailureConsumer(ctx));
     }
 
     /*

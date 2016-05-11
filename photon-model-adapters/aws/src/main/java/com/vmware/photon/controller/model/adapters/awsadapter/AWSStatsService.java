@@ -156,14 +156,13 @@ public class AWSStatsService extends StatelessService {
         } else {
             authLink = statsData.parentDesc.description.authCredentialsLink;
         }
-        URI parentAuthUri = UriUtils.buildUri(getHost(), authLink);
-        AdapterUtils.getServiceState(this, parentAuthUri, onSuccess, getFailureConsumer(statsData));
+        AdapterUtils.getServiceState(this, authLink, onSuccess, getFailureConsumer(statsData));
     }
 
     private Consumer<Throwable> getFailureConsumer(AWSStatsDataHolder statsData) {
         return ((t) -> {
-            AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                    UriUtils.buildUri(getHost(), statsData.statsRequest.parentTaskLink), t);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
+                    statsData.statsRequest.parentTaskLink, t);
         });
     }
 
@@ -257,9 +256,8 @@ public class AWSStatsService extends StatelessService {
         @Override
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToProvisioningTask(service,
-                    UriUtils.buildUri(service.getHost(), statsData.statsRequest.parentTaskLink),
-                    exception);
+            AdapterUtils.sendFailurePatchToProvisioningTask(service, service.getHost(),
+                    statsData.statsRequest.parentTaskLink, exception);
         }
 
         @Override

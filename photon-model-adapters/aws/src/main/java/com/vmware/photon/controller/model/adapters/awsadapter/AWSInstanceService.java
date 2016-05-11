@@ -214,13 +214,12 @@ public class AWSInstanceService extends StatelessService {
         } else {
             parentAuthLink = aws.parent.description.authCredentialsLink;
         }
-        URI authUri = UriUtils.buildUri(this.getHost(), parentAuthLink);
         Consumer<Operation> onSuccess = (op) -> {
             aws.parentAuth = op.getBody(AuthCredentialsServiceState.class);
             aws.stage = next;
             handleAllocation(aws);
         };
-        AdapterUtils.getServiceState(this, authUri, onSuccess, getFailureConsumer(aws));
+        AdapterUtils.getServiceState(this, parentAuthLink, onSuccess, getFailureConsumer(aws));
     }
 
     private Consumer<Throwable> getFailureConsumer(AWSAllocation aws) {
@@ -289,8 +288,7 @@ public class AWSInstanceService extends StatelessService {
         if (bootDisk.bootConfig != null && bootDisk.bootConfig.files.length > 1) {
             AdapterUtils.sendFailurePatchToProvisioningTask(this,
                     aws.computeRequest.provisioningTaskReference,
-                    new IllegalStateException(
-                            "Only 1 configuration file allowed"));
+                    new IllegalStateException("Only 1 configuration file allowed"));
             return;
         }
 
@@ -403,8 +401,7 @@ public class AWSInstanceService extends StatelessService {
                 if (instance == null) {
                     AdapterUtils.sendFailurePatchToProvisioningTask(service,
                             computeReq.provisioningTaskReference,
-                            new IllegalStateException(
-                                    "Error getting instance EC2 instance"));
+                            new IllegalStateException("Error getting instance EC2 instance"));
                     return;
                 }
                 // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-329
@@ -443,8 +440,7 @@ public class AWSInstanceService extends StatelessService {
                     if (exc != null) {
                         AdapterUtils.sendFailurePatchToProvisioningTask(service,
                                 computeReq.provisioningTaskReference,
-                                new IllegalStateException(
-                                        "Error updating VM state"));
+                                new IllegalStateException("Error updating VM state"));
                         return;
                     }
                     AdapterUtils.sendPatchToProvisioningTask(service,
@@ -542,8 +538,7 @@ public class AWSInstanceService extends StatelessService {
                     if (instance == null) {
                         AdapterUtils.sendFailurePatchToProvisioningTask(service,
                                 computeReq.provisioningTaskReference,
-                                new IllegalStateException(
-                                        "Error getting instance"));
+                                new IllegalStateException("Error getting instance"));
                         return;
                     }
                     deleteComputeResource(service, computeDesc, computeReq);

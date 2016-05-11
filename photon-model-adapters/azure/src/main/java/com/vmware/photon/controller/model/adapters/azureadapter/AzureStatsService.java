@@ -190,9 +190,8 @@ public class AzureStatsService extends StatelessService {
                     .getBody(AuthCredentialsService.AuthCredentialsServiceState.class);
             getBootDisk(statsData);
         };
-        URI parentAuthUri = UriUtils.buildUri(getHost(),
-                statsData.parentDesc.description.authCredentialsLink);
-        AdapterUtils.getServiceState(this, parentAuthUri, onSuccess, getFailureConsumer(statsData));
+        AdapterUtils.getServiceState(this, statsData.parentDesc.description.authCredentialsLink,
+                onSuccess, getFailureConsumer(statsData));
     }
 
     private void getBootDisk(AzureStatsDataHolder statsData) {
@@ -206,13 +205,12 @@ public class AzureStatsService extends StatelessService {
          */
         if (statsData.computeDesc.diskLinks == null ||
                 statsData.computeDesc.diskLinks.isEmpty()) {
-            AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                    UriUtils.buildUri(getHost(), statsData.statsRequest.parentTaskLink),
+            AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
+                    statsData.statsRequest.parentTaskLink,
                     new IllegalStateException("No disks found"));
         }
-        URI bootDiskUri = UriUtils.buildUri(getHost(),
-                statsData.computeDesc.diskLinks.get(0));
-        AdapterUtils.getServiceState(this, bootDiskUri, onSuccess, getFailureConsumer(statsData));
+        AdapterUtils.getServiceState(this, statsData.computeDesc.diskLinks.get(0), onSuccess,
+                getFailureConsumer(statsData));
     }
 
     private void getBootDiskAuth(AzureStatsDataHolder statsData) {
@@ -220,15 +218,14 @@ public class AzureStatsService extends StatelessService {
             statsData.bootDiskAuth = op.getBody(AuthCredentialsServiceState.class);
             getStats(statsData);
         };
-        URI bootDiskAuthUri = UriUtils.buildUri(getHost(), statsData.bootDisk.authCredentialsLink);
-        AdapterUtils.getServiceState(this, bootDiskAuthUri, onSuccess,
+        AdapterUtils.getServiceState(this, statsData.bootDisk.authCredentialsLink, onSuccess,
                 getFailureConsumer(statsData));
     }
 
     private Consumer<Throwable> getFailureConsumer(AzureStatsDataHolder statsData) {
         return ((throwable) -> {
-            AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                    UriUtils.buildUri(getHost(), statsData.statsRequest.parentTaskLink), throwable);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
+                    statsData.statsRequest.parentTaskLink, throwable);
         });
     }
 
@@ -261,8 +258,8 @@ public class AzureStatsService extends StatelessService {
         try {
             getMetricDefinitions(statsData);
         } catch (Exception e) {
-            AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                    UriUtils.buildUri(getHost(), statsData.statsRequest.parentTaskLink), e);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
+                    statsData.statsRequest.parentTaskLink, e);
         }
     }
 
@@ -295,8 +292,8 @@ public class AzureStatsService extends StatelessService {
                 AzureConstants.AUTH_HEADER_BEARER_PREFIX + statsData.credentials.getToken());
         operation.setCompletion((op, ex) -> {
             if (ex != null) {
-                AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                        UriUtils.buildUri(getHost(), statsData.statsRequest.parentTaskLink), ex);
+                AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
+                        statsData.statsRequest.parentTaskLink, ex);
             }
             MetricDefinitions metricDefinitions = op.getBody(MetricDefinitions.class);
             DateTimeFormatter dateTimeFormatter = DateTimeFormat
@@ -325,8 +322,8 @@ public class AzureStatsService extends StatelessService {
                 try {
                     getMetrics(statsData);
                 } catch (Exception e) {
-                    AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                            UriUtils.buildUri(getHost(), statsData.statsRequest.parentTaskLink), e);
+                    AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
+                            statsData.statsRequest.parentTaskLink, e);
                 }
             } else {
                 // Patch back to the Parent with empty response
@@ -382,9 +379,8 @@ public class AzureStatsService extends StatelessService {
         @Override
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToProvisioningTask(service,
-                    UriUtils.buildUri(service.getHost(), statsData.statsRequest.parentTaskLink),
-                    exception);
+            AdapterUtils.sendFailurePatchToProvisioningTask(service, service.getHost(),
+                    statsData.statsRequest.parentTaskLink, exception);
         }
 
         @Override

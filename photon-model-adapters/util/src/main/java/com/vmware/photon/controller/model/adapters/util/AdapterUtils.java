@@ -24,8 +24,10 @@ import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService.R
 
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
+import com.vmware.xenon.common.ServiceHost;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.TaskState;
+import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 
 /**
@@ -36,6 +38,22 @@ public class AdapterUtils {
     public static void sendFailurePatchToProvisioningTask(StatelessService service,
             URI taskLink, Throwable t) {
         service.logWarning(Utils.toString(t));
+        sendPatchToProvisioningTask(service, taskLink, t);
+    }
+
+    /**
+     * Overloaded sendFailurePatchToProvisioningTask method that takes the ServiceHost
+     * and path inputs to build the URI.
+     *
+     * @param service
+     * @param host
+     * @param path
+     * @param t
+     */
+    public static void sendFailurePatchToProvisioningTask(StatelessService service,
+            ServiceHost host, String path, Throwable t) {
+        service.logWarning(Utils.toString(t));
+        URI taskLink = UriUtils.buildUri(host, path);
         sendPatchToProvisioningTask(service, taskLink, t);
     }
 
@@ -113,6 +131,18 @@ public class AdapterUtils {
                 return;
             }
             success.accept(o);
+        }));
+    }
+
+    /**
+     * Method will be responsible for getting the service state for the
+     * requested resource and invoke Consumer callback for success and
+     * failure
+     */
+    public static void getServiceState(Service service, String path,
+            Consumer<Operation> success, Consumer<Throwable> failure) {
+        service.sendRequest(Operation.createGet(service, path).setCompletion(success, (o, e) -> {
+            failure.accept(e);
         }));
     }
 

@@ -285,14 +285,13 @@ public class AWSEnumerationAdapterService extends StatelessService {
      * @param aws
      */
     private void getParentAuth(EnumerationContext aws, AWSEnumerationStages next) {
-        URI authUri = UriUtils.buildUri(this.getHost(),
-                aws.computeHostDescription.authCredentialsLink);
         Consumer<Operation> onSuccess = (op) -> {
             aws.parentAuth = op.getBody(AuthCredentialsServiceState.class);
             aws.stage = next;
             handleEnumerationRequest(aws);
         };
-        AdapterUtils.getServiceState(this, authUri, onSuccess, getFailureConsumer(aws));
+        AdapterUtils.getServiceState(this, aws.computeHostDescription.authCredentialsLink,
+                onSuccess, getFailureConsumer(aws));
     }
 
     /**
