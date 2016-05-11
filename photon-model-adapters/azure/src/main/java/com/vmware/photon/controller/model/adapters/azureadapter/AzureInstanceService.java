@@ -1170,14 +1170,13 @@ public class AzureInstanceService extends StatelessService {
 
             ApplicationTokenCredentials credentials = ctx.credentials;
 
-            StringBuilder restUriString = new StringBuilder();
-            restUriString.append(AzureConstants.BASE_URI_FOR_REST)
-                   .append(azureInstanceId).append("/")
-                   .append(AzureConstants.DIAGNOSTIC_SETTING_ENDPOINT).append("/")
-                   .append(AzureConstants.DIAGNOSTIC_SETTING_AGENT);
-            URI uri = UriUtils.buildUri(restUriString.toString());
-            uri = UriUtils.extendUriWithQuery(uri, AzureConstants.QUERY_PARAM_API_VERSION,
+            URI uri = UriUtils.extendUriWithQuery(
+                    UriUtils.buildUri(UriUtils.buildUri(AzureConstants.BASE_URI_FOR_REST),
+                            azureInstanceId, AzureConstants.DIAGNOSTIC_SETTING_ENDPOINT,
+                            AzureConstants.DIAGNOSTIC_SETTING_AGENT),
+                    AzureConstants.QUERY_PARAM_API_VERSION,
                     AzureConstants.DIAGNOSTIC_SETTING_API_VERSION);
+
             Operation operation = Operation.createPut(uri);
             operation.setBody(azureDiagnosticSettings);
             operation.addRequestHeader(Operation.ACCEPT_HEADER, Operation.MEDIA_TYPE_APPLICATION_JSON);
