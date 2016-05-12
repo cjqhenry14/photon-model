@@ -168,8 +168,6 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         // delete vm
         deleteVMs(vmState.documentSelfLink);
         vmState = null;
-        // check that the VMs are gone
-        ProvisioningUtils.queryComputeInstances(this.host, 1);
     }
 
     private void issueStatsRequest(ComputeState vm) throws Throwable {
@@ -361,6 +359,9 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
                 .setBody(deletionState)
                 .setCompletion(this.host.getCompletion()));
         this.host.testWait();
+
+        // check that the VMs are gone
+        ProvisioningUtils.queryComputeInstances(this.host, 1);
     }
 
     /**
