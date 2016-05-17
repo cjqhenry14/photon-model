@@ -30,8 +30,8 @@ import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
-
 import com.vmware.photon.controller.model.tasks.monitoring.StatsCollectionTaskSchedulerService;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.TaskState;
@@ -200,6 +200,19 @@ public class ProvisioningUtils {
             return res;
         }
         throw new Exception("Desired number of compute descriptions not found. Expected "
+                + desiredCount + "Found " + res.documents.size());
+    }
+
+    public static ServiceDocumentQueryResult queryNetworkStates(VerificationHost host,
+            int desiredCount) throws Throwable {
+        ServiceDocumentQueryResult res;
+        res = host.getFactoryState(UriUtils
+                .buildExpandLinksQueryUri(UriUtils.buildUri(host.getUri(),
+                        NetworkService.FACTORY_LINK)));
+        if (res.documents.size() == desiredCount) {
+            return res;
+        }
+        throw new Exception("Desired number of network states not found. Expected "
                 + desiredCount + "Found " + res.documents.size());
     }
 

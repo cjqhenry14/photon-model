@@ -13,6 +13,11 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_GATEWAY_ID;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_MAIN_ROUTE_ASSOCIATION;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_SUBNET_ID;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_VPC_ID;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_VPC_ROUTE_TABLE_ID;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
 
 import java.net.URI;
@@ -57,21 +62,15 @@ import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
- * Adapter for provisioning a netwotk on AWS.
+ * Adapter for provisioning a network on AWS.
  */
 public class AWSNetworkService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_NETWORK_ADAPTER;
-
-    public static final String MAIN_ROUTE_ASSOCIATION = "association.main";
-    public static final String VPC_ID = "awsVpcID";
-    public static final String SUBNET_ID = "awsSubnetID";
-    public static final String GATEWAY_ID = "awsGatewayID";
-    public static final String VPC_ROUTE_TABLE_ID = "awsMainRouteTableID";
     public static final String ROUTE_DEST_ALL = "0.0.0.0/0";
 
     /**
-     * Stages for netwotk provisioning.
+     * Stages for network provisioning.
      */
     public enum NetworkStage {
         NETWORK_TASK_STATE, CREDENTIALS, AWS_CLIENT, NETWORK_STATE, PROVISION_VPC, REMOVE_VPC, PROVISION_SUBNET, REMOVE_SUBNET, PROVISION_GATEWAY, REMOVE_GATEWAY, PROVISION_ROUTE, REMOVE_ROUTE, FINISHED, FAILED
@@ -142,52 +141,52 @@ public class AWSNetworkService extends StatelessService {
             break;
         case PROVISION_VPC:
             String vpcID = createVPC(awsNet.network.subnetCIDR, awsNet.client);
-            updateNetworkProperties(VPC_ID, vpcID, awsNet,
+            updateNetworkProperties(AWS_VPC_ID, vpcID, awsNet,
                     NetworkStage.PROVISION_SUBNET);
             break;
         case PROVISION_SUBNET:
             String subnetID = createSubnet(awsNet.network.subnetCIDR,
-                    getCustomProperty(awsNet, VPC_ID), awsNet.client);
-            updateNetworkProperties(SUBNET_ID, subnetID, awsNet,
+                    getCustomProperty(awsNet, AWS_VPC_ID), awsNet.client);
+            updateNetworkProperties(AWS_SUBNET_ID, subnetID, awsNet,
                     NetworkStage.PROVISION_GATEWAY);
             break;
         case PROVISION_GATEWAY:
             String gatewayID = createInternetGateway(awsNet.client);
-            attachInternetGateway(getCustomProperty(awsNet, VPC_ID), gatewayID,
+            attachInternetGateway(getCustomProperty(awsNet, AWS_VPC_ID), gatewayID,
                     awsNet.client);
-            updateNetworkProperties(GATEWAY_ID, gatewayID, awsNet,
+            updateNetworkProperties(AWS_GATEWAY_ID, gatewayID, awsNet,
                     NetworkStage.PROVISION_ROUTE);
             break;
         case PROVISION_ROUTE:
             RouteTable routeTable = getMainRouteTable(
-                    awsNet.network.customProperties.get(VPC_ID), awsNet.client);
-            createInternetRoute(getCustomProperty(awsNet, GATEWAY_ID),
+                    awsNet.network.customProperties.get(AWS_VPC_ID), awsNet.client);
+            createInternetRoute(getCustomProperty(awsNet, AWS_GATEWAY_ID),
                     routeTable.getRouteTableId(), ROUTE_DEST_ALL, awsNet.client);
-            updateNetworkProperties(VPC_ROUTE_TABLE_ID,
+            updateNetworkProperties(AWS_VPC_ROUTE_TABLE_ID,
                     routeTable.getRouteTableId(), awsNet, NetworkStage.FINISHED);
             break;
         case REMOVE_GATEWAY:
-            detachInternetGateway(getCustomProperty(awsNet, VPC_ID),
-                    getCustomProperty(awsNet, GATEWAY_ID), awsNet.client);
-            deleteInternetGateway(getCustomProperty(awsNet, GATEWAY_ID),
+            detachInternetGateway(getCustomProperty(awsNet, AWS_VPC_ID),
+                    getCustomProperty(awsNet, AWS_GATEWAY_ID), awsNet.client);
+            deleteInternetGateway(getCustomProperty(awsNet, AWS_GATEWAY_ID),
                     awsNet.client);
-            updateNetworkProperties(GATEWAY_ID, AWSUtils.NO_VALUE, awsNet,
+            updateNetworkProperties(AWS_GATEWAY_ID, AWSUtils.NO_VALUE, awsNet,
                     NetworkStage.REMOVE_SUBNET);
             break;
         case REMOVE_SUBNET:
-            deleteSubnet(getCustomProperty(awsNet, SUBNET_ID), awsNet.client);
-            updateNetworkProperties(SUBNET_ID, AWSUtils.NO_VALUE, awsNet,
+            deleteSubnet(getCustomProperty(awsNet, AWS_SUBNET_ID), awsNet.client);
+            updateNetworkProperties(AWS_SUBNET_ID, AWSUtils.NO_VALUE, awsNet,
                     NetworkStage.REMOVE_ROUTE);
             break;
         case REMOVE_ROUTE:
             // only need to update the document, the AWS artifact will be
             // removed on VPC removal
-            updateNetworkProperties(VPC_ROUTE_TABLE_ID, AWSUtils.NO_VALUE,
+            updateNetworkProperties(AWS_VPC_ROUTE_TABLE_ID, AWSUtils.NO_VALUE,
                     awsNet, NetworkStage.REMOVE_VPC);
             break;
         case REMOVE_VPC:
-            deleteVPC(getCustomProperty(awsNet, VPC_ID), awsNet.client);
-            updateNetworkProperties(VPC_ID, AWSUtils.NO_VALUE, awsNet,
+            deleteVPC(getCustomProperty(awsNet, AWS_VPC_ID), awsNet.client);
+            updateNetworkProperties(AWS_VPC_ID, AWSUtils.NO_VALUE, awsNet,
                     NetworkStage.FINISHED);
             break;
         case FAILED:
@@ -428,7 +427,7 @@ public class AWSNetworkService extends StatelessService {
         // build filter list
         List<Filter> filters = new ArrayList<>();
         filters.add(AWSUtils.getFilter(AWSUtils.AWS_FILTER_VPC_ID, vpcID));
-        filters.add(AWSUtils.getFilter(MAIN_ROUTE_ASSOCIATION, "true"));
+        filters.add(AWSUtils.getFilter(AWS_MAIN_ROUTE_ASSOCIATION, "true"));
 
         DescribeRouteTablesRequest req = new DescribeRouteTablesRequest()
                 .withFilters(filters);

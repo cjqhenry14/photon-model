@@ -13,6 +13,9 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.HYPHEN;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PRIVATE_INTERFACE;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PUBLIC_INTERFACE;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
 
 import java.io.UnsupportedEncodingException;
@@ -41,6 +44,7 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.OperationContext;
@@ -86,12 +90,14 @@ public class AWSInstanceService extends StatelessService {
             op.complete();
             if (aws.computeRequest.isMockRequest
                     && aws.computeRequest.requestType == ComputeInstanceRequest.InstanceRequestType.CREATE) {
-                AdapterUtils.sendPatchToProvisioningTask(this, aws.computeRequest.provisioningTaskReference);
+                AdapterUtils.sendPatchToProvisioningTask(this,
+                        aws.computeRequest.provisioningTaskReference);
                 return;
             }
             handleAllocation(aws);
         }
     }
+
     /*
      * method will act much like handlePatch, but without persistence as this is a stateless
      * service. Each call to the service will result in a synchronous execution of the stages below
@@ -177,6 +183,7 @@ public class AWSInstanceService extends StatelessService {
             break;
         }
     }
+
     /*
      * method will be responsible for getting the compute description for the requested resource and
      * then passing to the next step
@@ -398,6 +405,7 @@ public class AWSInstanceService extends StatelessService {
         @Override
         public void onSuccess(RunInstancesRequest request,
                 RunInstancesResult result) {
+            List<Operation> createOperations = new ArrayList<Operation>();
             // consumer to be invoked once a VM is in the running state
             Consumer<Instance> consumer = instance -> {
                 OperationContext.restoreOperationContext(opContext);
@@ -407,11 +415,6 @@ public class AWSInstanceService extends StatelessService {
                             new IllegalStateException("Error getting instance EC2 instance"));
                     return;
                 }
-                // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-329
-                NetworkInterfaceState networkState = new NetworkInterfaceState();
-                networkState.address = instance.getPrivateIpAddress();
-                networkState.id = instance.getInstanceId();
-                networkState.tenantLinks = computeDesc.tenantLinks;
                 ComputeStateWithDescription resultDesc = new ComputeStateWithDescription();
                 resultDesc.address = instance.getPublicIpAddress();
                 resultDesc.powerState = AWSUtils.mapToPowerState(instance.getState());
@@ -421,22 +424,57 @@ public class AWSInstanceService extends StatelessService {
                     resultDesc.customProperties = computeDesc.customProperties;
                 }
                 resultDesc.id = instance.getInstanceId();
+                resultDesc.customProperties.put(AWSConstants.AWS_VPC_ID,
+                        instance.getVpcId());
+
+                // NIC - Private
+                NetworkInterfaceState privateNICState = new NetworkInterfaceState();
+                privateNICState.address = instance.getPrivateIpAddress();
+                privateNICState.id = instance.getInstanceId() + HYPHEN + PRIVATE_INTERFACE;
+                privateNICState.documentSelfLink = privateNICState.id;
+                privateNICState.tenantLinks = computeDesc.tenantLinks;
+
+                // Compute State Network Links
                 resultDesc.networkLinks = new ArrayList<String>();
                 resultDesc.networkLinks.add(UriUtils.buildUriPath(
                         NetworkInterfaceService.FACTORY_LINK,
-                        instance.getInstanceId()));
+                        privateNICState.id));
 
+                // NIC - Public
+                if (instance.getPublicIpAddress() != null) {
+                    NetworkInterfaceState publicNICState = new NetworkInterfaceState();
+                    publicNICState.address = instance.getPublicIpAddress();
+                    publicNICState.id = instance.getInstanceId() + HYPHEN + PUBLIC_INTERFACE;
+                    publicNICState.documentSelfLink = publicNICState.id;
+                    publicNICState.tenantLinks = computeDesc.tenantLinks;
+
+                    Operation postPublicNetworkInterface = Operation
+                            .createPost(service,
+                                    NetworkInterfaceService.FACTORY_LINK)
+                            .setBody(publicNICState)
+                            .setReferer(service.getHost().getUri());
+                    createOperations.add(postPublicNetworkInterface);
+
+                    resultDesc.networkLinks.add(UriUtils.buildUriPath(
+                            NetworkInterfaceService.FACTORY_LINK,
+                            publicNICState.id));
+                }
+                // Create operations
                 Operation patchState = Operation
                         .createPatch(computeReq.computeReference)
                         .setBody(resultDesc)
                         .setReferer(service.getHost().getUri());
-                Operation postNetworkInterface = Operation
+                createOperations.add(patchState);
+
+                Operation postPrivateNetworkInterface = Operation
                         .createPost(
                                 UriUtils.buildUri(
                                         service.getHost(),
                                         NetworkInterfaceService.FACTORY_LINK))
-                        .setBody(networkState)
+                        .setBody(privateNICState)
                         .setReferer(service.getHost().getUri());
+                createOperations.add(postPrivateNetworkInterface);
+
                 OperationJoin.JoinedCompletionHandler joinCompletion = (ox,
                         exc) -> {
                     if (exc != null) {
@@ -448,8 +486,7 @@ public class AWSInstanceService extends StatelessService {
                     AdapterUtils.sendPatchToProvisioningTask(service,
                             computeReq.provisioningTaskReference);
                 };
-                OperationJoin joinOp = OperationJoin.create(patchState,
-                        postNetworkInterface);
+                OperationJoin joinOp = OperationJoin.create(createOperations);
                 joinOp.setCompletion(joinCompletion);
                 joinOp.sendWith(service.getHost());
             };

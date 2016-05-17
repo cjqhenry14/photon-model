@@ -686,7 +686,7 @@ public class TestAWSSetupUtils {
             deletionFlags.add(i, Boolean.FALSE);
         }
         TerminateInstancesRequest termRequest = new TerminateInstancesRequest(instanceIdsToDelete);
-        AsyncHandler<TerminateInstancesRequest, TerminateInstancesResult> terminateHandler = new AWSTerminateHandler(
+        AsyncHandler<TerminateInstancesRequest, TerminateInstancesResult> terminateHandler = new AWSTerminateHandlerAsync(
                 host);
         client.terminateInstancesAsync(termRequest, terminateHandler);
 
@@ -701,12 +701,12 @@ public class TestAWSSetupUtils {
      * Async handler for the deletion of instances from the AWS endpoint.
      *
      */
-    public static class AWSTerminateHandler implements
+    public static class AWSTerminateHandlerAsync implements
             AsyncHandler<TerminateInstancesRequest, TerminateInstancesResult> {
 
         VerificationHost host;
 
-        AWSTerminateHandler(VerificationHost host) {
+        AWSTerminateHandlerAsync(VerificationHost host) {
             this.host = host;
         }
 
@@ -848,4 +848,5 @@ public class TestAWSSetupUtils {
             }
         }
     }
+
 }

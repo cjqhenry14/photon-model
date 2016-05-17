@@ -48,6 +48,7 @@ import com.vmware.photon.controller.model.resources.ComputeDescriptionService.Co
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.util.PhotonModelUtils;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.StatelessService;
@@ -99,7 +100,8 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         // Mapping of instance Id and the compute state Id in the local system.
         public Map<String, String> localAWSInstanceIds;
         public Map<String, Instance> remoteAWSInstances;
-        List<Instance> instancesToBeCreated;
+        public List<Instance> instancesToBeCreated;
+        public Map<String, Instance> instancesToBeUpdated;
         // Synchronized map to keep track if an enumeration service has been started in listening
         // mode for a host
         public Map<String, Boolean> enumerationHostMap;
@@ -119,6 +121,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             computeHostDescription = request.computeHostDescription;
             enumerationHostMap = new ConcurrentSkipListMap<String, Boolean>();
             localAWSInstanceIds = new ConcurrentSkipListMap<String, String>();
+            instancesToBeUpdated = new ConcurrentSkipListMap<String, Instance>();
             remoteAWSInstances = new ConcurrentSkipListMap<String, Instance>();
             instancesToBeCreated = new ArrayList<Instance>();
             stage = AWSEnumerationCreationStages.CLIENT;
@@ -260,7 +263,8 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
      * Method to instantiate the AWS Async client for future use
      * @param aws
      */
-    private void getAWSAsyncClient(EnumerationCreationContext aws, AWSEnumerationCreationStages next) {
+    private void getAWSAsyncClient(EnumerationCreationContext aws,
+            AWSEnumerationCreationStages next) {
         if (aws.amazonEC2Client == null) {
             try {
                 aws.amazonEC2Client = AWSUtils.getAsyncClient(
@@ -287,6 +291,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         return ("hostLink:" + computeHost.documentSelfLink + "-enumerationAdapterReference:"
                 + computeHost.enumerationAdapterReference);
     }
+
     /**
      * Initializes and saves a reference to the request object that is sent to AWS to get a page of instances. Also saves an instance
      * to the async handler that will be used to handle the responses received from AWS. It sets the nextToken value in the request
@@ -320,7 +325,8 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
                 EnumerationCreationContext aws) {
             this.service = service;
             this.aws = aws;
-            this.opContext = OperationContext.getOperationContext();;
+            this.opContext = OperationContext.getOperationContext();
+            ;
         }
 
         @Override
@@ -351,8 +357,6 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             // Save the reference to the next token that will be used to retrieve the next page of
             // results from AWS.
             aws.nextToken = result.getNextToken();
-            service.logInfo("Next token value is %s",
-                    aws.nextToken);
             // Since there is filtering of resources at source, there can be a case when no
             // resources are returned from AWS.
             if (aws.remoteAWSInstances.size() == 0) {
@@ -406,7 +410,8 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
                 createComputeStates(next);
                 break;
             case GET_NEXT_PAGE:
-                getNextPageFromEnumerationAdapter(AWSEnumerationCreationSubStage.QUERY_LOCAL_RESOURCES);
+                getNextPageFromEnumerationAdapter(
+                        AWSEnumerationCreationSubStage.QUERY_LOCAL_RESOURCES);
                 break;
             case ENUMERATION_STOP:
                 signalStopToEnumerationAdapter();
@@ -461,8 +466,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
                         for (Object s : responseTask.results.documents.values()) {
                             ComputeState localInstance = Utils.fromJson(s,
                                     ComputeService.ComputeState.class);
-                            aws.localAWSInstanceIds.put(
-                                    localInstance.id,
+                            aws.localAWSInstanceIds.put(localInstance.id,
                                     localInstance.documentSelfLink);
                         }
                         service.logInfo(
@@ -485,19 +489,22 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
                         "No resources discovered on the remote system. Nothing to be created locally");
                 // no local instances
             } else if (aws.localAWSInstanceIds == null || aws.localAWSInstanceIds.size() == 0) {
-                service.logInfo(
-                        "No local resources found. Everything on the remote system should be created locally.");
                 for (String key : aws.remoteAWSInstances.keySet()) {
                     aws.instancesToBeCreated.add(aws.remoteAWSInstances.get(key));
                 }
-            } else { // compare and add the ones that do not exist locally
+                // compare and add the ones that do not exist locally for creation. Mark others
+                // for updates.
+            } else {
                 for (String key : aws.remoteAWSInstances.keySet()) {
                     if (!aws.localAWSInstanceIds.containsKey(key)) {
                         aws.instancesToBeCreated.add(aws.remoteAWSInstances.get(key));
+                        // A map of the local compute state id and the corresponding latest
+                        // state on AWS
+                    } else {
+                        aws.instancesToBeUpdated.put(aws.localAWSInstanceIds.get(key),
+                                aws.remoteAWSInstances.get(key));
                     }
                 }
-                service.logInfo("%d instances need to be represented in the local system",
-                        aws.instancesToBeCreated.size());
             }
             aws.subStage = next;
             handleReceivedEnumerationData();
@@ -541,10 +548,13 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         private void createComputeStates(AWSEnumerationCreationSubStage next) {
             AWSComputeStateForCreation awsComputeState = new AWSComputeStateForCreation();
             awsComputeState.instancesToBeCreated = aws.instancesToBeCreated;
+            awsComputeState.instancesToBeUpdated = aws.instancesToBeUpdated;
             awsComputeState.parentComputeLink = aws.computeEnumerationRequest.parentComputeLink;
             awsComputeState.resourcePoolLink = aws.computeEnumerationRequest.resourcePoolLink;
             awsComputeState.parentTaskLink = aws.computeEnumerationRequest.enumerationTaskReference;
             awsComputeState.tenantLinks = aws.computeHostDescription.tenantLinks;
+            awsComputeState.parentAuth = aws.parentAuth;
+            awsComputeState.regionId = aws.computeHostDescription.zoneId;
 
             service.sendRequest(Operation
                     .createPatch(service, AWSComputeStateCreationAdapterService.SELF_LINK)

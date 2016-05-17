@@ -18,14 +18,22 @@ import com.vmware.photon.controller.model.UriPaths;
 public class AWSConstants {
     public static final String AWS_SECURITY_GROUP = "awsSecurityGroup";
     public static final String AWS_SECURITY_GROUP_ID = "awsSecurityGroupId";
+    public static final String AWS_TAGS = "awsTags";
     public static final String AWS_VPC_ID = "awsVpcId";
     public static final String AWS_SUBNET_ID = "awsSubnetId";
+    public static final String AWS_GATEWAY_ID = "awsGatewayID";
+    public static final String AWS_VPC_ROUTE_TABLE_ID = "awsMainRouteTableID";
+    public static final String AWS_MAIN_ROUTE_ASSOCIATION = "association.main";
     public static final String INSTANCE_STATE = "instance-state-name";
     public static final String INSTANCE_STATE_RUNNING = "running";
     public static final String INSTANCE_STATE_PENDING = "pending";
     public static final String INSTANCE_STATE_STOPPING = "stopping";
     public static final String INSTANCE_STATE_STOPPED = "stopped";
     public static final String INSTANCE_STATE_SHUTTING_DOWN = "shutting-down";
+    public static final String HYPHEN = "-";
+    public static final String PUBLIC_INTERFACE = "public-interface";
+    public static final String PRIVATE_INTERFACE = "private-interface";
+    public static final String AWS_ATTACHMENT_VPC_FILTER = "attachment.vpc-id";
     public static final String PROPERTY_NAME_QUERY_PAGE_SIZE = UriPaths.PROPERTY_PREFIX
             + AWSConstants.QUERY_PAGE_SIZE;
     private static int QUERY_PAGE_SIZE = Integer.getInteger(PROPERTY_NAME_QUERY_PAGE_SIZE, 50);
