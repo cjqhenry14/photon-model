@@ -74,6 +74,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     public String azureStorageAccountName = "storage";
     public String azureStorageAccountType = "Standard_RAGRS";
     public boolean isMock = true;
+    public boolean skipStats = true;
 
     // fields that are used across method calls, stash them as private fields
     private String resourcePoolLink;
@@ -155,15 +156,17 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         // check that the VM has been created
         ProvisioningUtils.queryComputeInstances(this.host, 2);
 
-        host.setTimeoutSeconds(600);
-        host.waitFor("Error waiting for stats", () -> {
-            try {
-                issueStatsRequest(vmState);
-            } catch (Throwable t) {
-                return false;
-            }
-            return true;
-        });
+        if (!skipStats) {
+            host.setTimeoutSeconds(600);
+            host.waitFor("Error waiting for stats", () -> {
+                try {
+                    issueStatsRequest(vmState);
+                } catch (Throwable t) {
+                    return false;
+                }
+                return true;
+            });
+        }
 
         // delete vm
         deleteVMs(vmState.documentSelfLink);
