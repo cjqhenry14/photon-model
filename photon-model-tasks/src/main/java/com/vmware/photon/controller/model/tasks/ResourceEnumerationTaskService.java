@@ -125,7 +125,7 @@ public class ResourceEnumerationTaskService extends TaskService<ResourceEnumerat
             // Patch the enumerate service URI from the CHD
             Operation.CompletionHandler descriptionCompletion = (o, ex) -> {
                 if (ex != null) {
-                    sendSelfPatch(TaskState.TaskStage.FAILED, ex);
+                    TaskUtils.sendFailurePatch(this, state, ex);
                     start.fail(ex);
                     return;
                 }
@@ -185,26 +185,6 @@ public class ResourceEnumerationTaskService extends TaskService<ResourceEnumerat
         }
 
         patch.setBody(currentState).complete();
-    }
-
-    private void sendSelfPatch(TaskState.TaskStage state, Throwable e) {
-        ResourceEnumerationTaskState body = new ResourceEnumerationTaskState();
-        body.taskInfo.stage = state;
-        if (e != null) {
-            body.taskInfo.failure = Utils.toServiceErrorResponse(e);
-        }
-
-        Operation patch = Operation
-                .createPatch(getUri())
-                .setBody(body)
-                .setCompletion(
-                        (o, ex) -> {
-                            if (ex != null) {
-                                logWarning("Self patch failed: %s",
-                                        Utils.toString(ex));
-                            }
-                        });
-        sendRequest(patch);
     }
 
     public static void validateState(ResourceEnumerationTaskState state) {

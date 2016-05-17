@@ -30,6 +30,7 @@ import okhttp3.OkHttpClient;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
+import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 
 /**
@@ -66,6 +67,7 @@ public class AzureAllocationContext {
     public OkHttpClient httpClient;
 
     public Throwable error;
+    public Operation operation;
 
     /**
      * Initialize with request info and first stage.

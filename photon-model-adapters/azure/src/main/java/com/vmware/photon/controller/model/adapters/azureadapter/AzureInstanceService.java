@@ -71,8 +71,11 @@ import com.microsoft.azure.management.network.models.Subnet;
 import com.microsoft.azure.management.network.models.VirtualNetwork;
 import com.microsoft.azure.management.resources.ResourceManagementClient;
 import com.microsoft.azure.management.resources.ResourceManagementClientImpl;
+import com.microsoft.azure.management.resources.SubscriptionClient;
+import com.microsoft.azure.management.resources.SubscriptionClientImpl;
 import com.microsoft.azure.management.resources.models.Provider;
 import com.microsoft.azure.management.resources.models.ResourceGroup;
+import com.microsoft.azure.management.resources.models.Subscription;
 import com.microsoft.azure.management.storage.StorageManagementClient;
 import com.microsoft.azure.management.storage.StorageManagementClientImpl;
 import com.microsoft.azure.management.storage.models.AccountType;
@@ -85,6 +88,7 @@ import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
+import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
 import com.vmware.photon.controller.model.adapters.azureadapter.diagnostic.settings.models.AzureDiagnosticSettings;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
@@ -154,20 +158,28 @@ public class AzureInstanceService extends StatelessService {
         }
         AzureAllocationContext ctx = new AzureAllocationContext(
                 op.getBody(ComputeInstanceRequest.class));
-        op.complete();
-        if (ctx.computeRequest.isMockRequest && ctx.computeRequest.requestType
-                == ComputeInstanceRequest.InstanceRequestType.CREATE) {
-            AdapterUtils.sendPatchToProvisioningTask(this,
-                    ctx.computeRequest.provisioningTaskReference);
-            return;
-        }
-        try {
+        switch (ctx.computeRequest.requestType) {
+        case VALIDATE_CREDENTIALS:
+            ctx.stage = AzureStages.PARENTAUTH;
+            ctx.operation = op;
             handleAllocation(ctx);
-        } catch (Exception e) {
-            logSevere(e);
-            if (ctx.computeRequest.provisioningTaskReference != null) {
-                AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                        ctx.computeRequest.provisioningTaskReference, e);
+            break;
+        default:
+            op.complete();
+            if (ctx.computeRequest.isMockRequest && ctx.computeRequest.requestType
+                    == ComputeInstanceRequest.InstanceRequestType.CREATE) {
+                AdapterUtils.sendPatchToProvisioningTask(this,
+                        ctx.computeRequest.provisioningTaskReference);
+                return;
+            }
+            try {
+                handleAllocation(ctx);
+            } catch (Exception e) {
+                logSevere(e);
+                if (ctx.computeRequest.provisioningTaskReference != null) {
+                    AdapterUtils.sendFailurePatchToProvisioningTask(this,
+                            ctx.computeRequest.provisioningTaskReference, e);
+                }
             }
         }
     }
@@ -184,10 +196,7 @@ public class AzureInstanceService extends StatelessService {
             getParentDescription(ctx, AzureStages.PARENTAUTH);
             break;
         case PARENTAUTH:
-            getParentAuth(ctx, AzureStages.CHILDAUTH);
-            break;
-        case CHILDAUTH:
-            getChildAuth(ctx, AzureStages.CLIENT);
+            getParentAuth(ctx, AzureStages.CLIENT);
             break;
         case CLIENT:
             if (ctx.credentials == null) {
@@ -209,18 +218,26 @@ public class AzureInstanceService extends StatelessService {
             // now that we have a client lets move onto the next step
             switch (ctx.computeRequest.requestType) {
             case CREATE:
-                ctx.stage = AzureStages.VMDISKS;
+                ctx.stage = AzureStages.CHILDAUTH;
                 handleAllocation(ctx);
                 break;
+            case VALIDATE_CREDENTIALS:
+                validateAzureCredentials(ctx);
+                break;
             case DELETE:
+            case DELETE_DOCUMENTS_ONLY:
                 ctx.stage = AzureStages.DELETE;
                 handleAllocation(ctx);
                 break;
             default:
-                ctx.error = new Exception("Unknown Azure provisioning stage");
+                ctx.error = new IllegalStateException(
+                        "Unknown compute request type: " + ctx.computeRequest.requestType);
                 ctx.stage = AzureStages.ERROR;
                 handleAllocation(ctx);
             }
+            break;
+        case CHILDAUTH:
+            getChildAuth(ctx, AzureStages.VMDISKS);
             break;
         case VMDISKS:
             getVMDisks(ctx);
@@ -280,8 +297,39 @@ public class AzureInstanceService extends StatelessService {
         }
     }
 
-    private void deleteVM(AzureAllocationContext ctx) {
+    /**
+     * Validates azure credential by making an API call.
+     */
+    private void validateAzureCredentials(final AzureAllocationContext ctx) {
         if (ctx.computeRequest.isMockRequest) {
+            ctx.operation.complete();
+            return;
+        }
+
+        SubscriptionClient subscriptionClient = new SubscriptionClientImpl(
+                AzureConstants.BASE_URI, ctx.credentials, ctx.clientBuilder,
+                getRetrofitBuilder());
+
+        subscriptionClient.getSubscriptionsOperations().getAsync(
+                ctx.parentAuth.userLink, new ServiceCallback<Subscription>() {
+                    @Override
+                    public void failure(Throwable e) {
+                        ctx.operation.fail(e);
+                    }
+
+                    @Override
+                    public void success(ServiceResponse<Subscription> result) {
+                        Subscription subscription = result.getBody();
+                        logFine("Got subscription %s with id %s", subscription.getDisplayName(),
+                                subscription.getId());
+                        ctx.operation.complete();
+                    }
+                });
+    }
+
+    private void deleteVM(AzureAllocationContext ctx) {
+        if (ctx.computeRequest.isMockRequest
+                || ctx.computeRequest.requestType == InstanceRequestType.DELETE_DOCUMENTS_ONLY) {
             deleteComputeResource(ctx);
             return;
         }
