@@ -19,6 +19,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -75,9 +76,11 @@ public class AWSStatsService extends StatelessService {
 
     // Cost
     private static final String BILLING_NAMESPACE = "AWS/Billing";
-    private static final String COST_METRIC = "EstimatedCharges";
+    public static final String COST_METRIC = "EstimatedCharges";
+    public static final String BURN_RATE = "BurnRatePerHour";
     private static final String DIMENSION_CURRENCY = "Currency";
     private static final String DIMENSION_CURRENCY_VALUE = "USD";
+    private static final int COST_COLLECTION_WINDOW_IN_HOURS = 10;
     // AWS stores all billing data in us-east-1 zone.
     private static final String COST_ZONE_ID = "us-east-1";
 
@@ -254,11 +257,12 @@ public class AWSStatsService extends StatelessService {
 
         long endTimeMicros = Utils.getNowMicrosUtc();
         GetMetricStatisticsRequest request = new GetMetricStatisticsRequest();
-        // get one minute averages for the last 10 minutes
+        // AWS pushes billing metrics every 4 hours.
+        // Get at least 2 metrics to calculate the recent value and the burn rate
         request.setEndTime(new Date(TimeUnit.MICROSECONDS.toMillis(endTimeMicros)));
         request.setStartTime(new Date(
                 TimeUnit.MICROSECONDS.toMillis(endTimeMicros) -
-                TimeUnit.MINUTES.toMillis(METRIC_COLLECTION_WINDOW_IN_MINUTES)));
+                TimeUnit.HOURS.toMillis(COST_COLLECTION_WINDOW_IN_HOURS)));
         request.setPeriod(METRIC_COLLECTION_PERIOD_IN_SECONDS);
         request.setStatistics(Arrays.asList(STATISTICS));
         request.setNamespace(BILLING_NAMESPACE);
@@ -321,17 +325,39 @@ public class AWSStatsService extends StatelessService {
                 GetMetricStatisticsResult result) {
             OperationContext.restoreOperationContext(opContext);
             List<Datapoint> dpList = result.getDatapoints();
-            Double averageSum = 0d;
-            Double sampleCount = 0d;
+            // Sort the data points in increasing order of timestamp
+            Collections.sort(dpList, new Comparator<Datapoint>() {
+                @Override
+                public int compare(Datapoint o1, Datapoint o2) {
+                    return o1.getTimestamp().compareTo(o2.getTimestamp());
+                }
+            });
+            Double latestAverage = 0D;
+            Date currentDate = null;
+            Long timeDifference = 0L;
+            Double burnRate = 0D;
             if (dpList != null && dpList.size() != 0) {
                 for (Datapoint dp : dpList) {
-                    averageSum += dp.getAverage();
-                    sampleCount += dp.getSampleCount();
+                    if (currentDate == null) {
+                        currentDate = dp.getTimestamp();
+                    } else {
+                        timeDifference = getDateDifference(currentDate, dp.getTimestamp(),
+                                TimeUnit.HOURS);
+                        currentDate = dp.getTimestamp();
+                    }
+                    burnRate = (timeDifference == 0 ? 0 : ((dp.getAverage() - latestAverage) / timeDifference));
+                    latestAverage = dp.getAverage();
                 }
-                statsData.statsResponse.statValues.put(result.getLabel(), averageSum / sampleCount);
+                statsData.statsResponse.statValues.put(result.getLabel(), latestAverage);
+                statsData.statsResponse.statValues.put(BURN_RATE, burnRate);
             }
 
             getEC2Stats(statsData, AGGREGATE_METRIC_NAMES_ACROSS_INSTANCES, true);
+        }
+
+        private long getDateDifference(Date oldDate, Date newDate, TimeUnit timeUnit) {
+            long differenceInMillies = newDate.getTime() - oldDate.getTime();
+            return timeUnit.convert(differenceInMillies, TimeUnit.MILLISECONDS);
         }
     }
 
