@@ -594,6 +594,8 @@ public class AzureEnumerationAdapterService extends StatelessService {
         computeDescription.environmentName = ENVIRONMENT_NAME_AZURE;
         computeDescription.instanceAdapterReference = UriUtils
                 .buildUri(getHost(), AzureUriPaths.AZURE_INSTANCE_ADAPTER);
+        computeDescription.statsAdapterReference = UriUtils
+                .buildUri(getHost(), AzureUriPaths.AZURE_STATS_ADAPTER);
         computeDescription.customProperties = new HashMap<>();
         computeDescription.customProperties
                 .put(AZURE_VM_SIZE, virtualMachine.getHardwareProfile().getVmSize());

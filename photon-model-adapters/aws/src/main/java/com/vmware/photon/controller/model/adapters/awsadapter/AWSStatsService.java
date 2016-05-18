@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.awaitTermination;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,6 +22,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -47,6 +50,9 @@ import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
+/**
+ * Service to gather stats on AWS.
+ */
 public class AWSStatsService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_STATS_ADAPTER;
@@ -56,6 +62,11 @@ public class AWSStatsService extends StatelessService {
             "CPUCreditBalance", "DiskReadOps", "DiskWriteOps", "NetworkPacketsIn",
             "NetworkPacketsOut", "StatusCheckFailed", "StatusCheckFailed_Instance",
             "StatusCheckFailed_System" };
+
+    public static final String[] AGGREGATE_METRIC_NAMES_ACROSS_INSTANCES = { "CPUUtilization",
+            "DiskReadBytes", "DiskReadOps", "DiskWriteBytes", "DiskWriteOps", "NetworkIn",
+            "NetworkOut" };
+
     private static final String[] STATISTICS = { "Average", "SampleCount" };
     private static final String NAMESPACE = "AWS/EC2";
     private static final String DIMENSION_INSTANCE_ID = "InstanceId";
@@ -78,6 +89,7 @@ public class AWSStatsService extends StatelessService {
         public ComputeStats statsResponse;
         public AtomicInteger numResponses = new AtomicInteger(0);
         public AmazonCloudWatchAsyncClient statsClient;
+        public AmazonCloudWatchAsyncClient billingClient;
         public boolean isComputeHost;
 
         public AWSStatsDataHolder() {
@@ -85,6 +97,22 @@ public class AWSStatsService extends StatelessService {
             // create a thread safe map to hold stats values for resource
             statsResponse.statValues = new ConcurrentSkipListMap<>();
         }
+    }
+
+    private ExecutorService executorService;
+
+    @Override
+    public void handleStart(Operation startPost) {
+        executorService = getHost().allocateExecutor(this);
+
+        super.handleStart(startPost);
+    }
+
+    @Override
+    public void handleStop(Operation delete) {
+        executorService.shutdown();
+        awaitTermination(this, executorService);
+        super.handleStop(delete);
     }
 
     @Override
@@ -168,72 +196,142 @@ public class AWSStatsService extends StatelessService {
 
     private void getStats(AWSStatsDataHolder statsData) {
         if (statsData.isComputeHost) {
-            getAWSAsyncStatsClient(statsData, COST_ZONE_ID);
-            Dimension dimension = new Dimension();
-            dimension.setName(DIMENSION_CURRENCY);
-            dimension.setValue(DIMENSION_CURRENCY_VALUE);
-
-            long endTimeMicros = Utils.getNowMicrosUtc();
-            GetMetricStatisticsRequest request = new GetMetricStatisticsRequest();
-            // get one minute averages for the last 10 minutes
-            request.setEndTime(new Date(TimeUnit.MICROSECONDS.toMillis(endTimeMicros)));
-            request.setStartTime(new Date(
-                    TimeUnit.MICROSECONDS.toMillis(endTimeMicros) -
-                    TimeUnit.MINUTES.toMillis(METRIC_COLLECTION_WINDOW_IN_MINUTES)));
-            request.setPeriod(METRIC_COLLECTION_PERIOD_IN_SECONDS);
-            request.setStatistics(Arrays.asList(STATISTICS));
-            request.setNamespace(BILLING_NAMESPACE);
-            request.setDimensions(Collections.singletonList(dimension));
-            request.setMetricName(COST_METRIC);
-
-            logInfo("Retrieving %s metric from AWS", COST_METRIC);
-            AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler = new AWSStatsHandler(
-                    this, statsData, 1);
-            statsData.statsClient.getMetricStatisticsAsync(request, resultHandler);
+            // Get host level stats for billing and ec2.
+            getBillingStats(statsData);
             return;
         }
+        getEC2Stats(statsData, METRIC_NAMES, false);
+    }
 
-        getAWSAsyncStatsClient(statsData, null);
+    /**
+     * Gets EC2 statistics.
+     *
+     * @param statsData The context object for stats.
+     * @param metricNames The metrics names to gather stats for.
+     * @param isAggregateStats Indicates where we are interested in aggregate stats or not.
+     */
+    private void getEC2Stats(AWSStatsDataHolder statsData, String[] metricNames, boolean isAggregateStats) {
+        getAWSAsyncStatsClient(statsData);
         long endTimeMicros = Utils.getNowMicrosUtc();
 
-        for (String metricName : METRIC_NAMES) {
+        for (String metricName : metricNames) {
             GetMetricStatisticsRequest metricRequest = new GetMetricStatisticsRequest();
             // get one minute averages for the last 10 minutes
             metricRequest.setEndTime(new Date(TimeUnit.MICROSECONDS.toMillis(endTimeMicros)));
             metricRequest.setStartTime(new Date(
                     TimeUnit.MICROSECONDS.toMillis(endTimeMicros) -
-                    TimeUnit.MINUTES.toMillis(METRIC_COLLECTION_WINDOW_IN_MINUTES)));
+                            TimeUnit.MINUTES.toMillis(METRIC_COLLECTION_WINDOW_IN_MINUTES)));
             metricRequest.setPeriod(METRIC_COLLECTION_PERIOD_IN_SECONDS);
             metricRequest.setStatistics(Arrays.asList(STATISTICS));
             metricRequest.setNamespace(NAMESPACE);
-            List<Dimension> dimensions = new ArrayList<>();
-            Dimension dimension = new Dimension();
-            dimension.setName(DIMENSION_INSTANCE_ID);
-            String instanceId = statsData.computeDesc.customProperties
-                    .get(AWSConstants.AWS_INSTANCE_ID);
-            dimension.setValue(instanceId);
-            dimensions.add(dimension);
-            metricRequest.setDimensions(dimensions);
+
+            // Provide instance id dimension only if it is not aggregate stats.
+            if (!isAggregateStats) {
+                List<Dimension> dimensions = new ArrayList<>();
+                Dimension dimension = new Dimension();
+                dimension.setName(DIMENSION_INSTANCE_ID);
+                String instanceId = statsData.computeDesc.customProperties
+                        .get(AWSConstants.AWS_INSTANCE_ID);
+                dimension.setValue(instanceId);
+                dimensions.add(dimension);
+                metricRequest.setDimensions(dimensions);
+            }
+
             metricRequest.setMetricName(metricName);
 
-            logInfo("Retrieving %s metric from AWS", metricName);
+            logFine("Retrieving %s metric from AWS", metricName);
             AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler = new AWSStatsHandler(
-                    this, statsData, METRIC_NAMES.length);
+                    this, statsData, metricNames.length);
             statsData.statsClient.getMetricStatisticsAsync(metricRequest, resultHandler);
         }
     }
 
-    private void getAWSAsyncStatsClient(AWSStatsDataHolder statsData, String zoneIdOverride) {
+    private void getBillingStats(AWSStatsDataHolder statsData) {
+        getAWSAsyncBillingClient(statsData);
+        Dimension dimension = new Dimension();
+        dimension.setName(DIMENSION_CURRENCY);
+        dimension.setValue(DIMENSION_CURRENCY_VALUE);
+
+        long endTimeMicros = Utils.getNowMicrosUtc();
+        GetMetricStatisticsRequest request = new GetMetricStatisticsRequest();
+        // get one minute averages for the last 10 minutes
+        request.setEndTime(new Date(TimeUnit.MICROSECONDS.toMillis(endTimeMicros)));
+        request.setStartTime(new Date(
+                TimeUnit.MICROSECONDS.toMillis(endTimeMicros) -
+                TimeUnit.MINUTES.toMillis(METRIC_COLLECTION_WINDOW_IN_MINUTES)));
+        request.setPeriod(METRIC_COLLECTION_PERIOD_IN_SECONDS);
+        request.setStatistics(Arrays.asList(STATISTICS));
+        request.setNamespace(BILLING_NAMESPACE);
+        request.setDimensions(Collections.singletonList(dimension));
+        request.setMetricName(COST_METRIC);
+
+        logFine("Retrieving %s metric from AWS", COST_METRIC);
+        AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler = new AWSBillingStatsHandler(
+                this, statsData);
+        statsData.billingClient.getMetricStatisticsAsync(request, resultHandler);
+    }
+
+    private void getAWSAsyncStatsClient(AWSStatsDataHolder statsData) {
         if (statsData.statsClient == null) {
             try {
-                String zoneId = zoneIdOverride == null ?
-                        statsData.computeDesc.description.zoneId :
-                        zoneIdOverride;
-                statsData.statsClient = AWSUtils.getStatsAsyncClient(statsData.parentAuth, zoneId,
-                        getHost().allocateExecutor(this));
+                statsData.statsClient = AWSUtils.getStatsAsyncClient(statsData.parentAuth,
+                        statsData.computeDesc.description.zoneId, executorService);
             } catch (Exception e) {
                 logSevere(e);
             }
+        }
+    }
+
+    private void getAWSAsyncBillingClient(AWSStatsDataHolder statsData) {
+        if (statsData.billingClient == null) {
+            try {
+                statsData.billingClient = AWSUtils
+                        .getStatsAsyncClient(statsData.parentAuth, COST_ZONE_ID, executorService);
+            } catch (Exception e) {
+                logSevere(e);
+            }
+        }
+    }
+
+    /**
+     * Billing specific async handler.
+     */
+    private class AWSBillingStatsHandler implements
+            AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> {
+
+        private AWSStatsDataHolder statsData;
+        private StatelessService service;
+        private OperationContext opContext;
+
+        public AWSBillingStatsHandler(StatelessService service, AWSStatsDataHolder statsData) {
+            this.statsData = statsData;
+            this.service = service;
+            this.opContext = OperationContext.getOperationContext();
+        }
+
+        @Override
+        public void onError(Exception exception) {
+            OperationContext.restoreOperationContext(opContext);
+            AdapterUtils.sendFailurePatchToProvisioningTask(service, service.getHost(),
+                    statsData.statsRequest.parentTaskLink, exception);
+        }
+
+        @Override
+        public void onSuccess(GetMetricStatisticsRequest request,
+                GetMetricStatisticsResult result) {
+            OperationContext.restoreOperationContext(opContext);
+            List<Datapoint> dpList = result.getDatapoints();
+            Double averageSum = 0d;
+            Double sampleCount = 0d;
+            if (dpList != null && dpList.size() != 0) {
+                for (Datapoint dp : dpList) {
+                    averageSum += dp.getAverage();
+                    sampleCount += dp.getSampleCount();
+                }
+                statsData.statsResponse.statValues.put(result.getLabel(), averageSum / sampleCount);
+            }
+
+            getEC2Stats(statsData, AGGREGATE_METRIC_NAMES_ACROSS_INSTANCES, true);
         }
     }
 
@@ -286,7 +384,6 @@ public class AWSStatsService extends StatelessService {
                         .setBody(respBody));
             }
         }
-
     }
 
     /**

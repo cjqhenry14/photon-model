@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Region;
@@ -43,6 +44,7 @@ import com.amazonaws.services.ec2.model.TagDescription;
 
 import com.vmware.photon.controller.model.resources.ComputeService.PowerState;
 
+import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
@@ -53,6 +55,7 @@ public class AWSUtils {
     public static final String AWS_FILTER_RESOURCE_ID = "resource-id";
     public static final String AWS_FILTER_VPC_ID = "vpc-id";
     public static final String NO_VALUE = "no-value";
+    private static final int EXECUTOR_SHUTDOWN_INTERVAL_MINUTES = 5;
 
     public static AmazonEC2AsyncClient getAsyncClient(
             AuthCredentialsServiceState credentials, String region,
@@ -202,6 +205,25 @@ public class AWSUtils {
         runningInstanceFilter.setName(INSTANCE_STATE);
         runningInstanceFilter.setValues(stateValues);
         return runningInstanceFilter;
+    }
+
+    /**
+     * Waits for termination of given executor service.
+     */
+    public static void awaitTermination(StatelessService service, ExecutorService executor) {
+        try {
+            if (!executor.awaitTermination(EXECUTOR_SHUTDOWN_INTERVAL_MINUTES, TimeUnit.MINUTES)) {
+                service.logWarning(
+                        "Executor service can't be shutdown for AWS. Trying to shutdown now...");
+                executor.shutdownNow();
+            }
+            service.logFine("Executor service shutdown for AWS");
+        } catch (InterruptedException e) {
+            service.logSevere(e);
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            service.logSevere(e);
+        }
     }
 
 }
