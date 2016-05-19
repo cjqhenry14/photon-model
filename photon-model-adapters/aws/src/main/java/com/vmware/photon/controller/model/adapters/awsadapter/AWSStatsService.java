@@ -42,7 +42,6 @@ import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.StatelessService;
@@ -233,8 +232,7 @@ public class AWSStatsService extends StatelessService {
                 List<Dimension> dimensions = new ArrayList<>();
                 Dimension dimension = new Dimension();
                 dimension.setName(DIMENSION_INSTANCE_ID);
-                String instanceId = statsData.computeDesc.customProperties
-                        .get(AWSConstants.AWS_INSTANCE_ID);
+                String instanceId = statsData.computeDesc.id;
                 dimension.setValue(instanceId);
                 dimensions.add(dimension);
                 metricRequest.setDimensions(dimensions);

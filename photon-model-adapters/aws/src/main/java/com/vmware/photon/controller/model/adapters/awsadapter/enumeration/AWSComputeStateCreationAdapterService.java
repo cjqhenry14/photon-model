@@ -23,7 +23,6 @@ import java.util.UUID;
 
 import com.amazonaws.services.ec2.model.Instance;
 
-import com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
@@ -178,8 +177,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         computeState.address = instance.getPublicIpAddress();
         computeState.powerState = AWSUtils.mapToPowerState(instance.getState());
         computeState.customProperties = new HashMap<String, String>();
-        computeState.customProperties.put(AWSConstants.AWS_INSTANCE_ID,
-                instance.getInstanceId());
+        computeState.id = instance.getInstanceId();
         computeState.networkLinks = new ArrayList<String>();
         computeState.networkLinks.add(UriUtils.buildUriPath(
                 NetworkInterfaceService.FACTORY_LINK,

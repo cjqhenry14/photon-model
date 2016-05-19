@@ -35,7 +35,6 @@ import com.amazonaws.services.ec2.model.Reservation;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeEnumerateResourceRequest;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
-import com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService.AWSEnumerationRequest;
@@ -43,7 +42,6 @@ import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.OperationJoin;
@@ -315,10 +313,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
         for (Object s : responseTask.results.documents.values()) {
             ComputeState localInstance = Utils.fromJson(s,
                     ComputeService.ComputeState.class);
-            aws.localInstanceIds.put(
-                    localInstance.customProperties
-                            .get(AWSConstants.AWS_INSTANCE_ID),
-                    localInstance);
+            aws.localInstanceIds.put(localInstance.id, localInstance);
         }
         aws.pageNo++;
         aws.nextPageLink = responseTask.results.nextPageLink;

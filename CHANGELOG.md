@@ -2,6 +2,12 @@
 
 ## 0.3.3
 
+* Providers should use ComputeState's id field is used to store the resource
+  external identifier.
+  
+* New field instanceType is introduced in ComputeDescription to specify instance type,
+  as understood by the providers.
+
 * Add ScheduledTaskService to run tasks periodically
 
 * Remove all template factory services from resource services,

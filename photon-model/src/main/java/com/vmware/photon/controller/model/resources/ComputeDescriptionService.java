@@ -24,7 +24,6 @@ import java.util.UUID;
 import com.esotericsoftware.kryo.serializers.VersionFieldSerializer.Since;
 
 import com.vmware.photon.controller.model.UriPaths;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
@@ -90,6 +89,12 @@ public class ComputeDescriptionService extends StatefulService {
          * Identifier of the zone associated with this compute host.
          */
         public String zoneId;
+
+        /**
+         * The type of the compute instance, as understood by the provider. E.g. the type of
+         * instance determines your instance’s CPU capacity, memory, and storage.
+         */
+        public String instanceType;
 
         /**
          * Environment/ Platform name this compute host is provisioned on.
@@ -372,6 +377,7 @@ public class ComputeDescriptionService extends StatefulService {
         template.name = "friendly-name";
         template.regionId = "provider-specific-regions";
         template.zoneId = "provider-specific-zone";
+        template.instanceType = "provider-specific-instance-type";
         return template;
     }
 }

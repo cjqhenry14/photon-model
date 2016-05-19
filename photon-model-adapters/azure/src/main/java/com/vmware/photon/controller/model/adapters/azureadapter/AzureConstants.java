@@ -22,7 +22,6 @@ public class AzureConstants {
     public static final String AZURE_RESOURCE_GROUP_NAME = "azureResourceGroupName";
     public static final String AZURE_VM_ADMIN_USERNAME = "azureVMAdminName";
     public static final String AZURE_VM_ADMIN_PASSWORD = "azureVMAdminPassword";
-    public static final String AZURE_INSTANCE_ID = "azureInstanceId";
     public static final String AZURE_IMAGE_PUBLISHER = "azureImagePublisher";
     public static final String AZURE_IMAGE_OFFER = "azureImageOffer";
     public static final String AZURE_IMAGE_SKU = "azureImageSKU";

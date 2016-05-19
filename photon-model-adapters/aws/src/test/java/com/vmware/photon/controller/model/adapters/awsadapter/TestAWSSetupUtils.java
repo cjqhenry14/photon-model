@@ -63,7 +63,6 @@ import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
 import com.vmware.photon.controller.model.tasks.TaskOptions;
 import com.vmware.photon.controller.model.tasks.TestUtils;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceStats;
@@ -348,11 +347,7 @@ public class TestAWSSetupUtils {
             QueryTask.Query instanceIdFilterParentQuery = new QueryTask.Query();
             for (String instanceId : instanceIdsToDelete) {
                 QueryTask.Query instanceIdFilter = new QueryTask.Query()
-                        .setTermPropertyName(
-                                QueryTask.QuerySpecification
-                                        .buildCompositeFieldName(
-                                                ComputeState.FIELD_NAME_CUSTOM_PROPERTIES,
-                                                AWSConstants.AWS_INSTANCE_ID))
+                        .setTermPropertyName(ComputeState.FIELD_NAME_ID)
                         .setTermMatchValue(instanceId);
                 instanceIdFilter.occurance = QueryTask.Query.Occurance.SHOULD_OCCUR;
                 instanceIdFilterParentQuery.addBooleanClause(instanceIdFilter);
@@ -425,9 +420,7 @@ public class TestAWSSetupUtils {
         if (computeStateMap != null) {
             computeStateToCleanup = computeStateMap.get(computeURIs[0]);
             if (computeStateToCleanup != null && computeStateToCleanup.customProperties != null) {
-                instancesToCleanUp
-                        .add(computeStateToCleanup.customProperties
-                                .get(AWSConstants.AWS_INSTANCE_ID));
+                instancesToCleanUp.add(computeStateToCleanup.id);
             }
         }
     }

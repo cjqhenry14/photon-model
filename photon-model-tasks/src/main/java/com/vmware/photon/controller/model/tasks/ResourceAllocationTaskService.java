@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.tasks;
 
+import static com.vmware.photon.controller.model.ComputeProperties.CUSTOM_DISPLAY_NAME;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -28,7 +30,6 @@ import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.DiskService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
@@ -144,8 +145,6 @@ public class ResourceAllocationTaskService extends TaskService<ResourceAllocatio
 
     public static final long DEFAULT_TIMEOUT_MICROS = TimeUnit.MINUTES
             .toMicros(10);
-
-    public static final String CUSTOM_DISPLAY_NAME = "displayName";
 
     public ResourceAllocationTaskService() {
         super(ResourceAllocationTaskState.class);
@@ -793,6 +792,7 @@ public class ResourceAllocationTaskService extends TaskService<ResourceAllocatio
         }
     }
 
+    @Override
     public String getSelfId() {
         return getSelfLink().substring(
                 getSelfLink().lastIndexOf(UriUtils.URI_PATH_CHAR) + 1);

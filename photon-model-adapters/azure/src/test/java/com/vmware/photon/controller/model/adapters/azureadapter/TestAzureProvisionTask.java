@@ -13,13 +13,13 @@
 
 package com.vmware.photon.controller.model.adapters.azureadapter;
 
+import static com.vmware.photon.controller.model.ComputeProperties.CUSTOM_DISPLAY_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_OSDISK_CACHING;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_TYPE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_TENANT_ID;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_SIZE;
 import static com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_AZURE;
-import static com.vmware.photon.controller.model.tasks.ResourceAllocationTaskService.CUSTOM_DISPLAY_NAME;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -176,6 +176,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     private void issueStatsRequest(ComputeState vm) throws Throwable {
         // spin up a stateless service that acts as the parent link to patch back to
         StatelessService parentService = new StatelessService() {
+            @Override
             public void handleRequest(Operation op) {
                 if (op.getAction() == Action.PATCH) {
                     if (!isMock) {

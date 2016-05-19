@@ -13,7 +13,7 @@
 
 package com.vmware.photon.controller.model.adapters.azureadapter.enumeration;
 
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_INSTANCE_ID;
+import static com.vmware.photon.controller.model.ComputeProperties.CUSTOM_DISPLAY_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_OSDISK_CACHING;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_SIZE;
@@ -21,7 +21,6 @@ import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtil
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.cleanUpHttpClient;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.getAzureConfig;
 import static com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_AZURE;
-import static com.vmware.photon.controller.model.tasks.ResourceAllocationTaskService.CUSTOM_DISPLAY_NAME;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -334,7 +333,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
                     for (Object s : queryTask.results.documents.values()) {
                         ComputeState computeState = Utils
                                 .fromJson(s, ComputeState.class);
-                        String vmId = computeState.customProperties.get(AZURE_INSTANCE_ID);
+                        String vmId = computeState.id;
 
                         // Since we only update disks during update, some compute states might be
                         // present in Azure but have older timestamp in local repository.
@@ -440,8 +439,8 @@ public class AzureEnumerationAdapterService extends StatelessService {
 
         for (String instanceId : vms.keySet()) {
             QueryTask.Query instanceIdFilter = Query.Builder.create(Occurance.SHOULD_OCCUR)
-                    .addCompositeFieldClause(ComputeState.FIELD_NAME_CUSTOM_PROPERTIES,
-                            AZURE_INSTANCE_ID, instanceId).build();
+                    .addFieldClause(ComputeState.FIELD_NAME_ID, instanceId)
+                    .build();
             instanceIdFilterParentQuery.addClause(instanceIdFilter);
         }
         q.querySpec.query.addBooleanClause(instanceIdFilterParentQuery.build());
@@ -470,7 +469,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
                     for (Object s : queryTask.results.documents.values()) {
                         ComputeState computeState = Utils
                                 .fromJson(s, ComputeState.class);
-                        String instanceId = computeState.customProperties.get(AZURE_INSTANCE_ID);
+                        String instanceId = computeState.id;
                         ctx.computeStates.put(instanceId, computeState);
                     }
 
@@ -528,8 +527,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
                 .setBody(rootDisk)
                 .setCompletion((completedOp, failure) -> {
                     // Remove processed virtual machine from the map
-                    ctx.virtualMachines
-                            .remove(computeState.customProperties.get(AZURE_INSTANCE_ID));
+                    ctx.virtualMachines.remove(computeState.id);
 
                     if (failure != null) {
                         logSevere(failure);
@@ -644,7 +642,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
         resource.diskLinks = vmDisks;
         resource.customProperties = new HashMap<>();
         resource.customProperties.put(CUSTOM_DISPLAY_NAME, virtualMachine.getName());
-        resource.customProperties.put(AZURE_INSTANCE_ID, virtualMachine.getId().toLowerCase());
+        resource.id = virtualMachine.getId().toLowerCase();
         resource.tenantLinks = ctx.computeHostDesc.tenantLinks;
 
         Operation resourceOp = Operation

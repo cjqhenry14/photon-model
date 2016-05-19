@@ -38,7 +38,6 @@ import com.amazonaws.services.ec2.model.Reservation;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeEnumerateResourceRequest;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
-import com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeDescriptionCreationAdapterService.AWSComputeDescriptionCreationState;
@@ -49,7 +48,6 @@ import com.vmware.photon.controller.model.resources.ComputeDescriptionService.Co
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.util.PhotonModelUtils;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.StatelessService;
@@ -440,11 +438,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             instanceIdFilterParentQuery.occurance = Occurance.MUST_OCCUR;
             for (String instanceId : aws.remoteAWSInstances.keySet()) {
                 QueryTask.Query instanceIdFilter = new QueryTask.Query()
-                        .setTermPropertyName(
-                                QueryTask.QuerySpecification
-                                        .buildCompositeFieldName(
-                                                ComputeState.FIELD_NAME_CUSTOM_PROPERTIES,
-                                                AWSConstants.AWS_INSTANCE_ID))
+                        .setTermPropertyName(ComputeState.FIELD_NAME_ID)
                         .setTermMatchValue(instanceId);
                 instanceIdFilter.occurance = QueryTask.Query.Occurance.SHOULD_OCCUR;
                 instanceIdFilterParentQuery.addBooleanClause(instanceIdFilter);
@@ -468,8 +462,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
                             ComputeState localInstance = Utils.fromJson(s,
                                     ComputeService.ComputeState.class);
                             aws.localAWSInstanceIds.put(
-                                    localInstance.customProperties
-                                            .get(AWSConstants.AWS_INSTANCE_ID),
+                                    localInstance.id,
                                     localInstance.documentSelfLink);
                         }
                         service.logInfo(

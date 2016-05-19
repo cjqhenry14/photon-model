@@ -13,12 +13,12 @@
 
 package com.vmware.photon.controller.model.adapters.azureadapter;
 
+import static com.vmware.photon.controller.model.ComputeProperties.CUSTOM_DISPLAY_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_OSDISK_CACHING;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_KEY1;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_KEY2;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_TYPE;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_SIZE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.COMPUTE_NAMESPACE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.MISSING_SUBSCRIPTION_CODE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.NETWORK_NAMESPACE;
@@ -27,7 +27,6 @@ import static com.vmware.photon.controller.model.adapters.azureadapter.AzureCons
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.awaitTermination;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.cleanUpHttpClient;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.getAzureConfig;
-import static com.vmware.photon.controller.model.tasks.ResourceAllocationTaskService.CUSTOM_DISPLAY_NAME;
 
 import java.io.File;
 import java.net.URI;
@@ -689,7 +688,8 @@ public class AzureInstanceService extends StatelessService {
 
         // Set hardware profile.
         HardwareProfile hardwareProfile = new HardwareProfile();
-        hardwareProfile.setVmSize(customProperties.getOrDefault(AZURE_VM_SIZE, DEFAULT_VM_SIZE));
+        hardwareProfile.setVmSize(
+                description.instanceType != null ? description.instanceType : DEFAULT_VM_SIZE);
         request.setHardwareProfile(hardwareProfile);
 
         // Set storage profile.
@@ -749,8 +749,7 @@ public class AzureInstanceService extends StatelessService {
                         }
                         // Azure for some case changes the case of the vm id.
                         ctx.vmId = vm.getId().toLowerCase();
-                        resultDesc.customProperties
-                                .put(AzureConstants.AZURE_INSTANCE_ID, ctx.vmId);
+                        resultDesc.id = ctx.vmId;
                         resultDesc.customProperties
                                 .put(AzureConstants.AZURE_RESOURCE_GROUP_NAME,
                                         ctx.resourceGroup.getName());

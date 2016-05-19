@@ -308,7 +308,10 @@ public class AWSInstanceService extends StatelessService {
             cloudConfig = bootDisk.bootConfig.files[0].contents;
         }
 
-        String instanceType = aws.child.description.name;
+        String instanceType = aws.child.description.instanceType;
+        if (instanceType == null) { // fallback to legacy usage of name
+            instanceType = aws.child.description.name;
+        }
         if (instanceType == null) {
             aws.error = new IllegalStateException(
                     "AWS Instance type not specified");
@@ -417,8 +420,7 @@ public class AWSInstanceService extends StatelessService {
                 } else {
                     resultDesc.customProperties = computeDesc.customProperties;
                 }
-                resultDesc.customProperties.put(AWSConstants.AWS_INSTANCE_ID,
-                        instance.getInstanceId());
+                resultDesc.id = instance.getInstanceId();
                 resultDesc.networkLinks = new ArrayList<String>();
                 resultDesc.networkLinks.add(UriUtils.buildUriPath(
                         NetworkInterfaceService.FACTORY_LINK,
@@ -477,7 +479,7 @@ public class AWSInstanceService extends StatelessService {
             return;
         }
 
-        String instanceId = aws.child.customProperties.get(AWSConstants.AWS_INSTANCE_ID);
+        String instanceId = aws.child.id;
         if (instanceId == null) {
             aws.error = new IllegalStateException(
                     "AWS InstanceId not available");

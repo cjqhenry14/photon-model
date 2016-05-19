@@ -13,13 +13,13 @@
 
 package com.vmware.photon.controller.model.adapters.azureadapter.enumeration;
 
+import static com.vmware.photon.controller.model.ComputeProperties.CUSTOM_DISPLAY_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_OSDISK_CACHING;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_TYPE;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_TENANT_ID;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_SIZE;
 import static com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_AZURE;
-import static com.vmware.photon.controller.model.tasks.ResourceAllocationTaskService.CUSTOM_DISPLAY_NAME;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -37,6 +37,7 @@ import com.microsoft.azure.management.compute.models.VirtualMachine;
 import com.microsoft.azure.management.resources.ResourceManagementClient;
 import com.microsoft.azure.management.resources.ResourceManagementClientImpl;
 import com.microsoft.rest.ServiceResponse;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

@@ -57,7 +57,6 @@ import com.vmware.photon.controller.model.adapters.azureadapter.stats.models.Tab
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.StatelessService;
@@ -273,8 +272,7 @@ public class AzureStatsService extends StatelessService {
      */
     private void getMetricDefinitions(AzureStatsDataHolder statsData)
             throws URISyntaxException, IOException {
-        String azureInstanceId = statsData.computeDesc.customProperties
-                .get(AzureConstants.AZURE_INSTANCE_ID);
+        String azureInstanceId = statsData.computeDesc.id;
         URI uri = UriUtils.buildUri(new URI(AzureConstants.BASE_URI_FOR_REST), azureInstanceId,
                 AzureConstants.METRIC_DEFINITIONS_ENDPOINT);
         // Adding a filter to avoid huge data flow on the network
