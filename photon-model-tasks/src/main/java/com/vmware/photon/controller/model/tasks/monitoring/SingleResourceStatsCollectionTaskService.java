@@ -16,6 +16,7 @@ package com.vmware.photon.controller.model.tasks.monitoring;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -31,6 +32,8 @@ import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.ServiceStats;
+import com.vmware.xenon.common.ServiceStats.TimeSeriesStats;
+import com.vmware.xenon.common.ServiceStats.TimeSeriesStats.AggregationType;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.UriUtils;
@@ -48,6 +51,17 @@ public class SingleResourceStatsCollectionTaskService extends TaskService<Single
 
     public static final String FACTORY_LINK = UriPaths.MONITORING
             + "/stats-collection-resource-tasks";
+
+    // keep data for an hour, at 1 minute intervals
+    private static int numBucketsHourly = 60;
+    private static int bucketSizeMinutes = 1000 * 60;
+
+    // keep data for an day, at one hour intervals
+    private static int numBucketsDaily = 24;
+    private static int bucketSizeHours = bucketSizeMinutes * 60;
+
+    private static String HOUR_SUFFIX = "(Hourly)";
+    private static String MIN_SUFFIX = "(Minutes)";
 
     public static Service createFactory() {
         Service fs = FactoryService.create(SingleResourceStatsCollectionTaskService.class,
@@ -234,11 +248,20 @@ public class SingleResourceStatsCollectionTaskService extends TaskService<Single
             URI statsUri = UriUtils.buildStatsUri(getHost(), stats.computeLink);
             // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-330
             for (Entry<String, Double> entry : stats.statValues.entrySet()) {
-                ServiceStats.ServiceStat stat = new ServiceStats.ServiceStat();
-                stat.name = entry.getKey();
-                stat.latestValue = entry.getValue();
+                ServiceStats.ServiceStat minuteStats = new ServiceStats.ServiceStat();
+                minuteStats.name = new StringBuffer(entry.getKey()).append(MIN_SUFFIX).toString();
+                minuteStats.latestValue = entry.getValue();
+                minuteStats.timeSeriesStats = new TimeSeriesStats(numBucketsHourly,
+                        bucketSizeMinutes, EnumSet.allOf(AggregationType.class));
+                ServiceStats.ServiceStat hourStats = new ServiceStats.ServiceStat();
+                hourStats.name = new StringBuffer(entry.getKey()).append(HOUR_SUFFIX).toString();
+                hourStats.latestValue = entry.getValue();
+                hourStats.timeSeriesStats = new TimeSeriesStats(numBucketsDaily,
+                        bucketSizeHours, EnumSet.allOf(AggregationType.class));
                 operations.add(Operation.createPost(statsUri)
-                        .setBody(stat));
+                        .setBody(hourStats));
+                operations.add(Operation.createPost(statsUri)
+                        .setBody(minuteStats));
             }
         }
         OperationJoin operationJoin = OperationJoin

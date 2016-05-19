@@ -29,10 +29,12 @@ import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.TaskServices;
 import com.vmware.photon.controller.model.tasks.monitoring.StatsCollectionTaskSchedulerService.StatsCollectionTaskServiceSchedulerState;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.ServiceHost;
 import com.vmware.xenon.common.ServiceStats;
+import com.vmware.xenon.common.ServiceStats.ServiceStat;
 import com.vmware.xenon.common.UriUtils;
 
 public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
@@ -107,13 +109,14 @@ public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
                     ServiceHost.SERVICE_URI_SUFFIX_STATS);
             this.host.waitFor("Error waiting for stats", () -> {
                 ServiceStats resStats = getServiceSynchronously(statsUriPath, ServiceStats.class);
-                if (resStats.entries.get(MockStatsAdapter.KEY_1) != null &&
-                        resStats.entries.get(MockStatsAdapter.KEY_1).latestValue > numResources &&
-                        resStats.entries.get(MockStatsAdapter.KEY_2) != null &&
-                        resStats.entries.get(MockStatsAdapter.KEY_2).latestValue > numResources) {
-                    return true;
+                boolean returnStatus = true;
+                for (ServiceStat stat: resStats.entries.values()) {
+                    if (stat.latestValue < numResources ||
+                            stat.timeSeriesStats.dataPoints.size() == 0) {
+                        returnStatus = false;
+                    }
                 }
-                return false;
+                return returnStatus;
             });
         }
     }
