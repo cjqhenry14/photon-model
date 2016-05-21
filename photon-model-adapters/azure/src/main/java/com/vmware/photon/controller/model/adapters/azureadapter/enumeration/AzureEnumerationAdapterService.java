@@ -50,6 +50,7 @@ import com.microsoft.rest.ServiceResponse;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 
+import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.adapterapi.ComputeEnumerateResourceRequest;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants;
@@ -64,6 +65,7 @@ import com.vmware.photon.controller.model.resources.DiskService;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.OperationSequence;
@@ -75,6 +77,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
 import com.vmware.xenon.services.common.QueryTask;
 import com.vmware.xenon.services.common.QueryTask.NumericRange;
 import com.vmware.xenon.services.common.QueryTask.Query;
+import com.vmware.xenon.services.common.QueryTask.Query.Builder;
 import com.vmware.xenon.services.common.QueryTask.Query.Occurance;
 import com.vmware.xenon.services.common.QueryTask.QuerySpecification.QueryOption;
 import com.vmware.xenon.services.common.ServiceUriPaths;
@@ -83,11 +86,15 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  * Enumeration adapter for data collection of VMs on Azure.
  */
 public class AzureEnumerationAdapterService extends StatelessService {
-
     public static final String SELF_LINK = AzureUriPaths.AZURE_ENUMERATION_ADAPTER;
     private static final Pattern STORAGE_ACCOUNT_NAME_PATTERN = Pattern.compile("https?://([^.]*)");
-    public static final List<String> AZURE_VM_TERMINATION_STATES = Arrays
-            .asList("Deleting", "Deleted");
+
+    private static final String PROPERTY_NAME_ENUM_QUERY_RESULT_LIMIT =
+            UriPaths.PROPERTY_PREFIX + "AzureEnumerationAdapterService.QUERY_RESULT_LIMIT";
+    private static final int QUERY_RESULT_LIMIT = Integer
+            .getInteger(PROPERTY_NAME_ENUM_QUERY_RESULT_LIMIT, 50);
+
+    static final List<String> AZURE_VM_TERMINATION_STATES = Arrays.asList("Deleting", "Deleted");
 
     /**
      * Substages to handle Azure VM data collection.
@@ -107,6 +114,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
         Throwable error;
         AuthCredentialsServiceState parentAuth;
         long enumerationStartTimeInMicros;
+        String deletionNextPageLink;
 
         // Substage specific fields
         EnumerationSubStages subStage;
@@ -296,80 +304,114 @@ public class AzureEnumerationAdapterService extends StatelessService {
      * Finally, delete on a resource is invoked only if it meets two criteria:
      * - Timestamp older than current enumeration cycle.
      * - VM not present on Azure.
+     *
+     * The method paginates through list of resources for deletion.
      */
     private void delete(EnumerationContext ctx) {
-        QueryTask q = new QueryTask();
-        q.setDirect(true);
-        q.querySpec = new QueryTask.QuerySpecification();
-        q.querySpec.options.add(QueryOption.EXPAND_CONTENT);
-        q.querySpec.query = Query.Builder.create()
+        CompletionHandler completionHandler = (o, e) -> {
+            if (e != null) {
+                handleError(ctx, e);
+                return;
+            }
+            QueryTask queryTask = o.getBody(QueryTask.class);
+
+            if (queryTask.results.nextPageLink == null) {
+                logInfo("No compute states match for deletion");
+                ctx.subStage = EnumerationSubStages.FINISHED;
+                handleSubStage(ctx);
+                return;
+            }
+
+            ctx.deletionNextPageLink = queryTask.results.nextPageLink;
+            deleteHelper(ctx);
+        };
+
+        Query query = Builder.create()
                 .addKindFieldClause(ComputeState.class)
                 .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,
                         ctx.enumRequest.parentComputeLink)
                 .addRangeClause(ComputeState.FIELD_NAME_UPDATE_TIME_MICROS,
                         NumericRange.createLessThanRange(ctx.enumerationStartTimeInMicros))
                 .build();
+
+        QueryTask q = QueryTask.Builder.createDirectTask()
+                .addOption(QueryOption.EXPAND_CONTENT)
+                .setQuery(query)
+                .setResultLimit(QUERY_RESULT_LIMIT)
+                .build();
         q.tenantLinks = ctx.computeHostDesc.tenantLinks;
 
-        // create the query to find resources
+        logFine("Querying compute resources for deletion");
         sendRequest(Operation
                 .createPost(this, ServiceUriPaths.CORE_QUERY_TASKS)
                 .setBody(q)
-                .setCompletion((o, e) -> {
-                    if (e != null) {
-                        handleError(ctx, e);
-                        return;
-                    }
-                    QueryTask queryTask = o.getBody(QueryTask.class);
+                .setCompletion(completionHandler));
+    }
 
-                    if (queryTask.results.documentCount == 0) {
-                        logInfo("No compute states found for deletion");
-                        ctx.subStage = EnumerationSubStages.FINISHED;
-                        handleSubStage(ctx);
-                        return;
-                    }
+    /**
+     * Helper method to paginate through resources to be deleted.
+     */
+    private void deleteHelper(EnumerationContext ctx) {
+        CompletionHandler completionHandler = (o, e) -> {
+            if (e != null) {
+                handleError(ctx, e);
+                return;
+            }
+            QueryTask queryTask = o.getBody(QueryTask.class);
 
-                    List<Operation> operations = new ArrayList<>();
-                    for (Object s : queryTask.results.documents.values()) {
-                        ComputeState computeState = Utils
-                                .fromJson(s, ComputeState.class);
-                        String vmId = computeState.id;
+            if (queryTask.results.nextPageLink == null || queryTask.results.documentCount == 0) {
+                logInfo("Finished deletion of compute states for Azure");
+                ctx.subStage = EnumerationSubStages.FINISHED;
+                handleSubStage(ctx);
+                return;
+            }
 
-                        // Since we only update disks during update, some compute states might be
-                        // present in Azure but have older timestamp in local repository.
-                        if (ctx.vmIds.contains(vmId)) {
-                            continue;
+            ctx.deletionNextPageLink = queryTask.results.nextPageLink;
+
+            List<Operation> operations = new ArrayList<>();
+            for (Object s : queryTask.results.documents.values()) {
+                ComputeState computeState = Utils
+                        .fromJson(s, ComputeState.class);
+                String vmId = computeState.id;
+
+                // Since we only update disks during update, some compute states might be
+                // present in Azure but have older timestamp in local repository.
+                if (ctx.vmIds.contains(vmId)) {
+                    continue;
+                }
+
+                operations.add(Operation.createDelete(this, computeState.documentSelfLink));
+                logFine("Deleting compute state %s", computeState.documentSelfLink);
+
+                if (computeState.diskLinks != null && !computeState.diskLinks.isEmpty()) {
+                    operations.add(Operation
+                            .createDelete(this, computeState.diskLinks.get(0)));
+                    logFine("Deleting disk state %s", computeState.diskLinks.get(0));
+                }
+            }
+
+            if (operations.size() == 0) {
+                logFine("No compute/disk states deleted");
+                deleteHelper(ctx);
+                return;
+            }
+
+            OperationJoin.create(operations)
+                    .setCompletion((ops, exs) -> {
+                        if (exs != null) {
+                            // We don't want to fail the whole data collection if some of the
+                            // operation fails.
+                            exs.values().forEach(
+                                    ex -> logWarning("Error: %s", ex.getMessage()));
                         }
 
-                        operations.add(Operation.createDelete(this, computeState.documentSelfLink));
-                        logFine("Deleting compute state %s", computeState.documentSelfLink);
-
-                        if (computeState.diskLinks != null && !computeState.diskLinks.isEmpty()) {
-                            operations.add(Operation
-                                    .createDelete(this, computeState.diskLinks.get(0)));
-                            logFine("Deleting disk state %s", computeState.diskLinks.get(0));
-                        }
-                    }
-
-                    if (operations.size() == 0) {
-                        logInfo("No compute/disk states deleted");
-                        ctx.subStage = EnumerationSubStages.FINISHED;
-                        handleSubStage(ctx);
-                        return;
-                    }
-
-                    OperationJoin.create(operations)
-                            .setCompletion((ops, exs) -> {
-                                if (exs != null) {
-                                    exs.values().forEach(
-                                            ex -> logWarning("Error: %s", ex.getMessage()));
-                                }
-                                logInfo("Finished deletion of compute states for Azure");
-                                ctx.subStage = EnumerationSubStages.FINISHED;
-                                handleSubStage(ctx);
-                            })
-                            .sendWith(this);
-                }));
+                        deleteHelper(ctx);
+                    })
+                    .sendWith(this);
+        };
+        logFine("Querying page [%s] for resources to be deleted", ctx.deletionNextPageLink);
+        sendRequest(Operation.createGet(this, ctx.deletionNextPageLink)
+                .setCompletion(completionHandler));
     }
 
     /**
@@ -417,7 +459,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
                 ctx.credentials, ctx.clientBuilder, getRetrofitBuilder());
         client.setSubscriptionId(ctx.parentAuth.userLink);
 
-        logInfo("Enumeration VMs from Azure");
+        logInfo("Enumerating VMs from Azure");
         client.getVirtualMachinesOperations().listAllAsync(new AzureEnumerationAsyncHandler(ctx));
     }
 
@@ -456,7 +498,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
                     }
                     QueryTask queryTask = o.getBody(QueryTask.class);
 
-                    logInfo("Found %d matching compute states for Azure VMs",
+                    logFine("Found %d matching compute states for Azure VMs",
                             queryTask.results.documentCount);
 
                     // If there are no matches, there is nothing to update.
@@ -553,7 +595,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
             return;
         }
 
-        logInfo("%d compute description with states to be created", ctx.virtualMachines.size());
+        logFine("%d compute description with states to be created", ctx.virtualMachines.size());
 
         Iterator<Entry<String, VirtualMachine>> iterator = ctx.virtualMachines.entrySet()
                 .iterator();
@@ -660,6 +702,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
                     }
 
                     if (size.decrementAndGet() == 0) {
+                        logInfo("Finished creating compute states");
                         ctx.subStage = EnumerationSubStages.DELETE;
                         handleSubStage(ctx);
                     }
@@ -743,7 +786,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
         private final OperationContext opContext;
         private final EnumerationContext ctx;
 
-        public AzureEnumerationAsyncHandler(EnumerationContext ctx) {
+        AzureEnumerationAsyncHandler(EnumerationContext ctx) {
             opContext = OperationContext.getOperationContext();
             this.ctx = ctx;
         }
@@ -759,7 +802,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
             OperationContext.restoreOperationContext(opContext);
             List<VirtualMachine> virtualMachines = result.getBody();
 
-            logInfo("Retrieved %d VMs from Azure", virtualMachines.size());
+            logFine("Retrieved %d VMs from Azure", virtualMachines.size());
 
             // If there are no VMs in Azure we directly skip over to deletion phase.
             if (virtualMachines.size() == 0) {
@@ -781,7 +824,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
                 ctx.vmIds.add(vmId);
             }
 
-            logInfo("Processing %d VMs", ctx.vmIds.size());
+            logFine("Processing %d VMs", ctx.vmIds.size());
 
             ctx.subStage = EnumerationSubStages.QUERY;
             handleSubStage(ctx);
