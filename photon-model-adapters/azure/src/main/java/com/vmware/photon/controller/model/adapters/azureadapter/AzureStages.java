@@ -54,6 +54,11 @@ public enum AzureStages {
     VMDISKS,
 
     /**
+     * Differentiate between a Windows VM and a Linux VM.
+     */
+    GET_DISK_OS_FAMILY,
+
+    /**
      * Stage where resource group is initialized.
      */
     INIT_RES_GROUP,

@@ -58,6 +58,8 @@ import com.microsoft.azure.management.compute.models.OSProfile;
 import com.microsoft.azure.management.compute.models.StorageProfile;
 import com.microsoft.azure.management.compute.models.VirtualHardDisk;
 import com.microsoft.azure.management.compute.models.VirtualMachine;
+import com.microsoft.azure.management.compute.models.VirtualMachineImage;
+import com.microsoft.azure.management.compute.models.VirtualMachineImageResource;
 import com.microsoft.azure.management.network.NetworkManagementClient;
 import com.microsoft.azure.management.network.NetworkManagementClientImpl;
 import com.microsoft.azure.management.network.models.AddressSpace;
@@ -94,6 +96,7 @@ import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
+
 import com.vmware.xenon.common.FileUtils;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
@@ -239,54 +242,57 @@ public class AzureInstanceService extends StatelessService {
             getChildAuth(ctx, AzureStages.VMDISKS);
             break;
         case VMDISKS:
-            getVMDisks(ctx);
+            getVMDisks(ctx, AzureStages.INIT_RES_GROUP);
             break;
         case INIT_RES_GROUP:
-            initResourceGroup(ctx);
+            initResourceGroup(ctx, AzureStages.GET_DISK_OS_FAMILY);
+            break;
+        case GET_DISK_OS_FAMILY:
+            differentiateVMImages(ctx, AzureStages.INIT_STORAGE);
             break;
         case INIT_STORAGE:
-            initStorageAccount(ctx);
+            initStorageAccount(ctx, AzureStages.INIT_NETWORK);
             break;
         case INIT_NETWORK:
-            initNetwork(ctx);
+            initNetwork(ctx, AzureStages.INIT_PUBLIC_IP);
             break;
         case INIT_PUBLIC_IP:
-            initPublicIP(ctx);
+            initPublicIP(ctx, AzureStages.INIT_SEC_GROUP);
             break;
         case INIT_SEC_GROUP:
-            initSecurityGroup(ctx);
+            initSecurityGroup(ctx, AzureStages.INIT_NIC);
             break;
         case INIT_NIC:
-            initNIC(ctx);
+            initNIC(ctx, AzureStages.CREATE);
             break;
         case CREATE:
-            createVM(ctx);
+            createVM(ctx, AzureStages.ENABLE_MONITORING);
             break;
         case ENABLE_MONITORING:
             try {
-                enableMonitoring(ctx);
+                enableMonitoring(ctx, AzureStages.GET_STORAGE_KEYS);
             } catch (Throwable e) {
                 this.handleError(ctx, e);
                 return;
             }
             break;
+        case GET_STORAGE_KEYS:
+            getStorageKeys(ctx, AzureStages.FINISHED);
+            break;
+        case FINISHED:
+            AdapterUtils.sendPatchToProvisioningTask(
+                    AzureInstanceService.this,
+                    ctx.computeRequest.provisioningTaskReference);
+            cleanUpHttpClient(this, ctx.httpClient);
+            break;
         case DELETE:
             deleteVM(ctx);
-            break;
-        case GET_STORAGE_KEYS:
-            getStorageKeys(ctx);
             break;
         case ERROR:
             if (ctx.computeRequest.provisioningTaskReference != null) {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         ctx.computeRequest.provisioningTaskReference, ctx.error);
             }
-            cleanUpHttpClient(this, ctx.httpClient);
-            break;
-        case FINISHED:
-            AdapterUtils.sendPatchToProvisioningTask(
-                    AzureInstanceService.this,
-                    ctx.computeRequest.provisioningTaskReference);
             cleanUpHttpClient(this, ctx.httpClient);
             break;
         default:
@@ -391,7 +397,7 @@ public class AzureInstanceService extends StatelessService {
         }
     }
 
-    private void initResourceGroup(AzureAllocationContext ctx) {
+    private void initResourceGroup(AzureAllocationContext ctx, AzureStages nextStage) {
         String resourceGroupName = ctx.vmName;
 
         if (resourceGroupName == null || resourceGroupName.isEmpty()) {
@@ -417,7 +423,7 @@ public class AzureInstanceService extends StatelessService {
 
                     @Override
                     public void onSuccess(ServiceResponse<ResourceGroup> result) {
-                        ctx.stage = AzureStages.INIT_STORAGE;
+                        ctx.stage = nextStage;
                         ctx.resourceGroup = result.getBody();
                         logInfo("Successfully created resource group [%s]",
                                 result.getBody().getName());
@@ -427,7 +433,7 @@ public class AzureInstanceService extends StatelessService {
         );
     }
 
-    private void initStorageAccount(AzureAllocationContext ctx) {
+    private void initStorageAccount(AzureAllocationContext ctx, AzureStages nextStage) {
         StorageAccountCreateParameters storageParameters = new StorageAccountCreateParameters();
         storageParameters.setLocation(ctx.resourceGroup.getLocation());
 
@@ -465,7 +471,7 @@ public class AzureInstanceService extends StatelessService {
 
                     @Override
                     public void onSuccess(ServiceResponse<StorageAccount> result) {
-                        ctx.stage = AzureStages.INIT_NETWORK;
+                        ctx.stage = nextStage;
                         ctx.storage = result.getBody();
                         logInfo("Successfully created storage account [%s]",
                                 ctx.storageAccountName);
@@ -474,7 +480,7 @@ public class AzureInstanceService extends StatelessService {
                 });
     }
 
-    private void initNetwork(AzureAllocationContext ctx) {
+    private void initNetwork(AzureAllocationContext ctx, AzureStages nextStage) {
         VirtualNetwork vnet = new VirtualNetwork();
         vnet.setLocation(ctx.resourceGroup.getLocation());
         vnet.setAddressSpace(new AddressSpace());
@@ -503,7 +509,7 @@ public class AzureInstanceService extends StatelessService {
 
                     @Override
                     public void onSuccess(ServiceResponse<VirtualNetwork> result) {
-                        ctx.stage = AzureStages.INIT_PUBLIC_IP;
+                        ctx.stage = nextStage;
                         ctx.network = result.getBody();
                         logInfo("Successfully created virtual network [%s]",
                                 result.getBody().getName());
@@ -512,7 +518,7 @@ public class AzureInstanceService extends StatelessService {
                 });
     }
 
-    private void initPublicIP(AzureAllocationContext ctx) {
+    private void initPublicIP(AzureAllocationContext ctx, AzureStages nextStage) {
         PublicIPAddress publicIPAddress = new PublicIPAddress();
         publicIPAddress.setLocation(ctx.resourceGroup.getLocation());
         publicIPAddress.setPublicIPAllocationMethod(PUBLIC_IP_ALLOCATION_METHOD);
@@ -536,7 +542,7 @@ public class AzureInstanceService extends StatelessService {
 
                     @Override
                     public void onSuccess(ServiceResponse<PublicIPAddress> result) {
-                        ctx.stage = AzureStages.INIT_SEC_GROUP;
+                        ctx.stage = nextStage;
                         ctx.publicIP = result.getBody();
                         logInfo("Successfully created public IP address with name [%s]",
                                 result.getBody().getName());
@@ -545,48 +551,34 @@ public class AzureInstanceService extends StatelessService {
                 });
     }
 
-    private void initSecurityGroup(AzureAllocationContext ctx) {
+    private void initSecurityGroup(AzureAllocationContext ctx, AzureStages nextStage) {
         NetworkSecurityGroup group = new NetworkSecurityGroup();
         group.setLocation(ctx.resourceGroup.getLocation());
 
-        // Set the linux security rule to allow SSH traffic
-        SecurityRule linuxSecurityRule = new SecurityRule();
-        linuxSecurityRule.setPriority(AzureConstants.AZURE_LINUX_SECURITY_GROUP_PRIORITY);
-        linuxSecurityRule.setName(AzureConstants.AZURE_LINUX_SECURITY_GROUP_NAME);
-        linuxSecurityRule.setDescription(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESCRIPTION);
-        linuxSecurityRule.setAccess(AzureConstants.AZURE_LINUX_SECURITY_GROUP_ACCESS);
-        linuxSecurityRule.setProtocol(AzureConstants.AZURE_LINUX_SECURITY_GROUP_PROTOCOL);
-        linuxSecurityRule.setDirection(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DIRECTION);
-        linuxSecurityRule.setSourceAddressPrefix(
-                AzureConstants.AZURE_LINUX_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX);
-        linuxSecurityRule.setDestinationAddressPrefix(
-                AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX);
-        linuxSecurityRule
-                .setSourcePortRange(AzureConstants.AZURE_LINUX_SECURITY_GROUP_SOURCE_PORT_RANGE);
-        linuxSecurityRule.setDestinationPortRange(
-                AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESTINATION_PORT_RANGE);
+        SecurityRule securityRule = new SecurityRule();
+        securityRule.setPriority(AzureConstants.AZURE_SECURITY_GROUP_PRIORITY);
+        securityRule.setAccess(AzureConstants.AZURE_SECURITY_GROUP_ACCESS);
+        securityRule.setProtocol(AzureConstants.AZURE_SECURITY_GROUP_PROTOCOL);
+        securityRule.setDirection(AzureConstants.AZURE_SECURITY_GROUP_DIRECTION);
+        securityRule.setSourceAddressPrefix(
+                AzureConstants.AZURE_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX);
+        securityRule.setDestinationAddressPrefix(
+                AzureConstants.AZURE_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX);
+        securityRule
+                .setSourcePortRange(AzureConstants.AZURE_SECURITY_GROUP_SOURCE_PORT_RANGE);
+        if (ctx.operatingSystemFamily.equalsIgnoreCase(AzureConstants.LINUX_OPERATING_SYSTEM)) {
+            securityRule.setName(AzureConstants.AZURE_LINUX_SECURITY_GROUP_NAME);
+            securityRule.setDescription(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESCRIPTION);
+            securityRule.setDestinationPortRange(
+                    AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESTINATION_PORT_RANGE);
+        } else if (ctx.operatingSystemFamily.equalsIgnoreCase(AzureConstants.WINDOWS_OPERATING_SYSTEM)) {
+            securityRule.setName(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_NAME);
+            securityRule.setDescription(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESCRIPTION);
+            securityRule.setDestinationPortRange(
+                    AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_PORT_RANGE);
+        }
 
-        // Set the windows security rule to allow SSH traffic
-        SecurityRule windowsSecurityRule = new SecurityRule();
-        windowsSecurityRule.setPriority(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_PRIORITY);
-        windowsSecurityRule.setName(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_NAME);
-        windowsSecurityRule.setDescription(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESCRIPTION);
-        windowsSecurityRule.setAccess(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_ACCESS);
-        windowsSecurityRule.setProtocol(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_PROTOCOL);
-        windowsSecurityRule.setDirection(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DIRECTION);
-        windowsSecurityRule.setSourceAddressPrefix(
-                AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_SOURCE_ADDRESS_PREFIX);
-        windowsSecurityRule.setDestinationAddressPrefix(
-                AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_ADDRESS_PREFIX);
-        windowsSecurityRule
-                .setSourcePortRange(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_SOURCE_PORT_RANGE);
-        windowsSecurityRule.setDestinationPortRange(
-                AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESTINATION_PORT_RANGE);
-
-        List<SecurityRule> securityRules = new ArrayList<>();
-        securityRules.add(linuxSecurityRule);
-        securityRules.add(windowsSecurityRule);
-        group.setSecurityRules(securityRules);
+        group.setSecurityRules(Collections.singletonList(securityRule));
 
         String secGroupName = ctx.vmName;
 
@@ -607,7 +599,7 @@ public class AzureInstanceService extends StatelessService {
 
                     @Override
                     public void onSuccess(ServiceResponse<NetworkSecurityGroup> result) {
-                        ctx.stage = AzureStages.INIT_NIC;
+                        ctx.stage = nextStage;
                         ctx.securityGroup = result.getBody();
                         logInfo("Successfully created security group with name [%s]",
                                 result.getBody().getName());
@@ -616,7 +608,7 @@ public class AzureInstanceService extends StatelessService {
                 });
     }
 
-    private void initNIC(AzureAllocationContext ctx) {
+    private void initNIC(AzureAllocationContext ctx, AzureStages nextStage) {
         NetworkInterface nic = new NetworkInterface();
         nic.setLocation(ctx.resourceGroup.getLocation());
         nic.setIpConfigurations(new ArrayList<>());
@@ -645,7 +637,7 @@ public class AzureInstanceService extends StatelessService {
 
                     @Override
                     public void onSuccess(ServiceResponse<NetworkInterface> result) {
-                        ctx.stage = AzureStages.CREATE;
+                        ctx.stage = nextStage;
                         ctx.nic = result.getBody();
                         logInfo("Successfully created NIC with name [%s]",
                                 result.getBody().getName());
@@ -654,7 +646,7 @@ public class AzureInstanceService extends StatelessService {
                 });
     }
 
-    private void createVM(AzureAllocationContext ctx) {
+    private void createVM(AzureAllocationContext ctx, AzureStages nextStage) {
         ComputeDescriptionService.ComputeDescription description = ctx.child.description;
 
         Map<String, String> customProperties = description.customProperties;
@@ -666,12 +658,6 @@ public class AzureInstanceService extends StatelessService {
         DiskState bootDisk = ctx.bootDisk;
         if (bootDisk == null) {
             handleError(ctx, new IllegalStateException("Azure bootDisk not specified"));
-            return;
-        }
-
-        URI imageId = bootDisk.sourceImageReference;
-        if (imageId == null) {
-            handleError(ctx, new IllegalStateException("Azure image reference not specified"));
             return;
         }
 
@@ -707,8 +693,7 @@ public class AzureInstanceService extends StatelessService {
 
         StorageProfile storageProfile = new StorageProfile();
         // Currently we only support platform images.
-        ImageReference imageReference = getImageReference(imageId.toString());
-        storageProfile.setImageReference(imageReference);
+        storageProfile.setImageReference(ctx.imageReference);
         storageProfile.setOsDisk(osDisk);
         request.setStorageProfile(storageProfile);
 
@@ -723,11 +708,7 @@ public class AzureInstanceService extends StatelessService {
 
         logInfo("Creating virtual machine with name [%s]", vmName);
 
-        ComputeManagementClient client = new ComputeManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, ctx.clientBuilder, getRetrofitBuilder());
-        client.setSubscriptionId(ctx.parentAuth.userLink);
-
-        client.getVirtualMachinesOperations().createOrUpdateAsync(
+        getComputeManagementClient(ctx).getVirtualMachinesOperations().createOrUpdateAsync(
                 ctx.resourceGroup.getName(), vmName, request,
                 new AzureAsyncCallback<VirtualMachine>() {
                     @Override
@@ -763,7 +744,7 @@ public class AzureInstanceService extends StatelessService {
                                 handleAllocation(ctx);
                                 return;
                             }
-                            ctx.stage = AzureStages.ENABLE_MONITORING;
+                            ctx.stage = nextStage;
                             handleAllocation(ctx);
                         };
 
@@ -778,7 +759,7 @@ public class AzureInstanceService extends StatelessService {
     /**
      * Gets the storage keys from azure and patches the credential state.
      */
-    private void getStorageKeys(AzureAllocationContext ctx) {
+    private void getStorageKeys(AzureAllocationContext ctx, AzureStages nextStage) {
         StorageManagementClient client = getStorageManagementClient(ctx);
 
         client.getStorageAccountsOperations().listKeysAsync(ctx.resourceGroup.getName(),
@@ -839,14 +820,14 @@ public class AzureInstanceService extends StatelessService {
                                                         return;
                                                     }
 
-                                                    ctx.stage = AzureStages.FINISHED;
+                                                    ctx.stage = nextStage;
                                                     handleAllocation(ctx);
                                                 }));
                                         sendRequest(patch);
                                         return;
                                     }
 
-                                    ctx.stage = AzureStages.FINISHED;
+                                    ctx.stage = nextStage;
                                     handleAllocation(ctx);
                                 }));
 
@@ -1099,10 +1080,21 @@ public class AzureInstanceService extends StatelessService {
         return ctx.storageManagementClient;
     }
 
+    private ComputeManagementClient getComputeManagementClient(AzureAllocationContext ctx) {
+        if (ctx.computeManagementClient == null) {
+            ComputeManagementClient client = new ComputeManagementClientImpl(
+                    AzureConstants.BASE_URI, ctx.credentials, ctx.clientBuilder,
+                    getRetrofitBuilder());
+            client.setSubscriptionId(ctx.parentAuth.userLink);
+            ctx.computeManagementClient = client;
+        }
+        return ctx.computeManagementClient;
+    }
+
     /**
      * Method will retrieve disks for targeted image
      */
-    private void getVMDisks(AzureAllocationContext ctx) {
+    private void getVMDisks(AzureAllocationContext ctx, AzureStages nextStage) {
         if (ctx.child.diskLinks == null || ctx.child.diskLinks.size() == 0) {
             ctx.error = new IllegalStateException("a minimum of 1 disk is required");
             ctx.stage = AzureStages.ERROR;
@@ -1153,13 +1145,99 @@ public class AzureInstanceService extends StatelessService {
                                 return;
                             }
 
-                            ctx.stage = AzureStages.INIT_RES_GROUP;
+                            ctx.stage = nextStage;
                             handleAllocation(ctx);
                         });
         operationJoin.sendWith(this);
     }
 
-    private void enableMonitoring(AzureAllocationContext ctx) {
+    /**
+     * Differentiate between Windows and Linux Images
+     *
+     */
+    private void differentiateVMImages(AzureAllocationContext ctx, AzureStages nextStage) {
+        DiskState bootDisk = ctx.bootDisk;
+        if (bootDisk == null) {
+            handleError(ctx, new IllegalStateException("Azure bootDisk not specified"));
+            return;
+        }
+        URI imageId = ctx.bootDisk.sourceImageReference;
+        if (imageId == null) {
+            handleError(ctx, new IllegalStateException("Azure image reference not specified"));
+            return;
+        }
+        ImageReference imageReference = getImageReference(ctx.bootDisk.sourceImageReference.toString());
+
+        if (AzureConstants.AZURE_URN_VERSION_LATEST.equalsIgnoreCase(imageReference.getVersion())) {
+            logFine("Getting the latest version for %s:%s:%s", imageReference.getPublisher(),
+                    imageReference.getOffer(), imageReference.getSku());
+            // Get the latest version based on the provided publisher, offer and SKU (filter = null, top = 1, orderBy = name desc)
+            getComputeManagementClient(ctx).getVirtualMachineImagesOperations().listAsync(
+                    ctx.resourceGroup.getLocation(), imageReference.getPublisher(),
+                    imageReference.getOffer(), imageReference.getSku(),
+                    null, 1, AzureConstants.ORDER_BY_VM_IMAGE_RESOURCE_NAME_DESC,
+                    new AzureAsyncCallback<List<VirtualMachineImageResource>>() {
+
+                        @Override
+                        void onError(Throwable e) {
+                            handleError(ctx, new IllegalStateException(e.getLocalizedMessage()));
+                            return;
+                        }
+
+                        @Override
+                        void onSuccess(ServiceResponse<List<VirtualMachineImageResource>> result) {
+                            List<VirtualMachineImageResource> resource = result.getBody();
+                            if (resource == null || resource.get(0) == null) {
+                                handleError(ctx, new IllegalStateException("No latest version found"));
+                                return;
+                            }
+                            // Get the first object because the request asks only for one object (top = 1)
+                            // We don't care what version we use to get the VirtualMachineImage
+                            String version = resource.get(0).getName();
+                            getVirtualMachineImage(ctx, nextStage, version, imageReference);
+                        }
+                    });
+        } else {
+            getVirtualMachineImage(ctx, nextStage, imageReference.getVersion(), imageReference);
+        }
+    }
+
+    /**
+     * Get the VirtualMachineImage using publisher, offer, SKU and version.
+     */
+    private void getVirtualMachineImage(AzureAllocationContext ctx,
+            AzureStages nextStage, String version, ImageReference imageReference) {
+
+        logFine("URN of the OS - %s:%s:%s:%s", imageReference.getPublisher(),
+                imageReference.getOffer(), imageReference.getSku(), version);
+        getComputeManagementClient(ctx).getVirtualMachineImagesOperations().getAsync(
+                ctx.resourceGroup.getLocation(), imageReference.getPublisher(),
+                imageReference.getOffer(), imageReference.getSku(), version,
+                new AzureAsyncCallback<VirtualMachineImage>() {
+                    @Override
+                    void onError(Throwable e) {
+                        handleError(ctx, new IllegalStateException(e.getLocalizedMessage()));
+                        return;
+                    }
+
+                    @Override
+                    void onSuccess(ServiceResponse<VirtualMachineImage> result) {
+                        VirtualMachineImage image = result.getBody();
+                        if (image == null || image.getOsDiskImage() == null) {
+                            handleError(ctx, new IllegalStateException("OS Disk Image not found."));
+                            return;
+                        }
+                        // Get the operating system family
+                        ctx.operatingSystemFamily = image.getOsDiskImage().getOperatingSystem();
+                        logFine("Retrieved the operating system family - %s", ctx.operatingSystemFamily);
+                        ctx.imageReference = imageReference;
+                        ctx.stage = nextStage;
+                        handleAllocation(ctx);
+                    }
+                });
+    }
+
+    private void enableMonitoring(AzureAllocationContext ctx, AzureStages nextStage) {
         Operation readFile = Operation.createGet(null).setCompletion((o, e) -> {
             if (e != null) {
                 handleError(ctx, e);
@@ -1209,7 +1287,7 @@ public class AzureInstanceService extends StatelessService {
                 }
 
                 logInfo("Successfully enabled monitoring on the VM [%s]", vmName);
-                ctx.stage = AzureStages.GET_STORAGE_KEYS;
+                ctx.stage = nextStage;
                 handleAllocation(ctx);
             });
             sendRequest(operation);

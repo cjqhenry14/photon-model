@@ -16,6 +16,8 @@ package com.vmware.photon.controller.model.adapters.azureadapter;
 import java.util.List;
 
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
+import com.microsoft.azure.management.compute.ComputeManagementClient;
+import com.microsoft.azure.management.compute.models.ImageReference;
 import com.microsoft.azure.management.network.NetworkManagementClient;
 import com.microsoft.azure.management.network.models.NetworkInterface;
 import com.microsoft.azure.management.network.models.NetworkSecurityGroup;
@@ -30,6 +32,7 @@ import okhttp3.OkHttpClient;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 
@@ -59,10 +62,13 @@ public class AzureAllocationContext {
     public NetworkInterface nic;
     public String storageAccountName;
     public NetworkSecurityGroup securityGroup;
+    public ImageReference imageReference;
+    public String operatingSystemFamily;
 
     public ResourceManagementClient resourceManagementClient;
     public NetworkManagementClient networkManagementClient;
     public StorageManagementClient storageManagementClient;
+    public ComputeManagementClient computeManagementClient;
     public OkHttpClient.Builder clientBuilder;
     public OkHttpClient httpClient;
 
