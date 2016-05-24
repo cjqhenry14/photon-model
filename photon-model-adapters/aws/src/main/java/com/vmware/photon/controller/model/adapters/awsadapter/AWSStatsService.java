@@ -38,6 +38,7 @@ import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsResult;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSStatsNormalizer;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.constants.PhotonModelConstants;
@@ -58,9 +59,11 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  * Service to gather stats on AWS.
  */
 public class AWSStatsService extends StatelessService {
+    private AWSClientManager clientManager;
 
     public AWSStatsService() {
         super.toggleOption(ServiceOption.INSTRUMENTATION, true);
+        this.clientManager = new AWSClientManager(true);
     }
 
     public static final String SELF_LINK = AWSUriPaths.AWS_STATS_ADAPTER;
@@ -125,6 +128,7 @@ public class AWSStatsService extends StatelessService {
     public void handleStop(Operation delete) {
         executorService.shutdown();
         awaitTermination(this, executorService);
+        this.clientManager.cleanUp();
         super.handleStop(delete);
     }
 
@@ -229,7 +233,8 @@ public class AWSStatsService extends StatelessService {
      * @param metricNames The metrics names to gather stats for.
      * @param isAggregateStats Indicates where we are interested in aggregate stats or not.
      */
-    private void getEC2Stats(AWSStatsDataHolder statsData, String[] metricNames, boolean isAggregateStats) {
+    private void getEC2Stats(AWSStatsDataHolder statsData, String[] metricNames,
+            boolean isAggregateStats) {
         getAWSAsyncStatsClient(statsData);
         long endTimeMicros = Utils.getNowMicrosUtc();
 
@@ -278,7 +283,7 @@ public class AWSStatsService extends StatelessService {
         request.setEndTime(new Date(TimeUnit.MICROSECONDS.toMillis(endTimeMicros)));
         request.setStartTime(new Date(
                 TimeUnit.MICROSECONDS.toMillis(endTimeMicros) -
-                TimeUnit.HOURS.toMillis(COST_COLLECTION_WINDOW_IN_HOURS)));
+                        TimeUnit.HOURS.toMillis(COST_COLLECTION_WINDOW_IN_HOURS)));
         request.setPeriod(METRIC_COLLECTION_PERIOD_IN_SECONDS);
         request.setStatistics(Arrays.asList(STATISTICS));
         request.setNamespace(BILLING_NAMESPACE);
@@ -293,25 +298,18 @@ public class AWSStatsService extends StatelessService {
     }
 
     private void getAWSAsyncStatsClient(AWSStatsDataHolder statsData) {
-        if (statsData.statsClient == null) {
-            try {
-                statsData.statsClient = AWSUtils.getStatsAsyncClient(statsData.parentAuth,
-                        statsData.computeDesc.description.zoneId, executorService);
-            } catch (Exception e) {
-                logSevere(e);
-            }
-        }
+        URI parentURI = UriUtils.buildUri(this.getHost(), statsData.statsRequest.parentTaskLink);
+        statsData.statsClient = this.clientManager.getOrCreateCloudWatchClient(statsData.parentAuth,
+                statsData.computeDesc.description.zoneId, executorService, this, parentURI,
+                statsData.statsRequest.isMockRequest);
     }
 
     private void getAWSAsyncBillingClient(AWSStatsDataHolder statsData) {
-        if (statsData.billingClient == null) {
-            try {
-                statsData.billingClient = AWSUtils
-                        .getStatsAsyncClient(statsData.parentAuth, COST_ZONE_ID, executorService);
-            } catch (Exception e) {
-                logSevere(e);
-            }
-        }
+        URI parentURI = UriUtils.buildUri(this.getHost(), statsData.statsRequest.parentTaskLink);
+        statsData.billingClient = this.clientManager.getOrCreateCloudWatchClient(statsData.parentAuth,
+                COST_ZONE_ID, executorService, this, parentURI,
+                statsData.statsRequest.isMockRequest);
+
     }
 
     /**
@@ -362,7 +360,8 @@ public class AWSStatsService extends StatelessService {
                                 TimeUnit.HOURS);
                         currentDate = dp.getTimestamp();
                     }
-                    burnRate = (timeDifference == 0 ? 0 : ((dp.getAverage() - latestAverage) / timeDifference));
+                    burnRate = (timeDifference == 0 ? 0
+                            : ((dp.getAverage() - latestAverage) / timeDifference));
                     latestAverage = dp.getAverage();
                 }
                 ServiceStat stat = new ServiceStat();
@@ -372,7 +371,8 @@ public class AWSStatsService extends StatelessService {
                         .put(AWSStatsNormalizer.getNormalizedStatKeyValue(result.getLabel()), stat);
                 ServiceStat burnRateStat = new ServiceStat();
                 burnRateStat.latestValue = burnRate;
-                burnRateStat.unit = AWSStatsNormalizer.getNormalizedUnitValue(DIMENSION_CURRENCY_VALUE);
+                burnRateStat.unit = AWSStatsNormalizer
+                        .getNormalizedUnitValue(DIMENSION_CURRENCY_VALUE);
                 statsData.statsResponse.statValues.put(
                         AWSStatsNormalizer.getNormalizedStatKeyValue(AWSConstants.BURN_RATE),
                         burnRateStat);

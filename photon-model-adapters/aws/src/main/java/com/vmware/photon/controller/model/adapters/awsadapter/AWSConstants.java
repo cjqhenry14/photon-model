@@ -38,9 +38,17 @@ public class AWSConstants {
             + AWSConstants.QUERY_PAGE_SIZE;
     private static int QUERY_PAGE_SIZE = Integer.getInteger(PROPERTY_NAME_QUERY_PAGE_SIZE, 50);
     public static final String PROPERTY_NAME_QUERY_RESULT_LIMIT = UriPaths.PROPERTY_PREFIX
-            + AWSConstants.QUERY_PAGE_SIZE;
+            + AWSConstants.QUERY_RESULT_LIMIT;
     private static int QUERY_RESULT_LIMIT = Integer.getInteger(PROPERTY_NAME_QUERY_RESULT_LIMIT,
             50);
+    public static final String PROPERTY_NAME_CLIENT_CACHE_MAX_SIZE = UriPaths.PROPERTY_PREFIX
+            + AWSConstants.CLIENT_CACHE_MAX_SIZE;
+    public static int CLIENT_CACHE_MAX_SIZE = Integer.getInteger(
+            PROPERTY_NAME_CLIENT_CACHE_MAX_SIZE, 50);
+    public static final String PROPERTY_NAME_CLIENT_CACHE_INITIAL_SIZE = UriPaths.PROPERTY_PREFIX
+            + AWSConstants.CLIENT_CACHE_INITIAL_SIZE;
+    public static int CLIENT_CACHE_INITIAL_SIZE = Integer.getInteger(
+            PROPERTY_NAME_CLIENT_CACHE_INITIAL_SIZE, 16);
 
     // AWS Metric related Constants
     public static final String CPU_UTILIZATION = "CPUUtilization";
@@ -80,5 +88,21 @@ public class AWSConstants {
 
     public static int getQueryResultLimit() {
         return QUERY_RESULT_LIMIT;
+    }
+
+    public static void setClientCacheMaxSize(int size) {
+        CLIENT_CACHE_MAX_SIZE = size;
+    }
+
+    public static int getClientCacheMaxSize() {
+        return CLIENT_CACHE_MAX_SIZE;
+    }
+
+    public static void setClientCacheInitialSize(int size) {
+        CLIENT_CACHE_INITIAL_SIZE = size;
+    }
+
+    public static int getClientCacheInitialSize() {
+        return CLIENT_CACHE_INITIAL_SIZE;
     }
 }

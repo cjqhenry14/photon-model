@@ -18,7 +18,6 @@ import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstant
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_SUBNET_ID;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_VPC_ID;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_VPC_ROUTE_TABLE_ID;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -52,6 +51,7 @@ import com.amazonaws.services.ec2.model.Subnet;
 import com.amazonaws.services.ec2.model.Vpc;
 
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskService.ProvisionNetworkTaskState;
@@ -68,6 +68,11 @@ public class AWSNetworkService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_NETWORK_ADAPTER;
     public static final String ROUTE_DEST_ALL = "0.0.0.0/0";
+    private AWSClientManager clientManager;
+
+    public AWSNetworkService() {
+        this.clientManager = new AWSClientManager();
+    }
 
     /**
      * Stages for network provisioning.
@@ -89,6 +94,11 @@ public class AWSNetworkService extends StatelessService {
         public Throwable error;
         public AmazonEC2AsyncClient client;
 
+    }
+
+    @Override
+    public void handleStop(Operation op) {
+        this.clientManager.cleanUp();
     }
 
     @Override
@@ -123,15 +133,10 @@ public class AWSNetworkService extends StatelessService {
             getCredentials(awsNet, NetworkStage.AWS_CLIENT);
             break;
         case AWS_CLIENT:
-            if (awsNet.client == null) {
-                try {
-                    awsNet.client = AWSUtils.getAsyncClient(awsNet.credentials,
-                            awsNet.network.regionID, false, getHost().allocateExecutor(this));
-                } catch (Throwable e) {
-                    handleFailure(awsNet, e);
-                    break;
-                }
-            }
+            awsNet.client = this.clientManager.getOrCreateEC2Client(
+                    awsNet.credentials, awsNet.network.regionID,
+                    this, awsNet.networkRequest.provisioningTaskReference,
+                    awsNet.networkRequest.isMockRequest, false);
             if (awsNet.networkRequest.requestType == NetworkInstanceRequest.InstanceRequestType.CREATE) {
                 awsNet.stage = NetworkStage.PROVISION_VPC;
             } else {
@@ -190,7 +195,6 @@ public class AWSNetworkService extends StatelessService {
                     NetworkStage.FINISHED);
             break;
         case FAILED:
-            cleanupEC2ClientResources(awsNet.client);
             if (awsNet.networkRequest.provisioningTaskReference != null) {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         awsNet.networkRequest.provisioningTaskReference,
@@ -200,7 +204,6 @@ public class AWSNetworkService extends StatelessService {
             }
             break;
         case FINISHED:
-            cleanupEC2ClientResources(awsNet.client);
             awsNet.netOps.complete();
             AdapterUtils.sendNetworkFinishPatch(this,
                     awsNet.networkRequest.provisioningTaskReference);

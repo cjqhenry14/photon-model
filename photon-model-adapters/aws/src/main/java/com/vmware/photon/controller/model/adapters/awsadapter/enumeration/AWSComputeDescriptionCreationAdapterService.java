@@ -13,8 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.TILDA;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getRegionId;
-import static com.vmware.photon.controller.model.adapters.util.AdapterUtils.updateDurationStats;
 import static com.vmware.xenon.common.UriUtils.URI_PATH_CHAR;
 
 import java.net.URI;
@@ -38,7 +38,6 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
-import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.QueryTask;
 import com.vmware.xenon.services.common.QueryTask.Query;
 import com.vmware.xenon.services.common.QueryTask.Query.Occurance;
@@ -87,7 +86,6 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         // Cached operation to signal completion to the AWS instance adapter once all the compute
         // descriptions are successfully created.
         public Operation awsAdapterOperation;
-        public long startTime;
 
         public AWSComputeDescriptionCreationServiceContext(AWSComputeDescriptionCreationState cdState,
                 Operation op) {
@@ -98,12 +96,12 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
             createOperations = new ArrayList<Operation>();
             creationStage = AWSComputeDescCreationStage.GET_REPRESENTATIVE_LIST;
             awsAdapterOperation = op;
-            startTime = Utils.getNowMicrosUtc();
         }
     }
 
     @Override
     public void handlePatch(Operation op) {
+        setOperationHandlerInvokeTimeStat(op);
         if (!op.hasBody()) {
             op.fail(new IllegalArgumentException("body is required"));
             return;
@@ -151,7 +149,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
             createComputeDescriptions(context, AWSComputeDescCreationStage.SIGNAL_COMPLETION);
             break;
         case SIGNAL_COMPLETION:
-            updateDurationStats(this, context.startTime);
+            setOperationDurationStat(context.awsAdapterOperation);
             context.awsAdapterOperation.complete();
             break;
         default:
@@ -191,7 +189,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         // Region Id will be common to all the instances as the EC2 client has this value set during
         // each invocation.
         String instanceKey = context.representativeComputeDescriptionSet.iterator().next();
-        String zoneId = instanceKey.substring(0, instanceKey.indexOf("~"));
+        String zoneId = instanceKey.substring(0, instanceKey.indexOf(TILDA));
         QueryTask.Query supportedChildrenClause = new QueryTask.Query()
                 .setTermPropertyName(
                         QueryTask.QuerySpecification
@@ -215,7 +213,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         for (String key : context.representativeComputeDescriptionSet) {
             QueryTask.Query instanceTypeFilter = new QueryTask.Query()
                     .setTermPropertyName(ComputeDescription.FIELD_NAME_ID)
-                    .setTermMatchValue(key.substring(key.indexOf("~") + 1));
+                    .setTermMatchValue(key.substring(key.indexOf(TILDA) + 1));
             instanceTypeFilter.occurance = QueryTask.Query.Occurance.SHOULD_OCCUR;
             instanceTypeFilterParentQuery.addBooleanClause(instanceTypeFilter);
         }
@@ -274,7 +272,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
             Iterator<String> i = context.representativeComputeDescriptionSet.iterator();
             while (i.hasNext()) {
                 String key = i.next();
-                String instanceType = key.substring(key.indexOf("~") + 1);
+                String instanceType = key.substring(key.indexOf(TILDA) + 1);
                 if (!context.localComputeDescriptionSet.contains(instanceType)) {
                     context.computeDescriptionsToBeCreatedList.add(key);
                 }
@@ -329,8 +327,8 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         computeDescription.supportedChildren = new ArrayList<>();
         computeDescription.supportedChildren.add(ComputeType.DOCKER_CONTAINER.toString());
         computeDescription.environmentName = AWSInstanceService.AWS_ENVIRONMENT_NAME;
-        computeDescription.zoneId = key.substring(0, key.indexOf("~"));
-        computeDescription.id = key.substring(key.indexOf("~") + 1);
+        computeDescription.zoneId = key.substring(0, key.indexOf(TILDA));
+        computeDescription.id = key.substring(key.indexOf(TILDA) + 1);
         computeDescription.documentSelfLink = computeDescription.id;
         computeDescription.name = computeDescription.id;
         computeDescription.tenantLinks = cd.cdState.tenantLinks;
@@ -379,7 +377,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
      */
     private String getKeyForComputeDescription(Instance i) {
         // Representing the compute-description as a key regionId~instanceType
-        return getRegionId(i).concat("~").concat(i.getInstanceType());
+        return getRegionId(i).concat(TILDA).concat(i.getInstanceType());
     }
 
     /**

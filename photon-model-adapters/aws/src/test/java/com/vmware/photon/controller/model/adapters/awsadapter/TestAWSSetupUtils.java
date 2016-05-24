@@ -14,6 +14,7 @@
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getAWSNonTerminatedInstancesFilter;
+import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.getVMCount;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -63,6 +64,7 @@ import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
 import com.vmware.photon.controller.model.tasks.TaskOptions;
 import com.vmware.photon.controller.model.tasks.TestUtils;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceStats;
@@ -99,6 +101,7 @@ public class TestAWSSetupUtils {
     public static final String DEFAULT_SECURITY_GROUP_NAME = "cell-manager-security-group";
     public static final String BASELINE_INSTANCE_COUNT = "Baseline Instance Count ";
     public static final String BASELINE_COMPUTE_DESCRIPTION_COUNT = " Baseline Compute Description Count ";
+    private static final float HUNDERED = 100.0f;
 
     /**
      * Class to hold the baseline counts for the compute states and the compute descriptions that are present on the AWS endpoint
@@ -282,7 +285,8 @@ public class TestAWSSetupUtils {
      * @param host
      * @throws Throwable
      */
-    public static void deleteVMs(String documentSelfLink, boolean isMock, VerificationHost host) throws Throwable {
+    public static void deleteVMs(String documentSelfLink, boolean isMock, VerificationHost host)
+            throws Throwable {
         deleteVMs(documentSelfLink, isMock, host, false);
     }
 
@@ -364,6 +368,9 @@ public class TestAWSSetupUtils {
                                 ResourceRemovalTaskService.FACTORY_LINK))
                 .setBody(deletionState)
                 .setCompletion(host.getCompletion()));
+        // Re-setting the test timeout value so that it clean up spawned instances even if it has
+        // timed out based on the original value.
+        host.setTimeoutSeconds(500);
         host.testWait();
     }
 
@@ -436,10 +443,7 @@ public class TestAWSSetupUtils {
             throws Throwable {
         host.log("Provisioning %d instances on the AWS endpoint using the EC2 client.",
                 numberOfInstance);
-        ArrayList<Boolean> provisioningFlags = new ArrayList<Boolean>(numberOfInstance);
-        for (int i = 0; i < numberOfInstance; i++) {
-            provisioningFlags.add(i, Boolean.FALSE);
-        }
+
         RunInstancesRequest runInstancesRequest = new RunInstancesRequest()
                 .withImageId(EC2_IMAGEID).withInstanceType(instanceType)
                 .withMinCount(numberOfInstance).withMaxCount(numberOfInstance)
@@ -450,14 +454,35 @@ public class TestAWSSetupUtils {
         AWSRunInstancesAsyncHandler creationHandler = new AWSRunInstancesAsyncHandler(
                 host);
         client.runInstancesAsync(runInstancesRequest, creationHandler);
+        host.waitFor("Waiting for instanceIds to be retured from AWS", () -> {
+            return checkInstanceIdsReturnedFromAWS(numberOfInstance, creationHandler.instanceIds);
 
-        // Wait for the machine provisioning to be completed.Looping through as sometimes AWS does
-        // not spin off instances immediately.
-        host.waitFor("Error waiting for EC2 client provisioning in test ", () -> {
-            return computeInstancesStartedState(client, host, creationHandler.instanceIds,
-                    provisioningFlags);
         });
         return creationHandler.instanceIds;
+    }
+
+    /**
+     * Checks if the required number of instanceIds have been returned from AWS for the requested number of resources to be
+     * provisioned.
+     */
+    private static boolean checkInstanceIdsReturnedFromAWS(int numberOfInstance,
+            List<String> instanceIds) {
+        if (instanceIds == null || instanceIds.size() == 0) {
+            return false;
+        }
+        return (instanceIds.size() == numberOfInstance);
+    }
+
+    /**
+     * Waits for the instances to be in running state that were provisioned on AWS.
+     */
+    public static void waitForProvisioningToComplete(List<String> instanceIds,
+            VerificationHost host, AmazonEC2AsyncClient client, int errorRate) throws Throwable {
+        // Wait for the machine provisioning to be completed.
+        host.waitFor("Error waiting for EC2 client provisioning in test ", () -> {
+            return computeInstancesStartedStateWithAcceptedErrorRate(client, host, instanceIds,
+                    errorRate);
+        });
     }
 
     /**
@@ -494,36 +519,46 @@ public class TestAWSSetupUtils {
      * @return
      */
     public static void checkInstancesStarted(VerificationHost host, AmazonEC2AsyncClient client,
-            List<String> instanceIds, List<Boolean> provisioningFlags) {
+            List<String> instanceIds, List<Boolean> provisioningFlags) throws Throwable {
         AWSEnumerationAsyncHandler enumerationHandler = new AWSEnumerationAsyncHandler(host,
                 AWSEnumerationAsyncHandler.MODE.CHECK_START, provisioningFlags, null, null, null);
         DescribeInstancesRequest request = new DescribeInstancesRequest()
                 .withInstanceIds(instanceIds);
         client.describeInstancesAsync(request, enumerationHandler);
+        host.waitFor("Waiting to get response from AWS ", () -> {
+            return enumerationHandler.responseReceived;
+        });
     }
 
     /**
-     * Method that polls to see if the instances provisioned have turned ON. This is similar to the
-     * Provisioning utils wait method.This is ensure deterministic behavior about instances discovery
-     * even if the AWS APIs are taking longer to provision resources.
-     * @return boolean if the required instances have been turned ON on AWS.
+     * Method that polls to see if the instances provisioned have turned ON.This method accepts an error count
+     * to allow some room for errors in case all the requested resources are not provisioned correctly.
+     * @return boolean if the required instances have been turned ON on AWS with some acceptable error rate.
      */
-    public static boolean computeInstancesStartedState(AmazonEC2AsyncClient client,
-            VerificationHost host, List<String> instanceIds, ArrayList<Boolean> provisioningFlags) {
+    public static boolean computeInstancesStartedStateWithAcceptedErrorRate(
+            AmazonEC2AsyncClient client,
+            VerificationHost host, List<String> instanceIds, int errorRate) throws Throwable {
         // If there are no instanceIds set then return false
         if (instanceIds.size() == 0) {
             return false;
         }
+        ArrayList<Boolean> provisioningFlags = new ArrayList<Boolean>(instanceIds.size());
+        for (int i = 0; i < instanceIds.size(); i++) {
+            provisioningFlags.add(i, Boolean.FALSE);
+        }
         // Calls the describe instances API to get the latest state of each machine being
         // provisioned.
         checkInstancesStarted(host, client, instanceIds, provisioningFlags);
-        Boolean finalState = true;
-        for (Boolean b : provisioningFlags) {
-            finalState = finalState & b;
+        int totalCount = instanceIds.size();
+        int passCount = (int) Math.ceil((((100 - errorRate) / HUNDERED) * totalCount));
+        int poweredOnCount = 0;
+        for (boolean startedFlag : provisioningFlags) {
+            if (startedFlag) {
+                poweredOnCount++;
+            }
         }
-        return finalState;
+        return (poweredOnCount >= passCount);
     }
-
     /**
      * Returns the region ID for the given AWS instance.
      * @return
@@ -566,7 +601,8 @@ public class TestAWSSetupUtils {
      * @throws TimeoutException
      */
     public static void enumerateResources(VerificationHost host, boolean isMock,
-            String resourcePoolLink, String computeHostLinkDescription, String computeHostLink)
+            String resourcePoolLink, String computeHostLinkDescription, String computeHostLink,
+            String testCase)
             throws Throwable, InterruptedException, TimeoutException {
         // Perform resource enumeration on the AWS end point. Pass the references to the AWS compute
         // host.
@@ -577,16 +613,16 @@ public class TestAWSSetupUtils {
         host.waitFor("Error waiting for enumeration task for creation", () -> {
             return checkEnumerationTaskCompletion(host, enumTask);
         });
-        host.log("\n==Total Time Spent in Enumeration\n");
+        host.log("\n==%s==Total Time Spent in Enumeration==\n", testCase + getVMCount(host));
         ServiceStats enumerationStats = host.getServiceState(null, ServiceStats.class, UriUtils
                 .buildStatsUri(UriUtils.buildUri(host,
                         AWSEnumerationAdapterService.SELF_LINK)));
         host.log(Utils.toJsonHtml(enumerationStats));
-        host.log("\n==Total Time Spent in Creation Workflow\n");
+        host.log("\n==Total Time Spent in Creation Workflow==\n");
         ServiceStats enumerationCreationStats = host.getServiceState(null, ServiceStats.class,
                 UriUtils
                         .buildStatsUri(UriUtils.buildUri(host,
-                        AWSEnumerationAndCreationAdapterService.SELF_LINK)));
+                                AWSEnumerationAndCreationAdapterService.SELF_LINK)));
         host.log(Utils.toJsonHtml(enumerationCreationStats));
         host.log("\n==Time spent in individual creation services==\n");
         ServiceStats computeDescriptionCreationStats = host.getServiceState(null,
@@ -599,11 +635,11 @@ public class TestAWSSetupUtils {
                         .buildStatsUri(UriUtils.buildUri(host,
                                 AWSComputeStateCreationAdapterService.SELF_LINK)));
         host.log(Utils.toJsonHtml(computeStateCreationStats));
-        host.log("\n==Total Time Spent in Deletion Workflow\n");
+        host.log("\n==Total Time Spent in Deletion Workflow==\n");
         ServiceStats deletionEnumerationStats = host.getServiceState(null, ServiceStats.class,
                 UriUtils
-                .buildStatsUri(UriUtils.buildUri(host,
-                        AWSEnumerationAndDeletionAdapterService.SELF_LINK)));
+                        .buildStatsUri(UriUtils.buildUri(host,
+                                AWSEnumerationAndDeletionAdapterService.SELF_LINK)));
         host.log(Utils.toJsonHtml(deletionEnumerationStats));
     }
 
@@ -678,18 +714,24 @@ public class TestAWSSetupUtils {
     /**
      * Deletes instances on the AWS endpoint for the set of instance Ids that are passed in.
      * @param instanceIdsToDelete
+     * @throws Throwable
      */
     public static void deleteVMsUsingEC2Client(AmazonEC2AsyncClient client, VerificationHost host,
             List<String> instanceIdsToDelete) throws Throwable {
-        ArrayList<Boolean> deletionFlags = new ArrayList<Boolean>(instanceIdsToDelete.size());
-        for (int i = 0; i < instanceIdsToDelete.size(); i++) {
-            deletionFlags.add(i, Boolean.FALSE);
-        }
         TerminateInstancesRequest termRequest = new TerminateInstancesRequest(instanceIdsToDelete);
         AsyncHandler<TerminateInstancesRequest, TerminateInstancesResult> terminateHandler = new AWSTerminateHandlerAsync(
                 host);
         client.terminateInstancesAsync(termRequest, terminateHandler);
+        waitForInstancesToBeTerminated(client, host, instanceIdsToDelete);
 
+    }
+
+    public static void waitForInstancesToBeTerminated(AmazonEC2AsyncClient client,
+            VerificationHost host, List<String> instanceIdsToDelete) throws Throwable {
+        ArrayList<Boolean> deletionFlags = new ArrayList<Boolean>(instanceIdsToDelete.size());
+        for (int i = 0; i < instanceIdsToDelete.size(); i++) {
+            deletionFlags.add(i, Boolean.FALSE);
+        }
         host.waitFor("Error waiting for EC2 client delete instances in test ", () -> {
             return computeInstancesStopState(client,
                     host, instanceIdsToDelete, deletionFlags);
@@ -729,7 +771,7 @@ public class TestAWSSetupUtils {
      */
     public static boolean computeInstancesStopState(AmazonEC2AsyncClient client,
             VerificationHost host, List<String> instanceIdsToDelete,
-            ArrayList<Boolean> deletionFlags) {
+            ArrayList<Boolean> deletionFlags) throws Throwable {
         checkInstancesDeleted(client, host, instanceIdsToDelete, deletionFlags);
         Boolean finalState = true;
         for (Boolean b : deletionFlags) {
@@ -744,12 +786,17 @@ public class TestAWSSetupUtils {
      */
     public static void checkInstancesDeleted(AmazonEC2AsyncClient client,
             VerificationHost host, List<String> instanceIdsToDelete,
-            ArrayList<Boolean> deletionFlags) {
+            ArrayList<Boolean> deletionFlags) throws Throwable {
         AWSEnumerationAsyncHandler enumerationHandler = new AWSEnumerationAsyncHandler(host,
                 AWSEnumerationAsyncHandler.MODE.CHECK_TERMINATION, null, deletionFlags, null, null);
         DescribeInstancesRequest request = new DescribeInstancesRequest()
                 .withInstanceIds(instanceIdsToDelete);
         client.describeInstancesAsync(request, enumerationHandler);
+        // Waiting to get a response from AWS before the state computation is done for the list of
+        // VMs.
+        host.waitFor("Waiting to get response from AWS ", () -> {
+            return enumerationHandler.responseReceived;
+        });
     }
 
     /**
@@ -771,6 +818,7 @@ public class TestAWSSetupUtils {
         public List<Boolean> deletionFlags;
         public List<String> testComputeDescriptions;
         public BaseLineState baseLineState;
+        public boolean responseReceived = false;
 
         // Flag to indicate whether you want to check if instance has started or stopped.
         public static enum MODE {
@@ -786,11 +834,14 @@ public class TestAWSSetupUtils {
             this.deletionFlags = deletionFlags;
             this.testComputeDescriptions = testComputeDescriptions;
             this.baseLineState = baseLineState;
+            this.responseReceived = false;
         }
 
         @Override
         public void onError(Exception exception) {
-            host.log("The exception encounterd is %s", exception);
+            responseReceived = true;
+            host.log("Error describing instances on AWS. The exception encounterd is %s",
+                    exception);
         }
 
         @Override
@@ -799,18 +850,22 @@ public class TestAWSSetupUtils {
             int counter = 0;
             switch (mode) {
             case CHECK_START:
-                for (Instance i : result.getReservations().get(0).getInstances()) {
-                    if (i.getState().getCode() == AWS_STARTED_CODE) {
-                        provisioningFlags.set(counter, Boolean.TRUE);
-                        counter++;
+                for (Reservation r : result.getReservations()) {
+                    for (Instance i : r.getInstances()) {
+                        if (i.getState().getCode() == AWS_STARTED_CODE) {
+                            provisioningFlags.set(counter, Boolean.TRUE);
+                            counter++;
+                        }
                     }
                 }
                 break;
             case CHECK_TERMINATION:
-                for (Instance i : result.getReservations().get(0).getInstances()) {
-                    if (i.getState().getCode() == AWS_TERMINATED_CODE) {
-                        deletionFlags.set(counter, Boolean.TRUE);
-                        counter++;
+                for (Reservation r : result.getReservations()) {
+                    for (Instance i : r.getInstances()) {
+                        if (i.getState().getCode() == AWS_TERMINATED_CODE) {
+                            deletionFlags.set(counter, Boolean.TRUE);
+                            counter++;
+                        }
                     }
                 }
                 break;
@@ -846,6 +901,7 @@ public class TestAWSSetupUtils {
             default:
                 host.log("Invalid stage %s for describing AWS instances", mode);
             }
+            responseReceived = true;
         }
     }
 

@@ -13,8 +13,6 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 
-import static com.vmware.photon.controller.model.adapters.util.AdapterUtils.updateDurationStats;
-
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -33,7 +31,6 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
-import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
@@ -46,7 +43,6 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
 public class AWSEnumerationAdapterService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_ADAPTER;
-    public static Integer AWS_PAGE_SIZE = 50;
 
     public AWSEnumerationAdapterService() {
         super.toggleOption(ServiceOption.INSTRUMENTATION, true);
@@ -79,19 +75,19 @@ public class AWSEnumerationAdapterService extends StatelessService {
      */
     public static class EnumerationContext {
 
-        public long startTime;
         public ComputeEnumerateResourceRequest computeEnumerationRequest;
         public AuthCredentialsService.AuthCredentialsServiceState parentAuth;
         public ComputeDescription computeHostDescription;
         public AWSEnumerationStages stage;
         public List<Operation> enumerationOperations;
         public Throwable error;
+        public Operation awsAdapterOperation;
 
-        public EnumerationContext(ComputeEnumerateResourceRequest request) {
-            this.startTime = Utils.getNowMicrosUtc();
+        public EnumerationContext(ComputeEnumerateResourceRequest request, Operation op) {
             this.computeEnumerationRequest = request;
             this.stage = AWSEnumerationStages.HOSTDESC;
             this.enumerationOperations = new ArrayList<Operation>();
+            this.awsAdapterOperation = op;
         }
     }
 
@@ -103,13 +99,14 @@ public class AWSEnumerationAdapterService extends StatelessService {
 
     @Override
     public void handlePatch(Operation op) {
+        setOperationHandlerInvokeTimeStat(op);
         if (!op.hasBody()) {
             op.fail(new IllegalArgumentException("body is required"));
             return;
         }
         op.complete();
         EnumerationContext awsEnumerationContext = new EnumerationContext(
-                op.getBody(ComputeEnumerateResourceRequest.class));
+                op.getBody(ComputeEnumerateResourceRequest.class), op);
         validateState(awsEnumerationContext);
         if (awsEnumerationContext.computeEnumerationRequest.isMockRequest) {
             // patch status to parent task
@@ -169,7 +166,7 @@ public class AWSEnumerationAdapterService extends StatelessService {
             kickOffEnumerationWorkFlows(aws, AWSEnumerationStages.PATCH_COMPLETION);
             break;
         case PATCH_COMPLETION:
-            updateDurationStats(this, aws.startTime);
+            setOperationDurationStat(aws.awsAdapterOperation);
             AdapterUtils.sendPatchToEnumerationTask(this,
                     aws.computeEnumerationRequest.enumerationTaskReference);
             break;

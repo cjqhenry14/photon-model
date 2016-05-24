@@ -25,8 +25,8 @@ import com.amazonaws.services.ec2.model.DescribeInstancesResult;
 import com.amazonaws.services.ec2.model.Instance;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
-
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
+
 import com.vmware.xenon.common.StatelessService;
 
 /**

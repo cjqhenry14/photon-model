@@ -13,8 +13,6 @@
 
 package com.vmware.photon.controller.model.adapters.util;
 
-import static com.vmware.xenon.common.Service.STAT_NAME_OPERATION_DURATION;
-
 import java.net.URI;
 import java.util.function.Consumer;
 
@@ -154,14 +152,5 @@ public class AdapterUtils {
         pn.taskInfo = taskInfo;
         service.sendRequest(Operation.createPatch(taskLink).setBody(pn));
 
-    }
-
-    /**
-     * Updates the time spent in the said operation in a stateless service.
-     * @param the start time from which the duration will be computed.
-     */
-    public static void updateDurationStats(StatelessService service, long startTime) {
-        long duration = Utils.getNowMicrosUtc() - startTime;
-        service.setStat(STAT_NAME_OPERATION_DURATION, duration);
     }
 }

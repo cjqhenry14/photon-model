@@ -55,6 +55,7 @@ public class AWSUtils {
     public static final String AWS_FILTER_RESOURCE_ID = "resource-id";
     public static final String AWS_FILTER_VPC_ID = "vpc-id";
     public static final String NO_VALUE = "no-value";
+    public static final String TILDA = "~";
     private static final int EXECUTOR_SHUTDOWN_INTERVAL_MINUTES = 5;
 
     public static AmazonEC2AsyncClient getAsyncClient(
@@ -78,13 +79,17 @@ public class AWSUtils {
 
     public static AmazonCloudWatchAsyncClient getStatsAsyncClient(
             AuthCredentialsServiceState credentials, String region,
-            ExecutorService executorService) {
+            ExecutorService executorService, boolean isMockRequest) {
         AmazonCloudWatchAsyncClient client = new AmazonCloudWatchAsyncClient(
                 new BasicAWSCredentials(credentials.privateKeyId,
                         credentials.privateKey),
                 executorService);
 
         client.setRegion(Region.getRegion(Regions.fromName(region)));
+        // make a call to validate credentials
+        if (!isMockRequest) {
+            client.describeAlarms();
+        }
         return client;
     }
 
@@ -152,6 +157,18 @@ public class AWSUtils {
      * Releases all the resources allocated for the use of the AWS EC2 client.
      */
     public static void cleanupEC2ClientResources(AmazonEC2AsyncClient client) {
+        if (client != null) {
+            client.shutdown();
+            // To ensure that no requests are made on a client on which shutdown has already been
+            // invoked.
+            client = null;
+        }
+    }
+
+    /**
+     * Releases all the resources allocated for the use of the AWS CloudWatchAsync client.
+     */
+    public static void cleanupCloudWatchClientResources(AmazonCloudWatchAsyncClient client) {
         if (client != null) {
             client.shutdown();
             // To ensure that no requests are made on a client on which shutdown has already been

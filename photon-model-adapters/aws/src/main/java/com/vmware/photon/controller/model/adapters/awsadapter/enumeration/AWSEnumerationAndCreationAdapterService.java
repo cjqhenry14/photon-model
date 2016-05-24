@@ -14,9 +14,7 @@
 package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.getQueryPageSize;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getAWSNonTerminatedInstancesFilter;
-import static com.vmware.photon.controller.model.adapters.util.AdapterUtils.updateDurationStats;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -39,10 +37,10 @@ import com.amazonaws.services.ec2.model.Reservation;
 import com.vmware.photon.controller.model.adapterapi.ComputeEnumerateResourceRequest;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
-import com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeDescriptionCreationAdapterService.AWSComputeDescriptionCreationState;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeStateCreationAdapterService.AWSComputeStateForCreation;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService.AWSEnumerationRequest;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
@@ -69,6 +67,7 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  */
 public class AWSEnumerationAndCreationAdapterService extends StatelessService {
     public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_CREATION_ADAPTER;
+    private AWSClientManager clientManager;
 
     public static enum AWSEnumerationCreationStages {
         CLIENT, ENUMERATE, ERROR
@@ -80,6 +79,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
 
     public AWSEnumerationAndCreationAdapterService() {
         super.toggleOption(ServiceOption.INSTRUMENTATION, true);
+        this.clientManager = new AWSClientManager();
     }
 
     /**
@@ -96,7 +96,6 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         public AWSEnumerationCreationSubStage subStage;
         public Throwable error;
         public int pageNo;
-        public long startTime;
         // Mapping of instance Id and the compute state Id in the local system.
         public Map<String, String> localAWSInstanceIds;
         public Map<String, Instance> remoteAWSInstances;
@@ -127,7 +126,6 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             stage = AWSEnumerationCreationStages.CLIENT;
             subStage = AWSEnumerationCreationSubStage.QUERY_LOCAL_RESOURCES;
             pageNo = 1;
-            startTime = Utils.getNowMicrosUtc();
         }
     }
 
@@ -138,7 +136,13 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
     }
 
     @Override
+    public void handleStop(Operation op) {
+        this.clientManager.cleanUp();
+    }
+
+    @Override
     public void handlePatch(Operation op) {
+        setOperationHandlerInvokeTimeStat(op);
         if (!op.hasBody()) {
             op.fail(new IllegalArgumentException("body is required"));
             return;
@@ -236,8 +240,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
                     logInfo("Stopping enumeration service for creation for %s",
                             aws.computeHostDescription.name);
                 }
-                cleanupEC2ClientResources(aws.amazonEC2Client);
-                updateDurationStats(this, aws.startTime);
+                setOperationDurationStat(aws.awsAdapterOperation);
                 aws.awsAdapterOperation.complete();
                 break;
             default:
@@ -245,12 +248,10 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             }
             break;
         case ERROR:
-            cleanupEC2ClientResources(aws.amazonEC2Client);
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
                     aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
             break;
         default:
-            cleanupEC2ClientResources(aws.amazonEC2Client);
             logSevere("Unknown AWS enumeration stage %s ", aws.stage.toString());
             aws.error = new Exception("Unknown AWS enumeration stage %s");
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
@@ -265,19 +266,10 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
      */
     private void getAWSAsyncClient(EnumerationCreationContext aws,
             AWSEnumerationCreationStages next) {
-        if (aws.amazonEC2Client == null) {
-            try {
-                aws.amazonEC2Client = AWSUtils.getAsyncClient(
-                        aws.parentAuth, aws.computeHostDescription.zoneId,
-                        aws.computeEnumerationRequest.isMockRequest,
-                        getHost().allocateExecutor(this));
-            } catch (Throwable e) {
-                logSevere(e);
-                aws.error = e;
-                aws.stage = AWSEnumerationCreationStages.ERROR;
-                handleEnumerationRequest(aws);
-            }
-        }
+        aws.amazonEC2Client = clientManager.getOrCreateEC2Client(aws.parentAuth,
+                aws.computeHostDescription.zoneId, this,
+                aws.computeEnumerationRequest.enumerationTaskReference,
+                aws.computeEnumerationRequest.isMockRequest, true);
         aws.stage = next;
         handleEnumerationRequest(aws);
     }
@@ -326,7 +318,6 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             this.service = service;
             this.aws = aws;
             this.opContext = OperationContext.getOperationContext();
-            ;
         }
 
         @Override

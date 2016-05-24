@@ -14,9 +14,7 @@
 package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.getQueryResultLimit;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getAWSNonTerminatedInstancesFilter;
-import static com.vmware.photon.controller.model.adapters.util.AdapterUtils.updateDurationStats;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -36,12 +34,13 @@ import com.amazonaws.services.ec2.model.Reservation;
 import com.vmware.photon.controller.model.adapterapi.ComputeEnumerateResourceRequest;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
-import com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService.AWSEnumerationRequest;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.OperationJoin;
@@ -63,6 +62,7 @@ import com.vmware.xenon.services.common.ServiceUriPaths;
  */
 public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
     public static final String SELF_LINK = AWSUriPaths.AWS_ENUMERATION_DELETION_ADAPTER;
+    private AWSClientManager clientManager;
 
     public static enum AWSEnumerationDeletionStages {
         ENUMERATE, ERROR
@@ -74,6 +74,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
 
     public AWSEnumerationAndDeletionAdapterService() {
         super.toggleOption(ServiceOption.INSTRUMENTATION, true);
+        this.clientManager = new AWSClientManager();
     }
 
     /**
@@ -89,7 +90,6 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
         public AWSEnumerationDeletionStages stage;
         public AWSEnumerationDeletionSubStage subStage;
         public Throwable error;
-        public long startTime;
         // Mapping of instance Id and the compute state that represents it in the local system.
         public Map<String, ComputeState> localInstanceIds;
         // Set of all the instance Ids of the non terminated instances on AWS
@@ -117,12 +117,17 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
             deleteOperations = new ArrayList<Operation>();
             stage = AWSEnumerationDeletionStages.ENUMERATE;
             subStage = AWSEnumerationDeletionSubStage.GET_LOCAL_RESOURCES;
-            startTime = Utils.getNowMicrosUtc();
         }
     }
 
     @Override
+    public void handleStop(Operation op) {
+        this.clientManager.cleanUp();
+    }
+
+    @Override
     public void handlePatch(Operation op) {
+        setOperationHandlerInvokeTimeStat(op);
         if (!op.hasBody()) {
             op.fail(new IllegalArgumentException("body is required"));
             return;
@@ -173,8 +178,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
                     logInfo("Stopping deletion enumeration service for %s",
                             aws.computeHostDescription.name);
                 }
-                updateDurationStats(this, aws.startTime);
-                cleanupEC2ClientResources(aws.amazonEC2Client);
+                setOperationDurationStat(aws.awsAdapterOperation);
                 aws.awsAdapterOperation.complete();
                 break;
             default:
@@ -186,7 +190,6 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
             }
             break;
         case ERROR:
-            cleanupEC2ClientResources(aws.amazonEC2Client);
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
                     aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
             break;
@@ -254,11 +257,9 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
             break;
         case ENUMERATION_STOP:
             logInfo("Stopping enumeration");
-            cleanupEC2ClientResources(aws.amazonEC2Client);
             stopEnumeration(aws);
             break;
         default:
-            cleanupEC2ClientResources(aws.amazonEC2Client);
             Throwable t = new Exception("Unknown AWS enumeration deletion sub stage");
             signalErrorToEnumerationAdapter(aws, t);
         }
@@ -342,19 +343,10 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
         request.getInstanceIds().addAll(new ArrayList<String>(aws.localInstanceIds.keySet()));
         AsyncHandler<DescribeInstancesRequest, DescribeInstancesResult> resultHandler = new AWSEnumerationAsyncHandler(
                 this, aws, next);
-        if (aws.amazonEC2Client == null) {
-            try {
-                aws.amazonEC2Client = AWSUtils.getAsyncClient(
-                        aws.parentAuth, aws.computeHostDescription.zoneId,
-                        aws.computeEnumerationRequest.isMockRequest,
-                        getHost().allocateExecutor(this));
-            } catch (Throwable e) {
-                logSevere(e);
-                AdapterUtils.sendFailurePatchToEnumerationTask(this,
-                        aws.computeEnumerationRequest.enumerationTaskReference,
-                        e);
-            }
-        }
+        aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
+                aws.computeHostDescription.zoneId, this,
+                aws.computeEnumerationRequest.enumerationTaskReference,
+                aws.computeEnumerationRequest.isMockRequest, true);
         aws.amazonEC2Client.describeInstancesAsync(request,
                 resultHandler);
     }

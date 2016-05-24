@@ -25,18 +25,20 @@ import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstant
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.setQueryPageSize;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.setQueryResultLimit;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.AWS_TAG_NAME;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.setResourceName;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSComputeHost;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSResourcePool;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSVMResource;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.deleteAllVMsOnThisEndpoint;
-import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.deleteDocument;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.deleteVMsUsingEC2Client;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.enumerateResources;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.getBaseLineInstanceCount;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.instanceType_t2_micro;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.provisionAWSVMWithEC2Client;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.provisionMachine;
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.waitForInstancesToBeTerminated;
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.waitForProvisioningToComplete;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.zoneId;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.getExecutor;
 import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryComputeDescriptions;
@@ -88,6 +90,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  *
  */
 public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
+    public static final int ZERO = 0;
     public static final int count1 = 1;
     public static final int count2 = 2;
     public static final int count3 = 3;
@@ -114,6 +117,12 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public static List<Boolean> deletionFlags = new ArrayList<Boolean>();
     public boolean isMock = true;
     public BaseLineState baseLineState;
+    public static final String TEST_CASE_INITIAL = "Initial Run ";
+    public static final String TEST_CASE_ADDITIONAL_VM = "Additional VM ";
+    public static final String TEST_CASE_DELETE_VM = "Delete VM ";
+    public static final String TEST_CASE_DELETE_VMS = "Delete multiple VMs ";
+    public static final String TEST_CASE_MOCK_MODE = "Mock Mode ";
+
     public String accessKey = "accessKey";
     public String secretKey = "secretKey";
     public static List<String> testComputeDescriptions = new ArrayList<String>(
@@ -166,15 +175,10 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             host.log("Deleting %d instance created from the test ", instancesToCleanUp.size());
             deleteAllVMsOnThisEndpoint(host, isMock,
                     outComputeHost.documentSelfLink, instancesToCleanUp);
-            // Leave the system in the same state as when the test started.
-            queryComputeInstances(this.host, baseLineState.baselineVMCount + 1);
-            // Delete the reference to the compute host as each individual test creates one.
-            deleteDocument(this.host, outComputeHost.documentSelfLink);
-            instancesToCleanUp.clear();
-            if (client != null) {
-                client.shutdown();
-                client = null;
-            }
+            // Check that all the instances that are required to be deleted are in
+            // terminated state on AWS
+            waitForInstancesToBeTerminated(client, host, instancesToCleanUp);
+            cleanupEC2ClientResources(client);
         } catch (Throwable deleteEx) {
             // just log and move on
             host.log(Level.WARNING, "Exception deleting VMs - %s", deleteEx.getMessage());
@@ -201,6 +205,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // CREATION directly on AWS
             instanceIdsToDeleteFirstTime = provisionAWSVMWithEC2Client(client, host, count5,
                     T2_NANO_INSTANCE_TYPE);
+            instancesToCleanUp.addAll(instanceIdsToDeleteFirstTime);
+            waitForProvisioningToComplete(instanceIdsToDeleteFirstTime, host, client, ZERO);
             // Tag the first VM with a name
             tagProvisionedVM(vmState.id, VM_NAME, client);
 
@@ -208,7 +214,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             ProvisioningUtils.queryComputeInstances(this.host, count2);
 
             enumerateResources(host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
+                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+                    TEST_CASE_INITIAL);
             // 5 new resources should be discovered. Mapping to 1 new compute description and 5 new
             // compute states.
             queryComputeDescriptions(this.host,
@@ -227,10 +234,12 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // Provision an additional VM that has a compute description already present in the
             // system.
             instanceIdsToDeleteSecondTime = provisionAWSVMWithEC2Client(client, host,
-                    count1,
-                    TestAWSSetupUtils.instanceType_t2_micro);
+                    count1, TestAWSSetupUtils.instanceType_t2_micro);
+            instancesToCleanUp.addAll(instanceIdsToDeleteSecondTime);
+            waitForProvisioningToComplete(instanceIdsToDeleteSecondTime, host, client, ZERO);
             enumerateResources(host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
+                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+                    TEST_CASE_ADDITIONAL_VM);
             // One additional compute state and no new compute descriptions should be created.
             queryComputeDescriptions(this.host,
                     count3 + baseLineState.baselineComputeDescriptionCount);
@@ -241,7 +250,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // Delete 5 VMs spawned above of type T2_NANO
             deleteVMsUsingEC2Client(client, host, instanceIdsToDeleteFirstTime);
             enumerateResources(host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
+                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+                    TEST_CASE_DELETE_VMS);
             // Counts should go down 5 compute states.
             queryComputeInstances(this.host,
                     count3 + baseLineState.baselineVMCount);
@@ -249,7 +259,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // Delete 1 VMs spawned above of type T2_Micro
             deleteVMsUsingEC2Client(client, host, instanceIdsToDeleteSecondTime);
             enumerateResources(host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
+                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+                    TEST_CASE_DELETE_VM);
             // Compute state count should go down by 1
             queryComputeInstances(this.host,
                     count2 + baseLineState.baselineVMCount);
@@ -260,7 +271,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // Just make a call to the enumeration service and make sure that the adapter patches
             // the parent with completion.
             enumerateResources(host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink);
+                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+                    TEST_CASE_MOCK_MODE);
         }
     }
 

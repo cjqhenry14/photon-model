@@ -13,8 +13,6 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
-
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +34,7 @@ import com.amazonaws.services.ec2.model.SecurityGroup;
 import com.amazonaws.services.ec2.model.Subnet;
 
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState;
@@ -62,6 +61,12 @@ public class AWSFirewallService extends StatelessService {
     public static final String DEFAULT_PROTOCOL = "tcp";
     public static final String NAME_PREFIX = "vmw";
 
+    private AWSClientManager clientManager;
+
+    public AWSFirewallService() {
+        this.clientManager = new AWSClientManager();
+    }
+
     /**
      * Firewall stages.
      */
@@ -83,6 +88,11 @@ public class AWSFirewallService extends StatelessService {
         public ProvisionFirewallTaskState firewallTaskState;
         public Throwable error;
 
+    }
+
+    @Override
+    public void handleStop(Operation op) {
+        this.clientManager.cleanUp();
     }
 
     @Override
@@ -119,17 +129,10 @@ public class AWSFirewallService extends StatelessService {
             getCredentials(requestState, FirewallStage.AWS_CLIENT);
             break;
         case AWS_CLIENT:
-            if (requestState.client == null) {
-                try {
-                    requestState.client = AWSUtils.getAsyncClient(
-                            requestState.credentials,
-                            requestState.firewall.regionID, false,
-                            getHost().allocateExecutor(this));
-                } catch (Throwable e) {
-                    handleFailure(requestState, e);
-                    break;
-                }
-            }
+            requestState.client = this.clientManager.getOrCreateEC2Client(requestState.credentials,
+                    requestState.firewall.regionID, this,
+                    requestState.firewallRequest.provisioningTaskReference,
+                    requestState.firewallRequest.isMockRequest, false);
             if (requestState.firewallRequest.requestType == FirewallInstanceRequest.InstanceRequestType.CREATE) {
                 requestState.stage = FirewallStage.PROVISION_SECURITY_GROUP;
             } else {
@@ -161,7 +164,6 @@ public class AWSFirewallService extends StatelessService {
                     requestState, FirewallStage.FINISHED);
             break;
         case FAILED:
-            cleanupEC2ClientResources(requestState.client);
             if (requestState.firewallRequest.provisioningTaskReference != null) {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         requestState.firewallRequest.provisioningTaskReference,
@@ -171,7 +173,6 @@ public class AWSFirewallService extends StatelessService {
             }
             break;
         case FINISHED:
-            cleanupEC2ClientResources(requestState.client);
             requestState.fwOperation.complete();
             AdapterUtils.sendNetworkFinishPatch(this,
                     requestState.firewallRequest.provisioningTaskReference);
@@ -180,13 +181,6 @@ public class AWSFirewallService extends StatelessService {
             break;
         }
 
-    }
-
-    private void handleFailure(AWSFirewallRequestState requestState, Throwable e) {
-        logSevere(e);
-        requestState.error = e;
-        requestState.stage = FirewallStage.FAILED;
-        handleStages(requestState);
     }
 
     private String getCustomProperty(AWSFirewallRequestState requestState,

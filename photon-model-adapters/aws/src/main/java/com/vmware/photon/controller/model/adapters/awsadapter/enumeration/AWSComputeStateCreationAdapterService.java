@@ -24,8 +24,6 @@ import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstant
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PRIVATE_INTERFACE;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PUBLIC_INTERFACE;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.AWS_FILTER_VPC_ID;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
-import static com.vmware.photon.controller.model.adapters.util.AdapterUtils.updateDurationStats;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -51,6 +49,7 @@ import com.amazonaws.services.ec2.model.Vpc;
 
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
@@ -75,6 +74,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService;
 public class AWSComputeStateCreationAdapterService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_COMPUTE_STATE_CREATION_ADAPTER;
+    private AWSClientManager clientManager;
 
     public static enum AWSComputeStateCreationStage {
         POPULATE_COMPUTESTATES, CREATE_NETWORK_STATE, CREATE_COMPUTESTATES, SIGNAL_COMPLETION,
@@ -97,6 +97,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
 
     public AWSComputeStateCreationAdapterService() {
         super.toggleOption(ServiceOption.INSTRUMENTATION, true);
+        this.clientManager = new AWSClientManager();
     }
 
     /**
@@ -132,7 +133,6 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         // Cached operation to signal completion to the AWS instance adapter once all the compute
         // states are successfully created.
         public Operation awsAdapterOperation;
-        public long startTime;
 
         public AWSComputeServiceCreationContext(AWSComputeStateForCreation computeState,
                 Operation op) {
@@ -142,12 +142,17 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
             creationStage = AWSComputeStateCreationStage.POPULATE_COMPUTESTATES;
             networkCreationStage = AWSNetworkCreationStage.CLIENT;
             awsAdapterOperation = op;
-            startTime = Utils.getNowMicrosUtc();
         }
     }
 
     @Override
+    public void handleStop(Operation op) {
+        this.clientManager.cleanUp();
+    }
+
+    @Override
     public void handlePatch(Operation op) {
+        setOperationHandlerInvokeTimeStat(op);
         if (!op.hasBody()) {
             op.fail(new IllegalArgumentException("body is required"));
             return;
@@ -177,8 +182,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
             kickOffComputeStateCreation(context, AWSComputeStateCreationStage.SIGNAL_COMPLETION);
             break;
         case SIGNAL_COMPLETION:
-            updateDurationStats(this, context.startTime);
-            cleanupEC2ClientResources(context.amazonEC2Client);
+            setOperationDurationStat(context.awsAdapterOperation);
             context.awsAdapterOperation.complete();
             break;
         default:
@@ -243,7 +247,6 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         computeState.address = instance.getPublicIpAddress();
         computeState.powerState = AWSUtils.mapToPowerState(instance.getState());
         computeState.customProperties = new HashMap<String, String>();
-        computeState.id = instance.getInstanceId();
         if (!instance.getTags().isEmpty()) {
             computeState.customProperties.put(AWS_TAGS,
                     Utils.toJson(new AWSTags(instance.getTags())));
@@ -420,24 +423,16 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      */
     private void getAWSAsyncClient(AWSComputeServiceCreationContext context,
             AWSNetworkCreationStage next) {
-        if (context.amazonEC2Client == null) {
-            try {
-                context.amazonEC2Client = AWSUtils.getAsyncClient(
-                        context.computeState.parentAuth, context.computeState.regionId,
-                        context.computeState.isMock,
-                        getHost().allocateExecutor(this));
-            } catch (Throwable e) {
-                logSevere(e);
-                AdapterUtils.sendFailurePatchToEnumerationTask(this,
-                        context.computeState.parentTaskLink, e);
-            }
-        }
+        context.amazonEC2Client = this.clientManager.getOrCreateEC2Client(
+                context.computeState.parentAuth, context.computeState.regionId,
+                this, context.computeState.parentTaskLink, false, true);
         context.networkCreationStage = next;
         handleNetworkStateChanges(context);
     }
 
     /**
-     * Gets the VPC information from AWS. The CIDR block informaiton is persisted in the network state corresponding to the VPC.
+     * Gets the VPC information from AWS. The CIDR block information is persisted in the network state corresponding
+     * to the VPC.
      */
     private void getVPCInformation(AWSComputeServiceCreationContext context,
             AWSNetworkCreationStage next) {

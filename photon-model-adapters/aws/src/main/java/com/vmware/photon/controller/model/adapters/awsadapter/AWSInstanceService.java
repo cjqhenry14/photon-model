@@ -16,7 +16,6 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.HYPHEN;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PRIVATE_INTERFACE;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PUBLIC_INTERFACE;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.cleanupEC2ClientResources;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -38,6 +37,7 @@ import com.amazonaws.services.ec2.model.TerminateInstancesResult;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
@@ -65,12 +65,23 @@ public class AWSInstanceService extends StatelessService {
 
     public static final String AWS_ENVIRONMENT_NAME = "AWS_EC2";
 
+    private AWSClientManager clientManager;
+
     // The security group specifies things such as the ports to be open,
     // firewall rules etc and is
     // specific to an instance and should come from the compute desc for the VM
 
     private static final String AWS_RUNNING_NAME = "running";
     private static final String AWS_TERMINATED_NAME = "terminated";
+
+    public AWSInstanceService() {
+        this.clientManager = new AWSClientManager();
+    }
+
+    @Override
+    public void handleStop(Operation op) {
+        this.clientManager.cleanUp();
+    }
 
     @Override
     public void handlePatch(Operation op) {
@@ -117,18 +128,10 @@ public class AWSInstanceService extends StatelessService {
             getParentAuth(aws, AWSStages.CLIENT);
             break;
         case CLIENT:
-            if (aws.amazonEC2Client == null) {
-                try {
-                    aws.amazonEC2Client = AWSUtils.getAsyncClient(
-                            aws.parentAuth, getRequestRegionId(aws),
-                            aws.computeRequest.isMockRequest, getHost().allocateExecutor(this));
-                } catch (Throwable e) {
-                    logSevere(e);
-                    aws.error = e;
-                    aws.stage = AWSStages.ERROR;
-                    handleAllocation(aws);
-                }
-            }
+            aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
+                    getRequestRegionId(aws), this,
+                    aws.computeRequest.provisioningTaskReference, aws.computeRequest.isMockRequest,
+                    false);
             // now that we have a client lets move onto the next step
             switch (aws.computeRequest.requestType) {
             case CREATE:
@@ -167,7 +170,6 @@ public class AWSInstanceService extends StatelessService {
             createInstance(aws);
             break;
         case ERROR:
-            cleanupEC2ClientResources(aws.amazonEC2Client);
             if (aws.computeRequest.provisioningTaskReference != null) {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
                         aws.computeRequest.provisioningTaskReference, aws.error);
@@ -176,7 +178,6 @@ public class AWSInstanceService extends StatelessService {
             }
             break;
         case DONE:
-            cleanupEC2ClientResources(aws.amazonEC2Client);
             break;
         default:
             logSevere("Unhandled stage: %s", aws.stage.toString());

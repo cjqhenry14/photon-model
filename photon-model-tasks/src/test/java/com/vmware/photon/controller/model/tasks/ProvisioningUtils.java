@@ -97,7 +97,7 @@ public class ProvisioningUtils {
         host.startService(
                 Operation.createPost(host,
                         ScheduledTaskService.FACTORY_LINK),
-                        ScheduledTaskService.createFactory());
+                ScheduledTaskService.createFactory());
         serviceSelfLinks.add(ScheduledTaskService.FACTORY_LINK);
 
         host.startService(
@@ -165,6 +165,15 @@ public class ProvisioningUtils {
         host.registerForServiceAvailability(host.getCompletion(),
                 selfLinks);
         host.testWait();
+    }
+
+    public static int getVMCount(VerificationHost host) throws Throwable {
+        ServiceDocumentQueryResult res;
+        res = host.getFactoryState(UriUtils
+                .buildExpandLinksQueryUri(UriUtils.buildUri(host.getUri(),
+                        ComputeService.FACTORY_LINK)));
+        return res.documents.size() - 1;
+
     }
 
     public static ServiceDocumentQueryResult queryComputeInstances(VerificationHost host,
