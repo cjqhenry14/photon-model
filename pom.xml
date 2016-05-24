@@ -68,7 +68,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <xenon.version>0.8.1-SNAPSHOT</xenon.version>
+    <xenon.version>0.8.2-SNAPSHOT</xenon.version>
     <xenon.common.version>${xenon.version}</xenon.common.version>
     <xenon.ui.version>${xenon.version}</xenon.ui.version>
   </properties>
