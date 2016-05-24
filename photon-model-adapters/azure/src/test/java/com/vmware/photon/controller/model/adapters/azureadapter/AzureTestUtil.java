@@ -35,6 +35,7 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
@@ -91,6 +92,8 @@ public class AzureTestUtil {
                 .setBody(deletionState)
                 .setCompletion(host.getCompletion()));
         host.testWait();
+        // check that the VMs are gone
+        ProvisioningUtils.queryComputeInstances(host, 1);
     }
 
     /**
