@@ -51,6 +51,14 @@ import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.UriUtils;
 
+/**
+ * NOTE: Testing pagination related changes requires manual setup due to account limits, slowness
+ * of vm creation on azure (this slowness is on azure), and cost associated.
+ *
+ * For manual tests use Azure CLI to create multiple VMs using this bash command line:
+ *
+ * for i in {1..55}; do azure vm quick-create resourcegroup vm$i westus linux canonical:UbuntuServer:12.04.3-LTS:12.04.201401270 azureuser Pa$$word% -z Standard_A0; done
+ */
 public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
     private static final int STALE_VM_RESOURCES_COUNT = 100;
 

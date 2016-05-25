@@ -14,11 +14,13 @@
 package com.vmware.photon.controller.model.adapters.azureadapter.enumeration;
 
 import static com.vmware.photon.controller.model.ComputeProperties.CUSTOM_DISPLAY_NAME;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AUTH_HEADER_BEARER_PREFIX;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_OSDISK_CACHING;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_STORAGE_ACCOUNT_NAME;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.AZURE_VM_SIZE;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.awaitTermination;
-import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.cleanUpHttpClient;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.LIST_VM_URI;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.QUERY_PARAM_API_VERSION;
+import static com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants.VM_REST_API_VERSION;
 import static com.vmware.photon.controller.model.adapters.azureadapter.AzureUtils.getAzureConfig;
 import static com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_AZURE;
 
@@ -34,27 +36,21 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.microsoft.azure.ListOperationCallback;
 import com.microsoft.azure.credentials.ApplicationTokenCredentials;
-import com.microsoft.azure.management.compute.ComputeManagementClient;
-import com.microsoft.azure.management.compute.ComputeManagementClientImpl;
 import com.microsoft.azure.management.compute.models.ImageReference;
-import com.microsoft.azure.management.compute.models.VirtualMachine;
-import com.microsoft.rest.ServiceResponse;
-import okhttp3.OkHttpClient;
-import retrofit2.Retrofit;
 
 import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.adapterapi.ComputeEnumerateResourceRequest;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
-import com.vmware.photon.controller.model.adapters.azureadapter.AzureConstants;
 import com.vmware.photon.controller.model.adapters.azureadapter.AzureUriPaths;
+import com.vmware.photon.controller.model.adapters.azureadapter.models.virtualmachine.VirtualMachine;
+import com.vmware.photon.controller.model.adapters.azureadapter.models.virtualmachine.VirtualMachineListResult;
+import com.vmware.photon.controller.model.adapters.util.AdapterUriUtil;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.adapters.util.enums.EnumerationStages;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
@@ -66,7 +62,6 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
-import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.OperationSequence;
 import com.vmware.xenon.common.StatelessService;
@@ -115,6 +110,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
         AuthCredentialsServiceState parentAuth;
         long enumerationStartTimeInMicros;
         String deletionNextPageLink;
+        String enumNextPageLink;
 
         // Substage specific fields
         EnumerationSubStages subStage;
@@ -124,8 +120,6 @@ public class AzureEnumerationAdapterService extends StatelessService {
 
         // Azure specific fields
         ApplicationTokenCredentials credentials;
-        OkHttpClient.Builder clientBuilder;
-        OkHttpClient httpClient;
 
         EnumerationContext(ComputeEnumerateResourceRequest request) {
             enumRequest = request;
@@ -133,22 +127,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
         }
     }
 
-    private ExecutorService executorService;
     private Set<String> ongoingEnumerations = new ConcurrentSkipListSet<>();
-
-    @Override
-    public void handleStart(Operation startPost) {
-        executorService = getHost().allocateExecutor(this);
-
-        super.handleStart(startPost);
-    }
-
-    @Override
-    public void handleStop(Operation delete) {
-        executorService.shutdown();
-        awaitTermination(this, executorService);
-        super.handleStop(delete);
-    }
 
     @Override
     public void handlePatch(Operation op) {
@@ -187,11 +166,6 @@ public class AzureEnumerationAdapterService extends StatelessService {
                     handleEnumerationRequest(ctx);
                     return;
                 }
-            }
-
-            if (ctx.httpClient == null) {
-                ctx.httpClient = new OkHttpClient();
-                ctx.clientBuilder = ctx.httpClient.newBuilder();
             }
             ctx.stage = EnumerationStages.ENUMERATE;
             handleEnumerationRequest(ctx);
@@ -236,13 +210,11 @@ public class AzureEnumerationAdapterService extends StatelessService {
             logInfo("Enumeration finished for %s", getEnumKey(ctx));
             ongoingEnumerations.remove(getEnumKey(ctx));
             AdapterUtils.sendPatchToEnumerationTask(this, ctx.enumRequest.enumerationTaskReference);
-            cleanUpHttpClient(this, ctx.httpClient);
             break;
         case ERROR:
             logWarning("Enumeration error for %s", getEnumKey(ctx));
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
                     ctx.enumRequest.enumerationTaskReference, ctx.error);
-            cleanUpHttpClient(this, ctx.httpClient);
             break;
         default:
             String msg = String.format("Unknown Azure enumeration stage %s ", ctx.stage.toString());
@@ -250,7 +222,6 @@ public class AzureEnumerationAdapterService extends StatelessService {
             ctx.error = new IllegalStateException(msg);
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
                     ctx.enumRequest.enumerationTaskReference, ctx.error);
-            cleanUpHttpClient(this, ctx.httpClient);
         }
     }
 
@@ -454,13 +425,70 @@ public class AzureEnumerationAdapterService extends StatelessService {
      * Enumerate VMs from Azure.
      */
     private void enumerate(EnumerationContext ctx) {
-        // TODO VSYM-628: Paginate enumeration results from Azure
-        ComputeManagementClient client = new ComputeManagementClientImpl(AzureConstants.BASE_URI,
-                ctx.credentials, ctx.clientBuilder, getRetrofitBuilder());
-        client.setSubscriptionId(ctx.parentAuth.userLink);
-
         logInfo("Enumerating VMs from Azure");
-        client.getVirtualMachinesOperations().listAllAsync(new AzureEnumerationAsyncHandler(ctx));
+        String uriStr = ctx.enumNextPageLink;
+        URI uri;
+
+        if (uriStr == null) {
+            uriStr = AdapterUriUtil.expandUriPathTemplate(LIST_VM_URI, ctx.parentAuth.userLink);
+            uri = UriUtils.extendUriWithQuery(UriUtils.buildUri(uriStr),
+                    QUERY_PARAM_API_VERSION, VM_REST_API_VERSION);
+        } else {
+            uri = UriUtils.buildUri(uriStr);
+        }
+
+        Operation operation = Operation.createGet(uri);
+        operation.addRequestHeader(Operation.ACCEPT_HEADER, Operation.MEDIA_TYPE_APPLICATION_JSON);
+        operation.addRequestHeader(Operation.CONTENT_TYPE_HEADER, Operation.MEDIA_TYPE_APPLICATION_JSON);
+        try {
+            operation.addRequestHeader(Operation.AUTHORIZATION_HEADER,
+                    AUTH_HEADER_BEARER_PREFIX + ctx.credentials.getToken());
+        } catch (Exception ex) {
+            this.handleError(ctx, ex);
+        }
+
+        operation.setCompletion((op, er) -> {
+            if (er != null) {
+                handleError(ctx, er);
+                return;
+            }
+
+            VirtualMachineListResult results = op.getBody(VirtualMachineListResult.class);
+
+            List<VirtualMachine> virtualMachines = results.value;
+
+            // If there are no VMs in Azure we directly skip over to deletion phase.
+            if (virtualMachines == null || virtualMachines.size() == 0) {
+                ctx.subStage = EnumerationSubStages.DELETE;
+                handleSubStage(ctx);
+                return;
+            }
+
+            ctx.enumNextPageLink = results.nextLink;
+
+            logFine("Retrieved %d VMs from Azure", virtualMachines.size());
+            logFine("Next page link %s", ctx.enumNextPageLink);
+
+            for (VirtualMachine virtualMachine : virtualMachines) {
+                // We don't want to process VMs that are being terminated.
+                if (AZURE_VM_TERMINATION_STATES.contains(virtualMachine.properties.provisioningState)) {
+                    logFine("Not processing %d", virtualMachine.id);
+                    continue;
+                }
+
+                // Azure for some case changes the case of the vm id.
+                String vmId = virtualMachine.id.toLowerCase();
+                ctx.virtualMachines.put(vmId, virtualMachine);
+                ctx.vmIds.add(vmId);
+            }
+
+            logFine("Processing %d VMs", ctx.vmIds.size());
+
+            ctx.subStage = EnumerationSubStages.QUERY;
+            handleSubStage(ctx);
+
+        });
+        sendRequest(operation);
     }
 
     /**
@@ -561,7 +589,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
         DiskState rootDisk = new DiskState();
         rootDisk.customProperties = new HashMap<>();
         rootDisk.customProperties.put(AZURE_OSDISK_CACHING,
-                vm.getStorageProfile().getOsDisk().getCaching());
+                vm.properties.storageProfile.getOsDisk().getCaching());
         rootDisk.documentSelfLink = computeState.diskLinks.get(0);
         // TODO VSYM-630: Discover storage keys for storage account during Azure enumeration
 
@@ -589,6 +617,12 @@ public class AzureEnumerationAdapterService extends StatelessService {
      */
     private void create(EnumerationContext ctx) {
         if (ctx.virtualMachines.size() == 0) {
+            if (ctx.enumNextPageLink != null) {
+                ctx.subStage = EnumerationSubStages.LISTVMS;
+                handleSubStage(ctx);
+                return;
+            }
+
             logInfo("No virtual machine available for creation");
             ctx.subStage = EnumerationSubStages.DELETE;
             handleSubStage(ctx);
@@ -612,8 +646,8 @@ public class AzureEnumerationAdapterService extends StatelessService {
     private void createHelper(EnumerationContext ctx, VirtualMachine virtualMachine,
             AtomicInteger size) {
         AuthCredentialsServiceState auth = new AuthCredentialsServiceState();
-        auth.userEmail = virtualMachine.getOsProfile().getAdminUsername();
-        auth.privateKey = virtualMachine.getOsProfile().getAdminPassword();
+        auth.userEmail = virtualMachine.properties.osProfile.getAdminUsername();
+        auth.privateKey = virtualMachine.properties.osProfile.getAdminPassword();
         auth.documentSelfLink = UUID.randomUUID().toString();
         auth.tenantLinks = ctx.computeHostDesc.tenantLinks;
 
@@ -627,8 +661,8 @@ public class AzureEnumerationAdapterService extends StatelessService {
         // TODO VSYM-631: Match existing descriptions for new VMs discovered on Azure
         ComputeDescription computeDescription = new ComputeDescription();
         computeDescription.id = UUID.randomUUID().toString();
-        computeDescription.name = virtualMachine.getName();
-        computeDescription.regionId = virtualMachine.getLocation();
+        computeDescription.name = virtualMachine.name;
+        computeDescription.regionId = virtualMachine.location;
         computeDescription.authCredentialsLink = authLink;
         computeDescription.documentSelfLink = computeDescription.id;
         computeDescription.environmentName = ENVIRONMENT_NAME_AZURE;
@@ -638,7 +672,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
                 .buildUri(getHost(), AzureUriPaths.AZURE_STATS_ADAPTER);
         computeDescription.customProperties = new HashMap<>();
         computeDescription.customProperties
-                .put(AZURE_VM_SIZE, virtualMachine.getHardwareProfile().getVmSize());
+                .put(AZURE_VM_SIZE, virtualMachine.properties.hardwareProfile.getVmSize());
         computeDescription.tenantLinks = ctx.computeHostDesc.tenantLinks;
 
         Operation compDescOp = Operation
@@ -649,17 +683,17 @@ public class AzureEnumerationAdapterService extends StatelessService {
         DiskState rootDisk = new DiskState();
         rootDisk.id = UUID.randomUUID().toString();
         rootDisk.documentSelfLink = rootDisk.id;
-        rootDisk.name = virtualMachine.getStorageProfile().getOsDisk().getName();
+        rootDisk.name = virtualMachine.properties.storageProfile.getOsDisk().getName();
         rootDisk.type = DiskType.HDD;
-        ImageReference imageReference = virtualMachine.getStorageProfile().getImageReference();
+        ImageReference imageReference = virtualMachine.properties.storageProfile.getImageReference();
         rootDisk.sourceImageReference = URI.create(imageReferenceToImageId(imageReference));
         rootDisk.bootOrder = 1;
         rootDisk.customProperties = new HashMap<>();
         rootDisk.customProperties.put(AZURE_OSDISK_CACHING,
-                virtualMachine.getStorageProfile().getOsDisk().getCaching());
+                virtualMachine.properties.storageProfile.getOsDisk().getCaching());
         rootDisk.customProperties.put(AZURE_STORAGE_ACCOUNT_NAME,
                 getStorageAccountName(
-                        virtualMachine.getStorageProfile().getOsDisk().getVhd().getUri()));
+                        virtualMachine.properties.storageProfile.getOsDisk().getVhd().getUri()));
         rootDisk.tenantLinks = ctx.computeHostDesc.tenantLinks;
 
         // TODO VSYM-629: Add logic to fetch storage account type for newly discovered VMs on Azure
@@ -683,8 +717,8 @@ public class AzureEnumerationAdapterService extends StatelessService {
         resource.resourcePoolLink = ctx.enumRequest.resourcePoolLink;
         resource.diskLinks = vmDisks;
         resource.customProperties = new HashMap<>();
-        resource.customProperties.put(CUSTOM_DISPLAY_NAME, virtualMachine.getName());
-        resource.id = virtualMachine.getId().toLowerCase();
+        resource.customProperties.put(CUSTOM_DISPLAY_NAME, virtualMachine.name);
+        resource.id = virtualMachine.id.toLowerCase();
         resource.tenantLinks = ctx.computeHostDesc.tenantLinks;
 
         Operation resourceOp = Operation
@@ -702,6 +736,12 @@ public class AzureEnumerationAdapterService extends StatelessService {
                     }
 
                     if (size.decrementAndGet() == 0) {
+                        if (ctx.enumNextPageLink != null) {
+                            ctx.subStage = EnumerationSubStages.LISTVMS;
+                            handleSubStage(ctx);
+                            return;
+                        }
+
                         logInfo("Finished creating compute states");
                         ctx.subStage = EnumerationSubStages.DELETE;
                         handleSubStage(ctx);
@@ -732,12 +772,6 @@ public class AzureEnumerationAdapterService extends StatelessService {
         if (ctx.enumRequest.enumerationAction == null) {
             ctx.enumRequest.enumerationAction = EnumerationAction.START;
         }
-    }
-
-    private Retrofit.Builder getRetrofitBuilder() {
-        Retrofit.Builder builder = new Retrofit.Builder();
-        builder.callbackExecutor(executorService);
-        return builder;
     }
 
     private void handleError(EnumerationContext ctx, Throwable e) {
@@ -776,58 +810,5 @@ public class AzureEnumerationAdapterService extends StatelessService {
         }
 
         return storageUri;
-    }
-
-    /**
-     * Async callback to handle Azure list VM callback.
-     */
-    private class AzureEnumerationAsyncHandler extends ListOperationCallback<VirtualMachine> {
-
-        private final OperationContext opContext;
-        private final EnumerationContext ctx;
-
-        AzureEnumerationAsyncHandler(EnumerationContext ctx) {
-            opContext = OperationContext.getOperationContext();
-            this.ctx = ctx;
-        }
-
-        @Override
-        public void failure(Throwable e) {
-            OperationContext.restoreOperationContext(opContext);
-            handleError(ctx, e);
-        }
-
-        @Override
-        public void success(ServiceResponse<List<VirtualMachine>> result) {
-            OperationContext.restoreOperationContext(opContext);
-            List<VirtualMachine> virtualMachines = result.getBody();
-
-            logFine("Retrieved %d VMs from Azure", virtualMachines.size());
-
-            // If there are no VMs in Azure we directly skip over to deletion phase.
-            if (virtualMachines.size() == 0) {
-                ctx.subStage = EnumerationSubStages.DELETE;
-                handleSubStage(ctx);
-                return;
-            }
-
-            for (VirtualMachine virtualMachine : virtualMachines) {
-                // We don't want to process VMs that are being terminated.
-                if (AZURE_VM_TERMINATION_STATES.contains(virtualMachine.getProvisioningState())) {
-                    logFine("Not processing %d", virtualMachine.getId());
-                    continue;
-                }
-
-                // Azure for some case changes the case of the vm id.
-                String vmId = virtualMachine.getId().toLowerCase();
-                ctx.virtualMachines.put(vmId, virtualMachine);
-                ctx.vmIds.add(vmId);
-            }
-
-            logFine("Processing %d VMs", ctx.vmIds.size());
-
-            ctx.subStage = EnumerationSubStages.QUERY;
-            handleSubStage(ctx);
-        }
     }
 }

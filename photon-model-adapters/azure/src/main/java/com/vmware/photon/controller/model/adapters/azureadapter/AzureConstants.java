@@ -20,12 +20,6 @@ public class AzureConstants {
     public static final String BASE_URI = "https://management.azure.com/";
     public static final String AZURE_TENANT_ID = "azureTenantId";
     public static final String AZURE_RESOURCE_GROUP_NAME = "azureResourceGroupName";
-    public static final String AZURE_VM_ADMIN_USERNAME = "azureVMAdminName";
-    public static final String AZURE_VM_ADMIN_PASSWORD = "azureVMAdminPassword";
-    public static final String AZURE_IMAGE_PUBLISHER = "azureImagePublisher";
-    public static final String AZURE_IMAGE_OFFER = "azureImageOffer";
-    public static final String AZURE_IMAGE_SKU = "azureImageSKU";
-    public static final String AZURE_IMAGE_VERSION = "azureImageVersion";
     public static final String AZURE_OSDISK_CACHING = "azureOsDiskCaching";
     public static final String AZURE_STORAGE_ACCOUNT_TYPE = "azureStorageAccountType";
     public static final String AZURE_STORAGE_ACCOUNT_NAME = "azureStorageAccountName";
@@ -91,4 +85,9 @@ public class AzureConstants {
     public static final String METRIC_KEY_TOTAL = "Total";
     public static final String METRIC_KEY_AVERAGE = "Average";
     public static final String METRIC_KEY_COUNT = "Count";
+
+    // Virtual Machine REST constants
+    public static final String VM_REST_API_VERSION = "2016-03-30";
+    public static final String LIST_VM_URI = BASE_URI_FOR_REST
+            + "/subscriptions/{subscriptionId}/providers/Microsoft.Compute/virtualMachines";
 }
