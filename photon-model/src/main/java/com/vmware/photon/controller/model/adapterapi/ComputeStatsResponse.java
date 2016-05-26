@@ -16,6 +16,8 @@ package com.vmware.photon.controller.model.adapterapi;
 import java.util.List;
 import java.util.Map;
 
+import com.vmware.xenon.common.ServiceStats.ServiceStat;
+
 /**
  * Defines the response body for getting health status of a Compute instance.
  */
@@ -38,9 +40,8 @@ public class ComputeStatsResponse {
         public String computeLink;
 
         /**
-         * all stats are just key-value pairs for now; will be extended to support units, stats types etc
+         * Stats values are of type ServiceStat
          */
-        public Map<String, Double> statValues;
+        public Map<String, ServiceStat> statValues;
     }
-
 }

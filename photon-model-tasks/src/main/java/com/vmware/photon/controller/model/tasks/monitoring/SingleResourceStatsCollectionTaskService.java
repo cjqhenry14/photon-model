@@ -32,6 +32,7 @@ import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.ServiceStats;
+import com.vmware.xenon.common.ServiceStats.ServiceStat;
 import com.vmware.xenon.common.ServiceStats.TimeSeriesStats;
 import com.vmware.xenon.common.ServiceStats.TimeSeriesStats.AggregationType;
 import com.vmware.xenon.common.TaskState;
@@ -247,15 +248,17 @@ public class SingleResourceStatsCollectionTaskService extends TaskService<Single
         for (ComputeStats stats : currentState.statsList) {
             URI statsUri = UriUtils.buildStatsUri(getHost(), stats.computeLink);
             // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-330
-            for (Entry<String, Double> entry : stats.statValues.entrySet()) {
+            for (Entry<String, ServiceStat> entry : stats.statValues.entrySet()) {
                 ServiceStats.ServiceStat minuteStats = new ServiceStats.ServiceStat();
                 minuteStats.name = new StringBuffer(entry.getKey()).append(MIN_SUFFIX).toString();
-                minuteStats.latestValue = entry.getValue();
+                minuteStats.latestValue = entry.getValue().latestValue;
+                minuteStats.unit = entry.getValue().unit;
                 minuteStats.timeSeriesStats = new TimeSeriesStats(numBucketsHourly,
                         bucketSizeMinutes, EnumSet.allOf(AggregationType.class));
                 ServiceStats.ServiceStat hourStats = new ServiceStats.ServiceStat();
                 hourStats.name = new StringBuffer(entry.getKey()).append(HOUR_SUFFIX).toString();
-                hourStats.latestValue = entry.getValue();
+                hourStats.latestValue = entry.getValue().latestValue;
+                hourStats.unit = entry.getValue().unit;
                 hourStats.timeSeriesStats = new TimeSeriesStats(numBucketsDaily,
                         bucketSizeHours, EnumSet.allOf(AggregationType.class));
                 operations.add(Operation.createPost(statsUri)

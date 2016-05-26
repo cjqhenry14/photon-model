@@ -27,11 +27,13 @@ import java.util.logging.Level;
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
+import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
 import com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.BaseLineState;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
@@ -43,6 +45,7 @@ import com.vmware.photon.controller.model.tasks.TestUtils;
 
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.ServiceStats.ServiceStat;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.test.VerificationHost;
@@ -224,6 +227,7 @@ public class TestAWSProvisionTask  {
                             host.failIteration(new IllegalStateException("Incorrect computeLink returned."));
                             return;
                         }
+                        verifyCollectedStats(resp);
                     }
                     host.completeIteration();
                 }
@@ -240,5 +244,15 @@ public class TestAWSProvisionTask  {
                 this.host, AWSUriPaths.AWS_STATS_ADAPTER))
                 .setBody(statsRequest)
                 .setReferer(this.host.getUri()));
+    }
+
+    private void verifyCollectedStats(ComputeStatsResponse response) {
+        ComputeStats computeStats = response.statsList.get(0);
+        Assert.assertTrue("Compute Link is empty", !computeStats.computeLink.isEmpty());
+        // Check that stat values are accompanied with Units.
+        for (String key : computeStats.statValues.keySet()) {
+            ServiceStat stat = computeStats.statValues.get(key);
+            Assert.assertTrue("Unit is empty", !stat.unit.isEmpty());
+        }
     }
 }

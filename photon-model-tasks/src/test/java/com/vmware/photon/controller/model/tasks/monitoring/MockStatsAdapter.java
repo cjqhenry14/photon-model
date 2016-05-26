@@ -22,6 +22,7 @@ import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
 
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.ServiceStats.ServiceStat;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 
@@ -30,6 +31,8 @@ public class MockStatsAdapter extends StatelessService {
     public static final String SELF_LINK = "/mock-stats-adapter";
     public static final String KEY_1 = "key-1";
     public static final String KEY_2 = "key-2";
+    public static final String UNIT_1 = "unit1";
+    public static final String UNIT_2 = "unit2";
 
     private static double counter = 0;
 
@@ -44,10 +47,16 @@ public class MockStatsAdapter extends StatelessService {
             op.complete();
             ComputeStatsRequest statsRequest = op.getBody(ComputeStatsRequest.class);
             ComputeStatsResponse statsResponse = new ComputeStatsResponse();
-            Map<String, Double> statValues = new HashMap<String, Double>();
+            Map<String, ServiceStat> statValues = new HashMap<String, ServiceStat>();
             counter++;
-            statValues.put(KEY_1, counter);
-            statValues.put(KEY_2, counter);
+            ServiceStat key1 = new ServiceStat();
+            key1.latestValue = counter;
+            key1.unit = UNIT_1;
+            statValues.put(KEY_1, key1);
+            ServiceStat key2 = new ServiceStat();
+            key2.latestValue = counter;
+            key2.unit = UNIT_2;
+            statValues.put(KEY_2, key2);
             ComputeStats cStat = new ComputeStats();
             cStat.statValues = statValues;
             cStat.computeLink = statsRequest.computeLink;

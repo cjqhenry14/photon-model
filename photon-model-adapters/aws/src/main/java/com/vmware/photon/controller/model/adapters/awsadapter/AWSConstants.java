@@ -42,6 +42,12 @@ public class AWSConstants {
     private static int QUERY_RESULT_LIMIT = Integer.getInteger(PROPERTY_NAME_QUERY_RESULT_LIMIT,
             50);
 
+    // AWS Metric Unit related constants
+    public static final String AWS_UNIT_COUNT = "Count";
+    public static final String AWS_UNIT_BYTES = "Bytes";
+    public static final String AWS_UNIT_PERCENT = "Percent";
+    public static final String AWS_UNIT_COST = "USD";
+
     public static void setQueryPageSize(int size) {
         QUERY_PAGE_SIZE = size;
     }

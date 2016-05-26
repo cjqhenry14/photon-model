@@ -38,12 +38,15 @@ import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsResult;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSStatsNormalizer;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
+import com.vmware.xenon.common.ServiceStats.ServiceStat;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
@@ -346,8 +349,14 @@ public class AWSStatsService extends StatelessService {
                     burnRate = (timeDifference == 0 ? 0 : ((dp.getAverage() - latestAverage) / timeDifference));
                     latestAverage = dp.getAverage();
                 }
-                statsData.statsResponse.statValues.put(result.getLabel(), latestAverage);
-                statsData.statsResponse.statValues.put(BURN_RATE, burnRate);
+                ServiceStat stat = new ServiceStat();
+                stat.latestValue = latestAverage;
+                stat.unit = AWSStatsNormalizer.getNormalizedUnitValue(DIMENSION_CURRENCY_VALUE);
+                statsData.statsResponse.statValues.put(result.getLabel(), stat);
+                ServiceStat burnRateStat = new ServiceStat();
+                burnRateStat.latestValue = burnRate;
+                burnRateStat.unit = AWSStatsNormalizer.getNormalizedUnitValue(DIMENSION_CURRENCY_VALUE);
+                statsData.statsResponse.statValues.put(BURN_RATE, burnRateStat);
             }
 
             getEC2Stats(statsData, AGGREGATE_METRIC_NAMES_ACROSS_INSTANCES, true);
@@ -389,12 +398,17 @@ public class AWSStatsService extends StatelessService {
             List<Datapoint> dpList = result.getDatapoints();
             Double averageSum = 0d;
             Double sampleCount = 0d;
+            String unit = null;
             if (dpList != null && dpList.size() != 0) {
                 for (Datapoint dp : dpList) {
                     averageSum += dp.getAverage();
                     sampleCount += dp.getSampleCount();
+                    unit = dp.getUnit();
                 }
-                statsData.statsResponse.statValues.put(result.getLabel(), averageSum / sampleCount);
+                ServiceStat stat = new ServiceStat();
+                stat.latestValue = averageSum / sampleCount;
+                stat.unit = AWSStatsNormalizer.getNormalizedUnitValue(unit);
+                statsData.statsResponse.statValues.put(result.getLabel(), stat);
             }
 
             if (statsData.numResponses.incrementAndGet() == numOfMetrics) {

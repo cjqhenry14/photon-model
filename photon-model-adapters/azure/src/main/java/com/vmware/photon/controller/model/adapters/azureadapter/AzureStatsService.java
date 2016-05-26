@@ -59,6 +59,7 @@ import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateW
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
+import com.vmware.xenon.common.ServiceStats.ServiceStat;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
@@ -130,7 +131,7 @@ public class AzureStatsService extends StatelessService {
         public AzureStatsDataHolder() {
             statsResponse = new ComputeStats();
             // create a thread safe map to hold stats values for resource
-            statsResponse.statValues = new ConcurrentSkipListMap<String, Double>();
+            statsResponse.statValues = new ConcurrentSkipListMap<String, ServiceStat>();
         }
     }
 
@@ -390,8 +391,10 @@ public class AzureStatsService extends StatelessService {
                     averageSum += dp.getAverage();
                     count += dp.getCount();
                 }
-                statsData.statsResponse.statValues.put(result.getLabel(),
-                        (count == 0 ? 0 : averageSum / count));
+                // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-769
+                ServiceStat stat = new ServiceStat();
+                stat.latestValue = (count == 0 ? 0 : averageSum / count);
+                statsData.statsResponse.statValues.put(result.getLabel(), stat);
             }
 
             if (statsData.numResponses.incrementAndGet() == METRIC_NAMES.length) {
