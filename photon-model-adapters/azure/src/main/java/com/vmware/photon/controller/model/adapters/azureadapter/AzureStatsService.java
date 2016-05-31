@@ -54,6 +54,7 @@ import com.vmware.photon.controller.model.adapters.azureadapter.stats.models.Loc
 import com.vmware.photon.controller.model.adapters.azureadapter.stats.models.MetricAvailability;
 import com.vmware.photon.controller.model.adapters.azureadapter.stats.models.MetricDefinitions;
 import com.vmware.photon.controller.model.adapters.azureadapter.stats.models.TableInfo;
+import com.vmware.photon.controller.model.adapters.azureadapter.util.AzureStatsNormalizer;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
@@ -75,14 +76,10 @@ public class AzureStatsService extends StatelessService {
     private static final String PARTITION_KEY = "PartitionKey";
     private static final String COUNTER_NAME_KEY = "CounterName";
     private static final String TIMESTAMP = "Timestamp";
-    private static final String[] METRIC_NAMES = {
-            "\\NetworkInterface\\PacketsReceived",
-            "\\NetworkInterface\\PacketsTransmitted",
-            "\\PhysicalDisk\\AverageWriteTime",
-            "\\PhysicalDisk\\AverageReadTime",
-            "\\Processor\\PercentProcessorTime",
-            "\\Memory\\AvailableMemory",
-            "\\Memory\\UsedMemory" };
+    private static final String[] METRIC_NAMES = { AzureConstants.NETWORK_PACKETS_IN,
+            AzureConstants.NETWORK_PACKETS_OUT, AzureConstants.DISK_WRITE_TIME,
+            AzureConstants.DISK_READ_TIME, AzureConstants.CPU_UTILIZATION,
+            AzureConstants.MEMORY_AVAILABLE, AzureConstants.MEMORY_USED };
 
     private ExecutorService executorService;
 
@@ -394,7 +391,8 @@ public class AzureStatsService extends StatelessService {
                 // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-769
                 ServiceStat stat = new ServiceStat();
                 stat.latestValue = (count == 0 ? 0 : averageSum / count);
-                statsData.statsResponse.statValues.put(result.getLabel(), stat);
+                statsData.statsResponse.statValues.put(
+                        AzureStatsNormalizer.getNormalizedStatKeyValue(result.getLabel()), stat);
             }
 
             if (statsData.numResponses.incrementAndGet() == METRIC_NAMES.length) {

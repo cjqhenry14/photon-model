@@ -60,15 +60,20 @@ public class AWSStatsService extends StatelessService {
 
     public static final String SELF_LINK = AWSUriPaths.AWS_STATS_ADAPTER;
 
-    public static final String[] METRIC_NAMES = { "CPUUtilization", "DiskReadBytes",
-            "DiskWriteBytes", "NetworkIn", "NetworkOut", "CPUCreditUsage",
-            "CPUCreditBalance", "DiskReadOps", "DiskWriteOps", "NetworkPacketsIn",
-            "NetworkPacketsOut", "StatusCheckFailed", "StatusCheckFailed_Instance",
-            "StatusCheckFailed_System" };
+    public static final String[] METRIC_NAMES = { AWSConstants.CPU_UTILIZATION,
+            AWSConstants.DISK_READ_BYTES, AWSConstants.DISK_WRITE_BYTES,
+            AWSConstants.NETWORK_IN, AWSConstants.NETWORK_OUT,
+            AWSConstants.CPU_CREDIT_USAGE, AWSConstants.CPU_CREDIT_BALANCE,
+            AWSConstants.DISK_READ_OPS, AWSConstants.DISK_WRITE_OPS,
+            AWSConstants.NETWORK_PACKETS_IN, AWSConstants.NETWORK_PACKETS_OUT,
+            AWSConstants.STATUS_CHECK_FAILED, AWSConstants.STATUS_CHECK_FAILED_INSTANCE,
+            AWSConstants.STATUS_CHECK_FAILED_SYSTEM };
 
-    public static final String[] AGGREGATE_METRIC_NAMES_ACROSS_INSTANCES = { "CPUUtilization",
-            "DiskReadBytes", "DiskReadOps", "DiskWriteBytes", "DiskWriteOps", "NetworkIn",
-            "NetworkOut" };
+    public static final String[] AGGREGATE_METRIC_NAMES_ACROSS_INSTANCES = {
+            AWSConstants.CPU_UTILIZATION, AWSConstants.DISK_READ_BYTES,
+            AWSConstants.DISK_READ_OPS, AWSConstants.DISK_WRITE_BYTES,
+            AWSConstants.DISK_WRITE_OPS, AWSConstants.NETWORK_IN,
+            AWSConstants.NETWORK_OUT };
 
     private static final String[] STATISTICS = { "Average", "SampleCount" };
     private static final String NAMESPACE = "AWS/EC2";
@@ -78,8 +83,6 @@ public class AWSStatsService extends StatelessService {
 
     // Cost
     private static final String BILLING_NAMESPACE = "AWS/Billing";
-    public static final String COST_METRIC = "EstimatedCharges";
-    public static final String BURN_RATE = "BurnRatePerHour";
     private static final String DIMENSION_CURRENCY = "Currency";
     private static final String DIMENSION_CURRENCY_VALUE = "USD";
     private static final int COST_COLLECTION_WINDOW_IN_HOURS = 10;
@@ -268,9 +271,9 @@ public class AWSStatsService extends StatelessService {
         request.setStatistics(Arrays.asList(STATISTICS));
         request.setNamespace(BILLING_NAMESPACE);
         request.setDimensions(Collections.singletonList(dimension));
-        request.setMetricName(COST_METRIC);
+        request.setMetricName(AWSConstants.ESTIMATED_CHARGES);
 
-        logFine("Retrieving %s metric from AWS", COST_METRIC);
+        logFine("Retrieving %s metric from AWS", AWSConstants.ESTIMATED_CHARGES);
         AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler = new AWSBillingStatsHandler(
                 this, statsData);
         statsData.billingClient.getMetricStatisticsAsync(request, resultHandler);
@@ -352,11 +355,14 @@ public class AWSStatsService extends StatelessService {
                 ServiceStat stat = new ServiceStat();
                 stat.latestValue = latestAverage;
                 stat.unit = AWSStatsNormalizer.getNormalizedUnitValue(DIMENSION_CURRENCY_VALUE);
-                statsData.statsResponse.statValues.put(result.getLabel(), stat);
+                statsData.statsResponse.statValues
+                        .put(AWSStatsNormalizer.getNormalizedStatKeyValue(result.getLabel()), stat);
                 ServiceStat burnRateStat = new ServiceStat();
                 burnRateStat.latestValue = burnRate;
                 burnRateStat.unit = AWSStatsNormalizer.getNormalizedUnitValue(DIMENSION_CURRENCY_VALUE);
-                statsData.statsResponse.statValues.put(BURN_RATE, burnRateStat);
+                statsData.statsResponse.statValues.put(
+                        AWSStatsNormalizer.getNormalizedStatKeyValue(AWSConstants.BURN_RATE),
+                        burnRateStat);
             }
 
             getEC2Stats(statsData, AGGREGATE_METRIC_NAMES_ACROSS_INSTANCES, true);
@@ -408,7 +414,8 @@ public class AWSStatsService extends StatelessService {
                 ServiceStat stat = new ServiceStat();
                 stat.latestValue = averageSum / sampleCount;
                 stat.unit = AWSStatsNormalizer.getNormalizedUnitValue(unit);
-                statsData.statsResponse.statValues.put(result.getLabel(), stat);
+                statsData.statsResponse.statValues
+                        .put(AWSStatsNormalizer.getNormalizedStatKeyValue(result.getLabel()), stat);
             }
 
             if (statsData.numResponses.incrementAndGet() == numOfMetrics) {

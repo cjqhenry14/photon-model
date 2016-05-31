@@ -42,11 +42,29 @@ public class AWSConstants {
     private static int QUERY_RESULT_LIMIT = Integer.getInteger(PROPERTY_NAME_QUERY_RESULT_LIMIT,
             50);
 
+    //AWS Metric related Constants
+    public static final String CPU_UTILIZATION = "CPUUtilization";
+    public static final String DISK_READ_BYTES = "DiskReadBytes";
+    public static final String DISK_WRITE_BYTES = "DiskWriteBytes";
+    public static final String NETWORK_IN = "NetworkIn";
+    public static final String NETWORK_OUT = "NetworkOut";
+    public static final String CPU_CREDIT_USAGE = "CPUCreditUsage";
+    public static final String CPU_CREDIT_BALANCE = "CPUCreditBalance";
+    public static final String DISK_READ_OPS = "DiskReadOps";
+    public static final String DISK_WRITE_OPS = "DiskWriteOps";
+    public static final String NETWORK_PACKETS_IN = "NetworkPacketsIn";
+    public static final String NETWORK_PACKETS_OUT = "NetworkPacketsOut";
+    public static final String STATUS_CHECK_FAILED = "StatusCheckFailed";
+    public static final String STATUS_CHECK_FAILED_INSTANCE = "StatusCheckFailed_Instance";
+    public static final String STATUS_CHECK_FAILED_SYSTEM = "StatusCheckFailed_System";
+    public static final String ESTIMATED_CHARGES = "EstimatedCharges";
+    public static final String BURN_RATE = "BurnRatePerHour";
+
     // AWS Metric Unit related constants
-    public static final String AWS_UNIT_COUNT = "Count";
-    public static final String AWS_UNIT_BYTES = "Bytes";
-    public static final String AWS_UNIT_PERCENT = "Percent";
-    public static final String AWS_UNIT_COST = "USD";
+    public static final String UNIT_COUNT = "Count";
+    public static final String UNIT_BYTES = "Bytes";
+    public static final String UNIT_PERCENT = "Percent";
+    public static final String UNIT_COST = "USD";
 
     public static void setQueryPageSize(int size) {
         QUERY_PAGE_SIZE = size;

@@ -15,10 +15,34 @@ package com.vmware.photon.controller.model.constants;
 
 public class PhotonModelConstants {
 
+    // Photon-Model Metric related Constants
+    //AWS Metric related Constants
+    public static final String CPU_UTILIZATION_PERCENT = "CPUUtilizationPercent";
+    public static final String DISK_READ_BYTES = "DiskReadBytes";
+    public static final String DISK_WRITE_BYTES = "DiskWriteBytes";
+    public static final String NETWORK_IN_BYTES = "NetworkInBytes";
+    public static final String NETWORK_OUT_BYTES = "NetworkOutBytes";
+    public static final String CPU_CREDIT_USAGE_COUNT = "CPUCreditUsageCount";
+    public static final String CPU_CREDIT_BALANCE_COUNT = "CPUCreditBalanceCount";
+    public static final String DISK_READ_OPS_COUNT = "DiskReadOperationsCount";
+    public static final String DISK_WRITE_OPS_COUNT = "DiskWriteOperationsCount";
+    public static final String NETWORK_PACKETS_IN_COUNT = "NetworkPacketsInCount";
+    public static final String NETWORK_PACKETS_OUT_COUNT = "NetworkPacketsOutCount";
+    public static final String STATUS_CHECK_FAILED_COUNT = "StatusCheckFailedCount";
+    public static final String STATUS_CHECK_FAILED_COUNT_INSTANCE = "StatusCheckFailedCount_Instance";
+    public static final String STATUS_CHECK_FAILED_COUNT_SYSTEM = "StatusCheckFailedCount_System";
+    public static final String ESTIMATED_CHARGES_USD = "EstimatedChargesUSD";
+    public static final String BURN_RATE_PER_HOUR_USD = "BurnRatePerHourUSD";
+
+    public static final String DISK_WRITE_TIME_SECONDS = "DiskWriteTimeSeconds";
+    public static final String DISK_READ_TIME_SECONDS = "DiskReadTimeSeconds";
+    public static final String MEMORY_AVAILABLE_BYTES = "MemoryAvailableBytes";
+    public static final String MEMORY_USED_BYTES = "MemoryUsedBytes";
+
     // Photon-Model Metric Unit related constants
-    public static final String PHOTON_MODEL_UNIT_COUNT = "Count";
-    public static final String PHOTON_MODEL_UNIT_BYTES = "Bytes";
-    public static final String PHOTON_MODEL_UNIT_PERCENT = "Percent";
-    public static final String PHOTON_MODEL_UNIT_COST = "USD";
+    public static final String UNIT_COUNT = "Count";
+    public static final String UNIT_BYTES = "Bytes";
+    public static final String UNIT_PERCENT = "Percent";
+    public static final String UNIT_COST = "USD";
 
 }

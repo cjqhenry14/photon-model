@@ -22,22 +22,63 @@ import com.vmware.photon.controller.model.constants.PhotonModelConstants;
 
 public class AWSStatsNormalizer {
     private static final Map<String, String> PHOTON_MODEL_UNIT_MAP;
+    private static final Map<String, String> PHOTON_MODEL_STATS_MAP;
 
     static {
         // Map of AWS-specific Units to Photon-Model Units
         Map<String, String> unitMap = new HashMap<>();
-        unitMap.put(AWSConstants.AWS_UNIT_COST,
-                PhotonModelConstants.PHOTON_MODEL_UNIT_COST);
-        unitMap.put(AWSConstants.AWS_UNIT_BYTES,
-                PhotonModelConstants.PHOTON_MODEL_UNIT_BYTES);
-        unitMap.put(AWSConstants.AWS_UNIT_COUNT,
-                PhotonModelConstants.PHOTON_MODEL_UNIT_COUNT);
-        unitMap.put(AWSConstants.AWS_UNIT_PERCENT,
-                PhotonModelConstants.PHOTON_MODEL_UNIT_PERCENT);
+        unitMap.put(AWSConstants.UNIT_COST,
+                PhotonModelConstants.UNIT_COST);
+        unitMap.put(AWSConstants.UNIT_BYTES,
+                PhotonModelConstants.UNIT_BYTES);
+        unitMap.put(AWSConstants.UNIT_COUNT,
+                PhotonModelConstants.UNIT_COUNT);
+        unitMap.put(AWSConstants.UNIT_PERCENT,
+                PhotonModelConstants.UNIT_PERCENT);
         PHOTON_MODEL_UNIT_MAP = Collections.unmodifiableMap(unitMap);
+
+        // Map of AWS-specific stat keys to Photon-Model stat keys
+        Map<String, String> statMap = new HashMap<>();
+        statMap.put(AWSConstants.CPU_UTILIZATION,
+                PhotonModelConstants.CPU_UTILIZATION_PERCENT);
+        statMap.put(AWSConstants.DISK_READ_BYTES,
+                PhotonModelConstants.DISK_READ_BYTES);
+        statMap.put(AWSConstants.DISK_WRITE_BYTES,
+                PhotonModelConstants.DISK_WRITE_BYTES);
+        statMap.put(AWSConstants.NETWORK_IN,
+                PhotonModelConstants.NETWORK_IN_BYTES);
+        statMap.put(AWSConstants.NETWORK_OUT,
+                PhotonModelConstants.NETWORK_OUT_BYTES);
+        statMap.put(AWSConstants.CPU_CREDIT_USAGE,
+                PhotonModelConstants.CPU_CREDIT_USAGE_COUNT);
+        statMap.put(AWSConstants.CPU_CREDIT_BALANCE,
+                PhotonModelConstants.CPU_CREDIT_BALANCE_COUNT);
+        statMap.put(AWSConstants.DISK_READ_OPS,
+                PhotonModelConstants.DISK_READ_OPS_COUNT);
+        statMap.put(AWSConstants.DISK_WRITE_OPS,
+                PhotonModelConstants.DISK_WRITE_OPS_COUNT);
+        statMap.put(AWSConstants.NETWORK_PACKETS_IN,
+                PhotonModelConstants.NETWORK_PACKETS_IN_COUNT);
+        statMap.put(AWSConstants.NETWORK_PACKETS_OUT,
+                PhotonModelConstants.NETWORK_PACKETS_OUT_COUNT);
+        statMap.put(AWSConstants.STATUS_CHECK_FAILED,
+                PhotonModelConstants.STATUS_CHECK_FAILED_COUNT);
+        statMap.put(AWSConstants.STATUS_CHECK_FAILED_INSTANCE,
+                PhotonModelConstants.STATUS_CHECK_FAILED_COUNT_INSTANCE);
+        statMap.put(AWSConstants.STATUS_CHECK_FAILED_SYSTEM,
+                PhotonModelConstants.STATUS_CHECK_FAILED_COUNT_SYSTEM);
+        statMap.put(AWSConstants.ESTIMATED_CHARGES,
+                PhotonModelConstants.ESTIMATED_CHARGES_USD);
+        statMap.put(AWSConstants.BURN_RATE,
+                PhotonModelConstants.BURN_RATE_PER_HOUR_USD);
+        PHOTON_MODEL_STATS_MAP = Collections.unmodifiableMap(statMap);
     }
 
     public static String getNormalizedUnitValue(String cloudSpecificUnit) {
         return PHOTON_MODEL_UNIT_MAP.get(cloudSpecificUnit);
+    }
+
+    public static String getNormalizedStatKeyValue(String cloudSpecificStatKey) {
+        return PHOTON_MODEL_STATS_MAP.get(cloudSpecificStatKey);
     }
 }
