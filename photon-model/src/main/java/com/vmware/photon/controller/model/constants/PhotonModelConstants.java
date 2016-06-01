@@ -16,7 +16,6 @@ package com.vmware.photon.controller.model.constants;
 public class PhotonModelConstants {
 
     // Photon-Model Metric related Constants
-    //AWS Metric related Constants
     public static final String CPU_UTILIZATION_PERCENT = "CPUUtilizationPercent";
     public static final String DISK_READ_BYTES = "DiskReadBytes";
     public static final String DISK_WRITE_BYTES = "DiskWriteBytes";

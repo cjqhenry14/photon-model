@@ -42,7 +42,7 @@ public class AWSConstants {
     private static int QUERY_RESULT_LIMIT = Integer.getInteger(PROPERTY_NAME_QUERY_RESULT_LIMIT,
             50);
 
-    //AWS Metric related Constants
+    // AWS Metric related Constants
     public static final String CPU_UTILIZATION = "CPUUtilization";
     public static final String DISK_READ_BYTES = "DiskReadBytes";
     public static final String DISK_WRITE_BYTES = "DiskWriteBytes";
