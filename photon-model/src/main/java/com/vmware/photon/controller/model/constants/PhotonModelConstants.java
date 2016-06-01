@@ -30,8 +30,8 @@ public class PhotonModelConstants {
     public static final String STATUS_CHECK_FAILED_COUNT = "StatusCheckFailedCount";
     public static final String STATUS_CHECK_FAILED_COUNT_INSTANCE = "StatusCheckFailedCount_Instance";
     public static final String STATUS_CHECK_FAILED_COUNT_SYSTEM = "StatusCheckFailedCount_System";
-    public static final String ESTIMATED_CHARGES_USD = "EstimatedChargesUSD";
-    public static final String BURN_RATE_PER_HOUR_USD = "BurnRatePerHourUSD";
+    public static final String ESTIMATED_CHARGES = "EstimatedCharges";
+    public static final String BURN_RATE_PER_HOUR = "BurnRatePerHour";
 
     public static final String DISK_WRITE_TIME_SECONDS = "DiskWriteTimeSeconds";
     public static final String DISK_READ_TIME_SECONDS = "DiskReadTimeSeconds";
