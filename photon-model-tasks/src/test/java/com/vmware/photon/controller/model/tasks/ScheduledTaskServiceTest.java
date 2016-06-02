@@ -124,6 +124,14 @@ public class ScheduledTaskServiceTest extends Suite {
         @Test
         public void testDefaultState() throws Throwable {
             ScheduledTaskService.ScheduledTaskState taskState = buildValidStartState();
+            ResourcePoolState inPool = new ResourcePoolState();
+            inPool.name = UUID.randomUUID().toString();
+            inPool.id = inPool.name;
+            inPool.minCpuCount = 1;
+            inPool.minMemoryBytes = 1024;
+            taskState.factoryLink = ResourcePoolService.FACTORY_LINK;
+            taskState.initialStateJson = Utils.toJson(inPool);
+
             ScheduledTaskService.ScheduledTaskState returnState = this.postServiceSynchronously(
                     ScheduledTaskService.FACTORY_LINK, taskState,
                     ScheduledTaskService.ScheduledTaskState.class);
@@ -143,8 +151,6 @@ public class ScheduledTaskServiceTest extends Suite {
 
         @Test
         public void testEnumerationInvocation() throws Throwable {
-            int expectedInvocations = 5;
-
             // create a resource pool, compute desc and compute instance
             ResourcePoolState inPool = new ResourcePoolState();
             inPool.name = UUID.randomUUID().toString();
@@ -178,11 +184,14 @@ public class ScheduledTaskServiceTest extends Suite {
             enumTaskState.parentComputeLink = returnComputeState.documentSelfLink;
             enumTaskState.resourcePoolLink = returnPool.documentSelfLink;
             enumTaskState.adapterManagementReference = UriUtils.buildUri("http://foo.com");
+            enumTaskState.documentSelfLink = UUID.randomUUID().toString();
 
+            // create a scheduled task to run once every 10 minutes; verify that
+            // it did run once on service start
             ScheduledTaskState scheduledTaskState = new ScheduledTaskState();
             scheduledTaskState.factoryLink = ResourceEnumerationTaskService.FACTORY_LINK;
             scheduledTaskState.initialStateJson = Utils.toJson(enumTaskState);
-            scheduledTaskState.intervalMicros = TimeUnit.MILLISECONDS.toMicros(250);
+            scheduledTaskState.intervalMicros = TimeUnit.MINUTES.toMicros(10);
             scheduledTaskState.documentSelfLink = UUID.randomUUID().toString();
             TestUtils.doPost(host, scheduledTaskState,
                     ScheduledTaskState.class,
@@ -190,10 +199,36 @@ public class ScheduledTaskServiceTest extends Suite {
             this.host.waitFor(
                     "Timeout waiting for enum task execution",
                     () -> {
+                        ResourceEnumerationTaskState outputState = this.getServiceSynchronously(UriUtils
+                                .buildUriPath(
+                                        ResourceEnumerationTaskService.FACTORY_LINK,
+                                        enumTaskState.documentSelfLink),
+                                        ResourceEnumerationTaskState.class);
+                        if (outputState != null) {
+                            return true;
+                        }
+                        return false;
+                    });
+
+            // verify that the periodic maintenance handler is invoked for
+            // scheduled task
+            enumTaskState.documentSelfLink = UUID.randomUUID().toString();
+            ScheduledTaskState periodicTaskState = new ScheduledTaskState();
+            periodicTaskState.factoryLink = ResourceEnumerationTaskService.FACTORY_LINK;
+            periodicTaskState.initialStateJson = Utils.toJson(enumTaskState);
+            periodicTaskState.intervalMicros = TimeUnit.MILLISECONDS.toMicros(250);
+            periodicTaskState.documentSelfLink = UUID.randomUUID().toString();
+            TestUtils.doPost(host, periodicTaskState,
+                    ScheduledTaskState.class,
+                    UriUtils.buildUri(host, ScheduledTaskService.FACTORY_LINK));
+            int expectedInvocations = 5;
+            this.host.waitFor(
+                    "Timeout waiting for enum task execution",
+                    () -> {
                         ScheduledTaskState outputState = this.getServiceSynchronously(UriUtils
                                 .buildUriPath(
                                         ScheduledTaskService.FACTORY_LINK,
-                                        scheduledTaskState.documentSelfLink),
+                                        periodicTaskState.documentSelfLink),
                                 ScheduledTaskState.class);
                         if (outputState.documentVersion == expectedInvocations) {
                             return true;

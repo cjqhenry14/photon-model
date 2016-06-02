@@ -93,7 +93,7 @@ public class ScheduledTaskService extends TaskService<ScheduledTaskService.Sched
             if (state.intervalMicros != null) {
                 this.setMaintenanceIntervalMicros(state.intervalMicros);
             }
-            start.complete();
+            invokeTask(start, state, false);
         } catch (Throwable e) {
             start.fail(e);
         }
@@ -115,29 +115,35 @@ public class ScheduledTaskService extends TaskService<ScheduledTaskService.Sched
                     }
                     ScheduledTaskState state =
                             getOp.getBody(ScheduledTaskState.class);
-                    sendRequest(Operation
-                            .createPost(this, state.factoryLink)
-                            .setBody(state.initialStateJson)
-                            .addPragmaDirective(Operation.PRAGMA_DIRECTIVE_FORCE_INDEX_UPDATE)
-                            .setCompletion(
-                                    (o, e) -> {
-                                        // if a task instance is already running, just log the fact
-                                        if (o.getStatusCode() == Operation.STATUS_CODE_CONFLICT) {
-                                            logInfo("service instance already ruunning.");
-                                            maintenanceOp.complete();
-                                            return;
-                                        } else if (e != null) {
-                                            maintenanceOp.fail(e);
-                                            return;
-                                        }
-                                        maintenanceOp.complete();
-                                        // patch self to update the version; this tells us
-                                        // the number of invocations
-                                        ScheduledTaskState patchState = new ScheduledTaskState();
-                                        sendRequest(Operation.createPatch(getUri())
-                                                .setBody(patchState));
-                                    }));
+                    invokeTask(maintenanceOp, state, true);
                 }));
+    }
+
+    private void invokeTask(Operation op, ScheduledTaskState state, boolean patchToSelf) {
+        sendRequest(Operation
+                .createPost(this, state.factoryLink)
+                .setBody(state.initialStateJson)
+                .addPragmaDirective(Operation.PRAGMA_DIRECTIVE_FORCE_INDEX_UPDATE)
+                .setCompletion(
+                        (o, e) -> {
+                            // if a task instance is already running, just log the fact
+                            if (o.getStatusCode() == Operation.STATUS_CODE_CONFLICT) {
+                                logInfo("service instance already ruunning.");
+                                op.complete();
+                                return;
+                            } else if (e != null) {
+                                op.fail(e);
+                                return;
+                            }
+                            op.complete();
+                            // patch self to update the version; this tells us
+                            // the number of invocations
+                            if (patchToSelf) {
+                                ScheduledTaskState patchState = new ScheduledTaskState();
+                                sendRequest(Operation.createPatch(getUri())
+                                        .setBody(patchState));
+                            }
+                        }));
     }
 
     @Override
