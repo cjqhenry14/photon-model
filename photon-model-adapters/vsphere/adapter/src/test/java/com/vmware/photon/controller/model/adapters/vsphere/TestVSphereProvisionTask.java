@@ -26,6 +26,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.ComputeProperties;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BasicConnection;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
@@ -284,7 +285,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         computeState.diskLinks.add(createDisk("cd", DiskType.CDROM, cdromUri).documentSelfLink);
 
         CustomProperties.of(computeState)
-                .put(CustomProperties.VM_FOLDER_PATH, System.getProperty("vc.folder"));
+                .put(ComputeProperties.RESOURCE_GROUP_NAME, System.getProperty("vc.folder"));
 
         ComputeService.ComputeState returnState = TestUtils.doPost(this.host, computeState,
                 ComputeService.ComputeState.class,

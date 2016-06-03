@@ -22,4 +22,11 @@ public class ComputeProperties {
      * The display name of the compute resource.
      */
     public static final String CUSTOM_DISPLAY_NAME = "displayName";
+
+    /**
+     * The resource group name to use to group the resources. E.g. on vSpehere this can be the
+     * folder name, on Azure this is the resourceGroupName, on AWS this value can be used to tag the
+     * resources.
+     */
+    public static final String RESOURCE_GROUP_NAME = "resourceGroupName";
 }

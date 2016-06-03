@@ -37,8 +37,6 @@ public class CustomProperties {
 
     public static final String SNAPSHOT_MOREF = "snapshot.moref";
 
-    public static final String VM_FOLDER_PATH = "vm.folder.path";
-
     private final Supplier<Map<String, String>> getPropsForRead;
     private final Supplier<Map<String, String>> getPropsForWrite;
     private final Consumer<String> remove;

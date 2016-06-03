@@ -14,6 +14,7 @@
 package com.vmware.photon.controller.model.adapters.azure.instance;
 
 import static com.vmware.photon.controller.model.ComputeProperties.CUSTOM_DISPLAY_NAME;
+import static com.vmware.photon.controller.model.ComputeProperties.RESOURCE_GROUP_NAME;
 import static com.vmware.photon.controller.model.adapters.azure.constants.AzureConstants.AZURE_OSDISK_CACHING;
 import static com.vmware.photon.controller.model.adapters.azure.constants.AzureConstants.AZURE_STORAGE_ACCOUNT_KEY1;
 import static com.vmware.photon.controller.model.adapters.azure.constants.AzureConstants.AZURE_STORAGE_ACCOUNT_KEY2;
@@ -99,7 +100,6 @@ import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
-
 import com.vmware.xenon.common.FileUtils;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
@@ -128,6 +128,8 @@ public class AzureInstanceService extends StatelessService {
     private static final String SUBNET_ADDRESS_PREFIX = "10.0.0.0/24";
     private static final String PUBLIC_IP_ALLOCATION_METHOD = "Dynamic";
     private static final String PRIVATE_IP_ALLOCATION_METHOD = "Dynamic";
+
+    private static final String DEFAULT_GROUP_PREFIX = "group";
 
     private static final String DEFAULT_VM_SIZE = "Basic_A0";
     private static final String OS_DISK_CREATION_OPTION = "fromImage";
@@ -171,8 +173,8 @@ public class AzureInstanceService extends StatelessService {
             break;
         default:
             op.complete();
-            if (ctx.computeRequest.isMockRequest && ctx.computeRequest.requestType
-                    == ComputeInstanceRequest.InstanceRequestType.CREATE) {
+            if (ctx.computeRequest.isMockRequest
+                    && ctx.computeRequest.requestType == ComputeInstanceRequest.InstanceRequestType.CREATE) {
                 AdapterUtils.sendPatchToProvisioningTask(this,
                         ctx.computeRequest.provisioningTaskReference);
                 return;
@@ -367,8 +369,7 @@ public class AzureInstanceService extends StatelessService {
                         logInfo("Successfully deleted resource group [%s]", resourceGroupName);
                         deleteComputeResource(ctx);
                     }
-                }
-        );
+                });
     }
 
     private void deleteComputeResource(AzureAllocationContext ctx) {
@@ -401,10 +402,17 @@ public class AzureInstanceService extends StatelessService {
     }
 
     private void initResourceGroup(AzureAllocationContext ctx, AzureStages nextStage) {
-        String resourceGroupName = ctx.vmName;
+        String resourceGroupName = null;
+        if (ctx.child.customProperties != null) {
+            resourceGroupName = ctx.child.customProperties.get(RESOURCE_GROUP_NAME);
+        }
+
+        if (resourceGroupName == null && ctx.child.description.customProperties != null) {
+            resourceGroupName = ctx.child.description.customProperties.get(RESOURCE_GROUP_NAME);
+        }
 
         if (resourceGroupName == null || resourceGroupName.isEmpty()) {
-            throw new IllegalArgumentException("Resource group name is required");
+            resourceGroupName = DEFAULT_GROUP_PREFIX + String.valueOf(System.currentTimeMillis());
         }
 
         logInfo("Creating resource group with name [%s]", resourceGroupName);
@@ -432,8 +440,7 @@ public class AzureInstanceService extends StatelessService {
                                 result.getBody().getName());
                         handleAllocation(ctx);
                     }
-                }
-        );
+                });
     }
 
     private void initStorageAccount(AzureAllocationContext ctx, AzureStages nextStage) {
@@ -450,10 +457,11 @@ public class AzureInstanceService extends StatelessService {
         ctx.storageAccountName = ctx.bootDisk.customProperties.get(AZURE_STORAGE_ACCOUNT_NAME);
 
         if (ctx.storageAccountName == null) {
-            ctx.error = new IllegalStateException("Storage account name is required");
-            ctx.stage = AzureStages.ERROR;
-            handleAllocation(ctx);
-            return;
+            if (ctx.vmName != null) {
+                ctx.storageAccountName = ctx.vmName.toLowerCase() + "st";
+            } else {
+                ctx.storageAccountName = String.valueOf(System.currentTimeMillis()) + "st";
+            }
         }
 
         String accountType = ctx.bootDisk.customProperties
@@ -574,7 +582,8 @@ public class AzureInstanceService extends StatelessService {
             securityRule.setDescription(AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESCRIPTION);
             securityRule.setDestinationPortRange(
                     AzureConstants.AZURE_LINUX_SECURITY_GROUP_DESTINATION_PORT_RANGE);
-        } else if (ctx.operatingSystemFamily.equalsIgnoreCase(AzureConstants.WINDOWS_OPERATING_SYSTEM)) {
+        } else if (ctx.operatingSystemFamily
+                .equalsIgnoreCase(AzureConstants.WINDOWS_OPERATING_SYSTEM)) {
             securityRule.setName(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_NAME);
             securityRule.setDescription(AzureConstants.AZURE_WINDOWS_SECURITY_GROUP_DESCRIPTION);
             securityRule.setDestinationPortRange(
@@ -724,8 +733,7 @@ public class AzureInstanceService extends StatelessService {
                         VirtualMachine vm = result.getBody();
                         logInfo("Successfully created vm [%s]", vm.getName());
 
-                        ComputeService.ComputeStateWithDescription resultDesc = new
-                                ComputeService.ComputeStateWithDescription();
+                        ComputeService.ComputeStateWithDescription resultDesc = new ComputeService.ComputeStateWithDescription();
                         if (ctx.child.customProperties == null) {
                             resultDesc.customProperties = new HashMap<>();
                         } else {
@@ -734,9 +742,6 @@ public class AzureInstanceService extends StatelessService {
                         // Azure for some case changes the case of the vm id.
                         ctx.vmId = vm.getId().toLowerCase();
                         resultDesc.id = ctx.vmId;
-                        resultDesc.customProperties
-                                .put(AzureConstants.AZURE_RESOURCE_GROUP_NAME,
-                                        ctx.resourceGroup.getName());
 
                         Operation.CompletionHandler completionHandler = (ox,
                                 exc) -> {
@@ -887,30 +892,32 @@ public class AzureInstanceService extends StatelessService {
 
     private void registerSubscription(AzureAllocationContext ctx, String namespace) {
         ResourceManagementClient client = getResourceManagementClient(ctx);
-        client.getProvidersOperations().registerAsync(namespace, new AzureAsyncCallback<Provider>() {
-            @Override
-            public void onError(Throwable e) {
-                logSevere(e);
-                ctx.error = e;
-                ctx.stage = AzureStages.ERROR;
-                handleAllocation(ctx);
-            }
+        client.getProvidersOperations().registerAsync(namespace,
+                new AzureAsyncCallback<Provider>() {
+                    @Override
+                    public void onError(Throwable e) {
+                        logSevere(e);
+                        ctx.error = e;
+                        ctx.stage = AzureStages.ERROR;
+                        handleAllocation(ctx);
+                    }
 
-            @Override
-            public void onSuccess(ServiceResponse<Provider> result) {
-                Provider provider = result.getBody();
-                String registrationState = provider.getRegistrationState();
-                if (!PROVIDER_REGISTRED_STATE.equalsIgnoreCase(registrationState)) {
-                    logInfo("%s namespace registration in %s state", namespace, registrationState);
-                    long retryExpiration =
-                            Utils.getNowMicrosUtc() + DEFAULT_EXPIRATION_INTERVAL_MICROS;
-                    getSubscriptionState(ctx, namespace, retryExpiration);
-                    return;
-                }
-                logInfo("Successfully registered namespace [%s]", provider.getNamespace());
-                handleAllocation(ctx);
-            }
-        });
+                    @Override
+                    public void onSuccess(ServiceResponse<Provider> result) {
+                        Provider provider = result.getBody();
+                        String registrationState = provider.getRegistrationState();
+                        if (!PROVIDER_REGISTRED_STATE.equalsIgnoreCase(registrationState)) {
+                            logInfo("%s namespace registration in %s state", namespace,
+                                    registrationState);
+                            long retryExpiration = Utils.getNowMicrosUtc()
+                                    + DEFAULT_EXPIRATION_INTERVAL_MICROS;
+                            getSubscriptionState(ctx, namespace, retryExpiration);
+                            return;
+                        }
+                        logInfo("Successfully registered namespace [%s]", provider.getNamespace());
+                        handleAllocation(ctx);
+                    }
+                });
     }
 
     private void getSubscriptionState(AzureAllocationContext ctx,
@@ -953,7 +960,8 @@ public class AzureInstanceService extends StatelessService {
                                         provider.getNamespace());
                                 handleAllocation(ctx);
                             }
-                        }), RETRY_INTERVAL_SECONDS, TimeUnit.SECONDS);
+                        }),
+                RETRY_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 
     private void getChildAuth(AzureAllocationContext ctx, AzureStages next) {
@@ -973,8 +981,7 @@ public class AzureInstanceService extends StatelessService {
 
     private void getParentAuth(AzureAllocationContext ctx, AzureStages next) {
         String parentAuthLink;
-        if (ctx.computeRequest.requestType
-                == ComputeInstanceRequest.InstanceRequestType.VALIDATE_CREDENTIALS) {
+        if (ctx.computeRequest.requestType == ComputeInstanceRequest.InstanceRequestType.VALIDATE_CREDENTIALS) {
             parentAuthLink = ctx.computeRequest.authCredentialsLink;
         } else {
             parentAuthLink = ctx.parent.description.authCredentialsLink;
@@ -988,8 +995,8 @@ public class AzureInstanceService extends StatelessService {
     }
 
     /*
-     * method will be responsible for getting the compute description for the
-     * requested resource and then passing to the next step
+     * method will be responsible for getting the compute description for the requested resource and
+     * then passing to the next step
      */
     private void getVMDescription(AzureAllocationContext ctx, AzureStages next) {
         Consumer<Operation> onSuccess = (op) -> {
@@ -1018,8 +1025,8 @@ public class AzureInstanceService extends StatelessService {
             ctx.stage = next;
             handleAllocation(ctx);
         };
-        URI parentURI = UriUtils.buildExpandLinksQueryUri
-                (UriUtils.buildUri(this.getHost(), ctx.child.parentLink));
+        URI parentURI = UriUtils
+                .buildExpandLinksQueryUri(UriUtils.buildUri(this.getHost(), ctx.child.parentLink));
         AdapterUtils.getServiceState(this, parentURI, onSuccess, getFailureConsumer(ctx));
     }
 
@@ -1169,12 +1176,14 @@ public class AzureInstanceService extends StatelessService {
             handleError(ctx, new IllegalStateException("Azure image reference not specified"));
             return;
         }
-        ImageReference imageReference = getImageReference(ctx.bootDisk.sourceImageReference.toString());
+        ImageReference imageReference = getImageReference(
+                ctx.bootDisk.sourceImageReference.toString());
 
         if (AzureConstants.AZURE_URN_VERSION_LATEST.equalsIgnoreCase(imageReference.getVersion())) {
             logFine("Getting the latest version for %s:%s:%s", imageReference.getPublisher(),
                     imageReference.getOffer(), imageReference.getSku());
-            // Get the latest version based on the provided publisher, offer and SKU (filter = null, top = 1, orderBy = name desc)
+            // Get the latest version based on the provided publisher, offer and SKU (filter = null,
+            // top = 1, orderBy = name desc)
             getComputeManagementClient(ctx).getVirtualMachineImagesOperations().listAsync(
                     ctx.resourceGroup.getLocation(), imageReference.getPublisher(),
                     imageReference.getOffer(), imageReference.getSku(),
@@ -1191,10 +1200,12 @@ public class AzureInstanceService extends StatelessService {
                         void onSuccess(ServiceResponse<List<VirtualMachineImageResource>> result) {
                             List<VirtualMachineImageResource> resource = result.getBody();
                             if (resource == null || resource.get(0) == null) {
-                                handleError(ctx, new IllegalStateException("No latest version found"));
+                                handleError(ctx,
+                                        new IllegalStateException("No latest version found"));
                                 return;
                             }
-                            // Get the first object because the request asks only for one object (top = 1)
+                            // Get the first object because the request asks only for one object
+                            // (top = 1)
                             // We don't care what version we use to get the VirtualMachineImage
                             String version = resource.get(0).getName();
                             getVirtualMachineImage(ctx, nextStage, version, imageReference);
@@ -1232,7 +1243,8 @@ public class AzureInstanceService extends StatelessService {
                         }
                         // Get the operating system family
                         ctx.operatingSystemFamily = image.getOsDiskImage().getOperatingSystem();
-                        logFine("Retrieved the operating system family - %s", ctx.operatingSystemFamily);
+                        logFine("Retrieved the operating system family - %s",
+                                ctx.operatingSystemFamily);
                         ctx.imageReference = imageReference;
                         ctx.stage = nextStage;
                         handleAllocation(ctx);
@@ -1273,8 +1285,10 @@ public class AzureInstanceService extends StatelessService {
 
             Operation operation = Operation.createPut(uri);
             operation.setBody(azureDiagnosticSettings);
-            operation.addRequestHeader(Operation.ACCEPT_HEADER, Operation.MEDIA_TYPE_APPLICATION_JSON);
-            operation.addRequestHeader(Operation.CONTENT_TYPE_HEADER, Operation.MEDIA_TYPE_APPLICATION_JSON);
+            operation.addRequestHeader(Operation.ACCEPT_HEADER,
+                    Operation.MEDIA_TYPE_APPLICATION_JSON);
+            operation.addRequestHeader(Operation.CONTENT_TYPE_HEADER,
+                    Operation.MEDIA_TYPE_APPLICATION_JSON);
             try {
                 operation.addRequestHeader(Operation.AUTHORIZATION_HEADER,
                         AzureConstants.AUTH_HEADER_BEARER_PREFIX + credentials.getToken());

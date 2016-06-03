@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.vsphere;
 
+import static com.vmware.photon.controller.model.ComputeProperties.RESOURCE_GROUP_NAME;
+
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -562,14 +564,14 @@ public class InstanceClient extends BaseHelper {
     private ManagedObjectReference getVmFolder()
             throws InvalidPropertyFaultMsg, RuntimeFaultFaultMsg, FinderException {
 
-        // look for a configured folder in parent
+        // look for a configured folder in compute state
         String folderPath = CustomProperties.of(this.state)
-                .getString(CustomProperties.VM_FOLDER_PATH);
+                .getString(RESOURCE_GROUP_NAME);
 
         if (folderPath == null) {
-            // look for a configured folder in compute state
+            // look for a configured folder in parent
             folderPath = CustomProperties.of(this.parent)
-                    .getString(CustomProperties.VM_FOLDER_PATH);
+                    .getString(RESOURCE_GROUP_NAME);
         }
 
         if (folderPath == null) {
