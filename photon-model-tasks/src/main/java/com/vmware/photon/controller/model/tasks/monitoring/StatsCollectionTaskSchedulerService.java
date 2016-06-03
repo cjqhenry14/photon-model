@@ -109,7 +109,7 @@ public class StatsCollectionTaskSchedulerService extends StatefulService {
                             .setCompletion(
                                     (o, e) -> {
                                         if (o.getStatusCode() == Operation.STATUS_CODE_CONFLICT) {
-                                            logInfo("Stats collector instance already ruunning.");
+                                            logInfo("Stats collector instance already running.");
                                         } else if (e != null) {
                                             maintenanceOp.fail(e);
                                             return;

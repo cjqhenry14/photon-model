@@ -51,7 +51,7 @@ public class ResourceAllocationTaskService extends TaskService<ResourceAllocatio
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/resource-allocation-tasks";
 
     public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ResourceAllocationTaskService.class);
+        return FactoryService.create(ResourceAllocationTaskService.class);
     }
 
     public static final String ID_DELIMITER_CHAR = "-";

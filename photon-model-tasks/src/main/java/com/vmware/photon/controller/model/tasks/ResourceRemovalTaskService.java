@@ -42,7 +42,7 @@ public class ResourceRemovalTaskService extends TaskService<ResourceRemovalTaskS
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/resource-removal-tasks";
 
     public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ResourceRemovalTaskService.class);
+        return FactoryService.create(ResourceRemovalTaskService.class);
     }
 
     public static final long DEFAULT_TIMEOUT_MICROS = TimeUnit.MINUTES

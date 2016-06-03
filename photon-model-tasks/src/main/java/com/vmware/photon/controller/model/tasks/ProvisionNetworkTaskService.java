@@ -34,7 +34,7 @@ public class ProvisionNetworkTaskService extends TaskService<ProvisionNetworkTas
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/network-allocation-tasks";
 
     public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ProvisionNetworkTaskService.class);
+        return FactoryService.create(ProvisionNetworkTaskService.class);
     }
 
     /**

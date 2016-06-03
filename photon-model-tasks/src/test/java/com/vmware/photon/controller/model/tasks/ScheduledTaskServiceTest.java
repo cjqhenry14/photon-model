@@ -146,6 +146,7 @@ public class ScheduledTaskServiceTest extends Suite {
         @Override
         protected void startRequiredServices() throws Throwable {
             TaskServices.startFactories(this);
+            MockAdapter.startFactories(this);
             super.startRequiredServices();
         }
 
@@ -165,7 +166,8 @@ public class ScheduledTaskServiceTest extends Suite {
             computeDescription.id = UUID.randomUUID().toString();
             computeDescription.documentSelfLink = computeDescription.id;
             computeDescription.name = "test-desc";
-            computeDescription.enumerationAdapterReference = UriUtils.buildUri("http://foo.com");
+            computeDescription.enumerationAdapterReference = UriUtils.buildUri(this.host,
+                    MockAdapter.MockSuccessEnumerationAdapter.SELF_LINK);
             ComputeDescriptionService.ComputeDescription outDesc = TestUtils.doPost(host,
                     computeDescription,
                     ComputeDescriptionService.ComputeDescription.class,
@@ -185,7 +187,7 @@ public class ScheduledTaskServiceTest extends Suite {
             enumTaskState.resourcePoolLink = returnPool.documentSelfLink;
             enumTaskState.adapterManagementReference = UriUtils.buildUri("http://foo.com");
             enumTaskState.documentSelfLink = UUID.randomUUID().toString();
-
+            enumTaskState.isMockRequest = true;
             // create a scheduled task to run once every 10 minutes; verify that
             // it did run once on service start
             ScheduledTaskState scheduledTaskState = new ScheduledTaskState();
@@ -213,6 +215,7 @@ public class ScheduledTaskServiceTest extends Suite {
             // verify that the periodic maintenance handler is invoked for
             // scheduled task
             enumTaskState.documentSelfLink = UUID.randomUUID().toString();
+            enumTaskState.deleteOnCompletion = true;
             ScheduledTaskState periodicTaskState = new ScheduledTaskState();
             periodicTaskState.factoryLink = ResourceEnumerationTaskService.FACTORY_LINK;
             periodicTaskState.initialStateJson = Utils.toJson(enumTaskState);

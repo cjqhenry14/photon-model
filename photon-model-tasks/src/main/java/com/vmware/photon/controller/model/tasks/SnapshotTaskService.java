@@ -38,7 +38,7 @@ public class SnapshotTaskService extends TaskService<SnapshotTaskService.Snapsho
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/snapshot-tasks";
 
     public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(SnapshotTaskService.class);
+        return FactoryService.create(SnapshotTaskService.class);
     }
 
     /**

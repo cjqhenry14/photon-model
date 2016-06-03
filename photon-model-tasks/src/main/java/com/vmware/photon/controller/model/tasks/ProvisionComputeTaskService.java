@@ -54,7 +54,7 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/compute-tasks";
 
     public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ProvisionComputeTaskService.class);
+        return FactoryService.create(ProvisionComputeTaskService.class);
     }
 
     /**

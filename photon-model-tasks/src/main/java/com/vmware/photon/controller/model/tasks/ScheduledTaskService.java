@@ -36,7 +36,7 @@ public class ScheduledTaskService extends TaskService<ScheduledTaskService.Sched
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/scheduled-tasks";
 
     public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ScheduledTaskService.class);
+        return FactoryService.create(ScheduledTaskService.class);
     }
 
     public static class ScheduledTaskState extends TaskServiceState {
@@ -128,7 +128,7 @@ public class ScheduledTaskService extends TaskService<ScheduledTaskService.Sched
                         (o, e) -> {
                             // if a task instance is already running, just log the fact
                             if (o.getStatusCode() == Operation.STATUS_CODE_CONFLICT) {
-                                logInfo("service instance already ruunning.");
+                                logInfo("service instance already running.");
                                 op.complete();
                                 return;
                             } else if (e != null) {

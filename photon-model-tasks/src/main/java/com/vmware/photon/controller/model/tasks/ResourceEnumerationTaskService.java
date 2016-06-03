@@ -38,7 +38,7 @@ public class ResourceEnumerationTaskService extends TaskService<ResourceEnumerat
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/resource-enumeration-tasks";
 
     public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ResourceEnumerationTaskService.class);
+        return FactoryService.create(ResourceEnumerationTaskService.class);
     }
 
     public static final long DEFAULT_TIMEOUT_MICROS = TimeUnit.MINUTES

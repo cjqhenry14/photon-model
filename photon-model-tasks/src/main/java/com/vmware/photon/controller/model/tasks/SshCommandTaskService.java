@@ -53,7 +53,6 @@ public class SshCommandTaskService extends TaskService<SshCommandTaskService.Ssh
                 return new SshCommandTaskService(this.executor);
             }
         };
-        fs.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
         return fs;
     }
 

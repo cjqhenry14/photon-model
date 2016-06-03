@@ -34,7 +34,7 @@ public class ProvisionFirewallTaskService extends TaskService<ProvisionFirewallT
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/firewall-allocation-tasks";
 
     public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ProvisionFirewallTaskService.class);
+        return FactoryService.create(ProvisionFirewallTaskService.class);
     }
 
     /**
