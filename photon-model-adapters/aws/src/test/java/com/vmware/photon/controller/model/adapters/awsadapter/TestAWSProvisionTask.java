@@ -35,6 +35,7 @@ import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
 import com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.BaseLineState;
+import com.vmware.photon.controller.model.constants.PhotonModelConstants;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
@@ -219,7 +220,8 @@ public class TestAWSProvisionTask  {
                             host.failIteration(new IllegalStateException("response size was incorrect."));
                             return;
                         }
-                        if (resp.statsList.get(0).statValues.size() == 0) {
+                        // Size == 1, because APICallCount is always added.
+                        if (resp.statsList.get(0).statValues.size() == 1) {
                             host.failIteration(new IllegalStateException("incorrect number of metrics received."));
                             return;
                         }
@@ -249,6 +251,8 @@ public class TestAWSProvisionTask  {
     private void verifyCollectedStats(ComputeStatsResponse response) {
         ComputeStats computeStats = response.statsList.get(0);
         Assert.assertTrue("Compute Link is empty", !computeStats.computeLink.isEmpty());
+        Assert.assertTrue("APICallCount is not present", computeStats.statValues.keySet()
+                .contains(PhotonModelConstants.API_CALL_COUNT));
         // Check that stat values are accompanied with Units.
         for (String key : computeStats.statValues.keySet()) {
             ServiceStat stat = computeStats.statValues.get(key);

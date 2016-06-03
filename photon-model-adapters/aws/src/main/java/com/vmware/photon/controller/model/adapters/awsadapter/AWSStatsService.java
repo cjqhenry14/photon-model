@@ -40,6 +40,7 @@ import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSStatsNormalizer;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
+import com.vmware.photon.controller.model.constants.PhotonModelConstants;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
@@ -57,6 +58,10 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  * Service to gather stats on AWS.
  */
 public class AWSStatsService extends StatelessService {
+
+    public AWSStatsService() {
+        super.toggleOption(ServiceOption.INSTRUMENTATION, true);
+    }
 
     public static final String SELF_LINK = AWSUriPaths.AWS_STATS_ADAPTER;
 
@@ -140,6 +145,12 @@ public class AWSStatsService extends StatelessService {
                         UriUtils.buildUri(getHost(), statsRequest.parentTaskLink));
                 return;
             }
+
+            // Initialize APICallCount stat
+            setStat(PhotonModelConstants.API_CALL_COUNT, 0);
+            ServiceStat stat = getStat(PhotonModelConstants.API_CALL_COUNT);
+            stat.unit = PhotonModelConstants.UNIT_COUNT;
+            adjustStat(stat, 0);
 
             AWSStatsDataHolder statsData = new AWSStatsDataHolder();
             statsData.statsRequest = statsRequest;
@@ -250,6 +261,7 @@ public class AWSStatsService extends StatelessService {
             AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler = new AWSStatsHandler(
                     this, statsData, metricNames.length);
             statsData.statsClient.getMetricStatisticsAsync(metricRequest, resultHandler);
+            adjustStat(PhotonModelConstants.API_CALL_COUNT, 1);
         }
     }
 
@@ -277,6 +289,7 @@ public class AWSStatsService extends StatelessService {
         AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler = new AWSBillingStatsHandler(
                 this, statsData);
         statsData.billingClient.getMetricStatisticsAsync(request, resultHandler);
+        adjustStat(PhotonModelConstants.API_CALL_COUNT, 1);
     }
 
     private void getAWSAsyncStatsClient(AWSStatsDataHolder statsData) {
@@ -419,6 +432,10 @@ public class AWSStatsService extends StatelessService {
             }
 
             if (statsData.numResponses.incrementAndGet() == numOfMetrics) {
+                // Put the number of API requests as a stat
+                statsData.statsResponse.statValues.put(PhotonModelConstants.API_CALL_COUNT,
+                        this.service.getStat(PhotonModelConstants.API_CALL_COUNT));
+
                 ComputeStatsResponse respBody = new ComputeStatsResponse();
                 statsData.statsResponse.computeLink = statsData.computeDesc.documentSelfLink;
                 respBody.taskStage = statsData.statsRequest.nextStage;

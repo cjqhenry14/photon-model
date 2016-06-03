@@ -44,4 +44,6 @@ public class PhotonModelConstants {
     public static final String UNIT_PERCENT = "Percent";
     public static final String UNIT_COST = "USD";
 
+    // Photon-Model specific constants
+    public static final String API_CALL_COUNT = "APICallCount";
 }
