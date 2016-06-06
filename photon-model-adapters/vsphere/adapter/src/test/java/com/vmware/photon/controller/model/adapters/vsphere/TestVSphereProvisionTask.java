@@ -13,10 +13,12 @@
 
 package com.vmware.photon.controller.model.adapters.vsphere;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,11 +39,15 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.resources.SnapshotService;
+import com.vmware.photon.controller.model.resources.SnapshotService.SnapshotState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
+import com.vmware.photon.controller.model.tasks.SnapshotTaskService;
+import com.vmware.photon.controller.model.tasks.SnapshotTaskService.SnapshotTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.xenon.common.BasicReusableHostTestCase;
@@ -103,8 +109,14 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
                         VSphereAdapterPowerService.class)),
                 new VSphereAdapterPowerService());
 
+        host.startService(
+                Operation.createPost(UriUtils.buildUri(host,
+                        VSphereAdapterSnapshotService.class)),
+                new VSphereAdapterSnapshotService());
+
         serviceSelfLinks.add(VSphereAdapterInstanceService.SELF_LINK);
         serviceSelfLinks.add(VSphereAdapterPowerService.SELF_LINK);
+        serviceSelfLinks.add(VSphereAdapterSnapshotService.SELF_LINK);
 
         ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
     }
@@ -166,8 +178,10 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         uris.add(UriUtils.buildUri(this.host, outTask.documentSelfLink));
         ProvisioningUtils.waitForTaskCompletion(this.host, uris, ProvisionComputeTaskState.class);
 
+        vm = host.getServiceState(null, ComputeState.class,
+                UriUtils.buildUri(host, vm.documentSelfLink));
 
-        vm = host.getServiceState(null, ComputeState.class, UriUtils.buildUri(host, vm.documentSelfLink));
+        createSnapshot();
 
         ResourceRemovalTaskState deletionState = new ResourceRemovalTaskState();
         QuerySpecification resourceQuerySpec = new QueryTask.QuerySpecification();
@@ -189,7 +203,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         ProvisioningUtils.waitForTaskCompletion(this.host, uris, ResourceRemovalTaskState.class);
 
         if (!isMock()) {
-            BasicConnection connection =  new BasicConnection();
+            BasicConnection connection = new BasicConnection();
             connection.setIgnoreSslErrors(true);
             connection.setUsername(vcUsername);
             connection.setPassword(vcPassword);
@@ -207,6 +221,47 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
             } catch (Exception e) {
             }
         }
+    }
+
+    private void createSnapshot() throws Throwable {
+        SnapshotState snapshotState = createSnapshotState(vm);
+
+        SnapshotTaskState sts = new SnapshotTaskState();
+        sts.isMockRequest = isMock();
+        sts.snapshotLink = snapshotState.documentSelfLink;
+        sts.snapshotAdapterReference = UriUtils
+                .buildUri(this.host, VSphereUriPaths.SNAPSHOT_SERVICE);
+
+        SnapshotTaskState outSts = TestUtils.doPost(this.host,
+                sts,
+                SnapshotTaskState.class,
+                UriUtils.buildUri(this.host,
+                        SnapshotTaskService.FACTORY_LINK));
+
+        ProvisioningUtils.waitForTaskCompletion(this.host, Collections.singletonList(
+                UriUtils.buildUri(this.host, outSts.documentSelfLink)),
+                SnapshotTaskState.class);
+
+        SnapshotState stateAfterTaskComplete = host.getServiceState(null, SnapshotState.class,
+                UriUtils.buildUri(host, snapshotState.documentSelfLink));
+
+        if (!isMock()) {
+            assertNotNull(CustomProperties.of(stateAfterTaskComplete)
+                    .getMoRef(CustomProperties.SNAPSHOT_MOREF));
+
+        }
+    }
+
+    private SnapshotState createSnapshotState(ComputeState vm) throws Throwable {
+        SnapshotState state = new SnapshotState();
+        state.name = "snapshot" + UUID.randomUUID();
+        state.computeLink = vm.documentSelfLink;
+        state.description = "description: " + state.name;
+
+        return TestUtils.doPost(this.host, state,
+                SnapshotState.class,
+                UriUtils.buildUri(this.host, SnapshotService.FACTORY_LINK));
+
     }
 
     private ComputeState createVmState() throws Throwable {

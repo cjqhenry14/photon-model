@@ -13,7 +13,6 @@
 
 package com.vmware.photon.controller.model.resources;
 
-import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,7 +23,6 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.StatefulService;
-import com.vmware.xenon.common.UriUtils;
 
 /**
  * Represents a snapshot resource.
@@ -41,8 +39,6 @@ public class SnapshotService extends StatefulService {
      * {@link SnapshotService} task.
      */
     public static class SnapshotState extends ServiceDocument {
-        public static final String FIELD_NAME_DESCRIPTION_LINK = "descriptionLink";
-
         /**
          * Identifier of this snapshot.
          */
@@ -72,12 +68,6 @@ public class SnapshotService extends StatefulService {
          * A list of tenant links which can access this compute resource.
          */
         public List<String> tenantLinks;
-
-        public static URI buildUri(URI snapshotUri) {
-            return UriUtils.extendUriWithQuery(snapshotUri,
-                    UriUtils.URI_PARAM_ODATA_EXPAND,
-                    SnapshotState.FIELD_NAME_DESCRIPTION_LINK);
-        }
     }
 
     public SnapshotService() {

@@ -284,7 +284,6 @@ public class SnapshotTaskService extends TaskService<SnapshotTaskService.Snapsho
 
     private URI buildSnapshotUri(SnapshotTaskState updatedState) {
         URI snapshot = UriUtils.buildUri(getHost(), updatedState.snapshotLink);
-        snapshot = SnapshotService.SnapshotState.buildUri(snapshot);
         return snapshot;
     }
 

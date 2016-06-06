@@ -21,6 +21,7 @@ import java.util.function.Supplier;
 
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
+import com.vmware.photon.controller.model.resources.SnapshotService.SnapshotState;
 import com.vmware.vim25.ManagedObjectReference;
 
 /**
@@ -34,11 +35,37 @@ public class CustomProperties {
      */
     public static final String VM_MOREF = "vm.moref";
 
+    public static final String SNAPSHOT_MOREF = "snapshot.moref";
+
     public static final String VM_FOLDER_PATH = "vm.folder.path";
 
     private final Supplier<Map<String, String>> getPropsForRead;
     private final Supplier<Map<String, String>> getPropsForWrite;
     private final Consumer<String> remove;
+
+    public CustomProperties(SnapshotState snapshot) {
+        getPropsForRead = () -> {
+            if (snapshot.customProperties == null) {
+                return Collections.emptyMap();
+            } else {
+                return snapshot.customProperties;
+            }
+        };
+
+        getPropsForWrite = () -> {
+            if (snapshot.customProperties == null) {
+                snapshot.customProperties = new HashMap<>();
+            }
+
+            return snapshot.customProperties;
+        };
+
+        remove = (String key) -> {
+            if (snapshot.customProperties != null) {
+                snapshot.customProperties.remove(key);
+            }
+        };
+    }
 
     public static CustomProperties of(ComputeDescription desc) {
         return new CustomProperties(desc);
@@ -46,6 +73,10 @@ public class CustomProperties {
 
     public static CustomProperties of(ComputeState desc) {
         return new CustomProperties(desc);
+    }
+
+    public static CustomProperties of(SnapshotState snapshot) {
+        return new CustomProperties(snapshot);
     }
 
     protected CustomProperties(ComputeDescription description) {

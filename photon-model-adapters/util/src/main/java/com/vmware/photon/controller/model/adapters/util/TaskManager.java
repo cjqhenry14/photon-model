@@ -17,15 +17,17 @@ import java.net.URI;
 
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.ServiceRequestSender;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.Utils;
 
 /**
- * Manage tasks lifecycle with this.
+ * Manage tasks lifecycle with this. Also a CompletionHandler so it
+ * can be passed to {@link Operation#setCompletion(java.util.function.Consumer, CompletionHandler)}
  */
-public class TaskManager {
+public class TaskManager implements CompletionHandler {
     private final ServiceRequestSender service;
     private final URI taskReference;
 
@@ -38,6 +40,15 @@ public class TaskManager {
         Operation op = createTaskPatch(stage);
 
         op.sendWith(service);
+    }
+
+    @Override
+    public void handle(Operation completedOp, Throwable failure) {
+        if (failure == null) {
+            throw new IllegalStateException("TaskManager can only be used as error handler");
+        }
+
+        this.patchTaskToFailure(failure);
     }
 
     public Operation createTaskPatch(TaskStage stage) {
