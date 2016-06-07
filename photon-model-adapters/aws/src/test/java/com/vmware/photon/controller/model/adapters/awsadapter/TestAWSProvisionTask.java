@@ -15,6 +15,10 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 
 import static org.junit.Assert.assertEquals;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.AWS_VM_REQUEST_TIMEOUT_MINUTES;
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSComputeHost;
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSResourcePool;
+import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.createAWSVMResource;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.getExecutor;
 
 import java.net.URI;
@@ -49,6 +53,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceStats.ServiceStat;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.common.test.VerificationHost;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
@@ -63,6 +68,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  */
 public class TestAWSProvisionTask  {
 
+    private static final String INSTANCEID_PREFIX = "i-";
     private VerificationHost host;
     // fields that are used across method calls, stash them as private fields
     private ComputeService.ComputeState vmState;
@@ -106,7 +112,7 @@ public class TestAWSProvisionTask  {
             return;
         }
         // try to delete the VMs
-        if (vmState != null) {
+        if (vmState != null && vmState.id.startsWith(INSTANCEID_PREFIX)) {
             try {
                 TestAWSSetupUtils.deleteVMs(vmState.documentSelfLink, isMock, this.host);
             } catch (Throwable deleteEx) {
@@ -124,16 +130,15 @@ public class TestAWSProvisionTask  {
     public void testProvision() throws Throwable {
 
         // Create a resource pool where the VM will be housed
-        ResourcePoolState outPool =
-                TestAWSSetupUtils.createAWSResourcePool(this.host);
+        ResourcePoolState outPool = createAWSResourcePool(this.host);
 
         // create a compute host for the AWS EC2 VM
-        ComputeService.ComputeState outComputeHost =
-                TestAWSSetupUtils.createAWSComputeHost(this.host, outPool.documentSelfLink,
+        ComputeService.ComputeState outComputeHost = createAWSComputeHost(this.host,
+                outPool.documentSelfLink,
                         accessKey, secretKey);
 
         // create a AWS VM compute resoruce
-        vmState = TestAWSSetupUtils.createAWSVMResource(this.host, outComputeHost.documentSelfLink,
+        vmState = createAWSVMResource(this.host, outComputeHost.documentSelfLink,
                 outPool.documentSelfLink, this.getClass());
 
         // kick off a provision task to do the actual VM creation
@@ -143,6 +148,10 @@ public class TestAWSProvisionTask  {
         provisionTask.isMockRequest = isMock;
         provisionTask.taskSubStage =
                 ProvisionComputeTaskState.SubStage.CREATING_HOST;
+        // Wait for default request timeout in minutes for the machine to be powered ON before
+        // reporting failure to the parent task.
+        provisionTask.documentExpirationTimeMicros = Utils.getNowMicrosUtc()
+                + TimeUnit.MINUTES.toMicros(AWS_VM_REQUEST_TIMEOUT_MINUTES);
 
         ProvisionComputeTaskService.ProvisionComputeTaskState outTask = TestUtils.doPost(this.host,
                 provisionTask,

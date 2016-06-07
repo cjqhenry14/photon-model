@@ -42,6 +42,7 @@ public class AWSAllocation {
     public String securityGroupId;
     public String subnetId;
     public Throwable error;
+    public long taskExpirationMicros;
 
     public AWSFirewallService fwService;
 

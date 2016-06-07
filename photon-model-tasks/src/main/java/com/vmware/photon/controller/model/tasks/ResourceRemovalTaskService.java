@@ -302,6 +302,7 @@ public class ResourceRemovalTaskService extends TaskService<ResourceRemovalTaskS
         subTaskInitState.completionsRemaining = resourceCount;
         subTaskInitState.errorThreshold = currentState.errorThreshold;
         subTaskInitState.tenantLinks = currentState.tenantLinks;
+        subTaskInitState.documentExpirationTimeMicros = currentState.documentExpirationTimeMicros;
         Operation startPost = Operation
                 .createPost(this, UUID.randomUUID().toString())
                 .setBody(subTaskInitState)

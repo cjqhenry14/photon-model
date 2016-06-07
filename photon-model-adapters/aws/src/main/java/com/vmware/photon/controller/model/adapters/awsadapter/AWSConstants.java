@@ -34,6 +34,7 @@ public class AWSConstants {
     public static final String PUBLIC_INTERFACE = "public-interface";
     public static final String PRIVATE_INTERFACE = "private-interface";
     public static final String AWS_ATTACHMENT_VPC_FILTER = "attachment.vpc-id";
+    public static final String AWS_INVALID_INSTANCE_ID_ERROR_CODE = "InvalidInstanceID.NotFound";
     public static final String PROPERTY_NAME_QUERY_PAGE_SIZE = UriPaths.PROPERTY_PREFIX
             + AWSConstants.QUERY_PAGE_SIZE;
     private static int QUERY_PAGE_SIZE = Integer.getInteger(PROPERTY_NAME_QUERY_PAGE_SIZE, 50);

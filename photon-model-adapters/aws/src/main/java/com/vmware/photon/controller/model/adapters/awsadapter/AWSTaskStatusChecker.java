@@ -13,11 +13,14 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_INVALID_INSTANCE_ID_ERROR_CODE;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.handlers.AsyncHandler;
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
@@ -28,6 +31,7 @@ import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 
 import com.vmware.xenon.common.StatelessService;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Class to check if an instance is in the desired state if the vm is in the
@@ -42,28 +46,41 @@ public class AWSTaskStatusChecker {
     private Consumer<Instance> consumer;
     private ComputeInstanceRequest computeRequest;
     private StatelessService service;
+    private long expirationTimeMicros;
 
     private AWSTaskStatusChecker(AmazonEC2AsyncClient amazonEC2Client,
             String instanceId, String desiredState,
             Consumer<Instance> consumer, ComputeInstanceRequest computeRequest,
-            StatelessService service) {
+            StatelessService service, long expirationTimeMicros) {
         this.instanceId = instanceId;
         this.amazonEC2Client = amazonEC2Client;
         this.consumer = consumer;
         this.desiredState = desiredState;
         this.computeRequest = computeRequest;
         this.service = service;
+        this.expirationTimeMicros = expirationTimeMicros;
     }
 
     public static AWSTaskStatusChecker create(
             AmazonEC2AsyncClient amazonEC2Client, String instanceId,
             String desiredState, Consumer<Instance> consumer,
-            ComputeInstanceRequest computeRequest, StatelessService service) {
+            ComputeInstanceRequest computeRequest, StatelessService service,
+            long expirationTimeMicros) {
         return new AWSTaskStatusChecker(amazonEC2Client, instanceId,
-                desiredState, consumer, computeRequest, service);
+                desiredState, consumer, computeRequest, service, expirationTimeMicros);
     }
 
     public void start() {
+        if (expirationTimeMicros > 0 && Utils.getNowMicrosUtc() > expirationTimeMicros) {
+            String msg = String
+                    .format("Compute with instance id %s did not reach desired %s state in the required time interval.",
+                            instanceId, desiredState);
+            service.logSevere(msg);
+            Throwable t = new RuntimeException(msg);
+            AdapterUtils.sendFailurePatchToProvisioningTask(service,
+                    computeRequest.provisioningTaskReference, t);
+            return;
+        }
         DescribeInstancesRequest descRequest = new DescribeInstancesRequest();
         List<String> instanceIdList = new ArrayList<String>();
         instanceIdList.add(this.instanceId);
@@ -72,6 +89,17 @@ public class AWSTaskStatusChecker {
 
             @Override
             public void onError(Exception exception) {
+                // Sometimes AWS takes time to acknowledge the presence of newly provisioned
+                // instances. Not failing the request immediately in case AWS cannot find the
+                // particular instanceId.
+                if (exception instanceof AmazonServiceException
+                        && ((AmazonServiceException) exception).getErrorCode()
+                                .equalsIgnoreCase(AWS_INVALID_INSTANCE_ID_ERROR_CODE)) {
+                    service.logWarning(
+                            "Could not retrieve status for instance %s. Retrying... Exception on AWS is %s",
+                            instanceId, exception);
+                    return;
+                }
                 AdapterUtils.sendFailurePatchToProvisioningTask(service,
                         computeRequest.provisioningTaskReference, exception);
                 return;
@@ -89,7 +117,7 @@ public class AWSTaskStatusChecker {
                             () -> {
                                 AWSTaskStatusChecker.create(amazonEC2Client,
                                         instanceId, desiredState, consumer,
-                                        computeRequest, service).start();
+                                        computeRequest, service, expirationTimeMicros).start();
                             }, 5, TimeUnit.SECONDS);
                     return;
                 }

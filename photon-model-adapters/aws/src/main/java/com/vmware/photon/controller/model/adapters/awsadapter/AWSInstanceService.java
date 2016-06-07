@@ -44,6 +44,7 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
+import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
@@ -126,7 +127,10 @@ public class AWSInstanceService extends StatelessService {
             getParentDescription(aws, AWSStages.PARENTAUTH);
             break;
         case PARENTAUTH:
-            getParentAuth(aws, AWSStages.CLIENT);
+            getParentAuth(aws, AWSStages.PROVISIONTASK);
+            break;
+        case PROVISIONTASK:
+            getProvisioningTaskReference(aws, AWSStages.CLIENT);
             break;
         case CLIENT:
             aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
@@ -200,6 +204,22 @@ public class AWSInstanceService extends StatelessService {
                 aws.computeRequest.computeReference, UriUtils.URI_PARAM_ODATA_EXPAND,
                 Boolean.TRUE.toString());
         AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(aws));
+    }
+
+    /*
+     * Gets the provisioning task reference for this operation. Sets the task expiration time in the
+     * context to be used for bounding the status checks for creation and termination requests.
+     */
+    private void getProvisioningTaskReference(AWSAllocation aws, AWSStages next) {
+        Consumer<Operation> onSuccess = (op) -> {
+            ProvisionComputeTaskState provisioningTaskState = op
+                    .getBody(ProvisionComputeTaskState.class);
+            aws.taskExpirationMicros = provisioningTaskState.documentExpirationTimeMicros;
+            aws.stage = next;
+            handleAllocation(aws);
+        };
+        AdapterUtils.getServiceState(this, aws.computeRequest.provisioningTaskReference, onSuccess,
+                getFailureConsumer(aws));
     }
 
     /*
@@ -372,7 +392,8 @@ public class AWSInstanceService extends StatelessService {
 
         // handler invoked once the EC2 runInstancesAsync commands completes
         AsyncHandler<RunInstancesRequest, RunInstancesResult> creationHandler = buildCreationCallbackHandler(
-                this, aws.computeRequest, aws.child, aws.amazonEC2Client);
+                this, aws.computeRequest, aws.child, aws.amazonEC2Client,
+                aws.taskExpirationMicros);
         aws.amazonEC2Client.runInstancesAsync(runInstancesRequest,
                 creationHandler);
     }
@@ -385,16 +406,18 @@ public class AWSInstanceService extends StatelessService {
         private ComputeStateWithDescription computeDesc;
         private AmazonEC2AsyncClient amazonEC2Client;
         private OperationContext opContext;
+        private long taskExpirationTimeMicros;
 
         private AWSCreationHandler(StatelessService service,
                 ComputeInstanceRequest computeReq,
                 ComputeStateWithDescription computeDesc,
-                AmazonEC2AsyncClient amazonEC2Client) {
+                AmazonEC2AsyncClient amazonEC2Client, long taskExpirationTimeMicros) {
             this.service = service;
             this.computeReq = computeReq;
             this.computeDesc = computeDesc;
             this.amazonEC2Client = amazonEC2Client;
             this.opContext = OperationContext.getOperationContext();
+            this.taskExpirationTimeMicros = taskExpirationTimeMicros;
         }
 
         @Override
@@ -497,7 +520,7 @@ public class AWSInstanceService extends StatelessService {
                     .getInstanceId();
             AWSTaskStatusChecker.create(amazonEC2Client, instanceId,
                     AWSInstanceService.AWS_RUNNING_NAME, consumer, computeReq,
-                    service).start();
+                    service, taskExpirationTimeMicros).start();
         }
     }
 
@@ -505,9 +528,9 @@ public class AWSInstanceService extends StatelessService {
     private AsyncHandler<RunInstancesRequest, RunInstancesResult> buildCreationCallbackHandler(
             StatelessService service, ComputeInstanceRequest computeReq,
             ComputeStateWithDescription computeDesc,
-            AmazonEC2AsyncClient amazonEC2Client) {
+            AmazonEC2AsyncClient amazonEC2Client, long taskExpirationTimeMicros) {
         return new AWSCreationHandler(service, computeReq, computeDesc,
-                amazonEC2Client);
+                amazonEC2Client, taskExpirationTimeMicros);
     }
 
     private void deleteInstance(AWSAllocation aws) {
@@ -534,7 +557,7 @@ public class AWSInstanceService extends StatelessService {
         StatelessService service = this;
         AsyncHandler<TerminateInstancesRequest, TerminateInstancesResult> terminateHandler = buildTerminationCallbackHandler(
                 service, aws.computeRequest, aws.child, aws.amazonEC2Client,
-                instanceId);
+                instanceId, aws.taskExpirationMicros);
         aws.amazonEC2Client.terminateInstancesAsync(termRequest,
                 terminateHandler);
     }
@@ -548,17 +571,20 @@ public class AWSInstanceService extends StatelessService {
         private AmazonEC2AsyncClient amazonEC2Client;
         private OperationContext opContext;
         private String instanceId;
+        private long taskExpirationTimeMicros;
 
         private AWSTerminateHandler(StatelessService service,
                 ComputeInstanceRequest computeReq,
                 ComputeStateWithDescription computeDesc,
-                AmazonEC2AsyncClient amazonEC2Client, String instanceId) {
+                AmazonEC2AsyncClient amazonEC2Client, String instanceId,
+                long taskExpirationTimeMicros) {
             this.service = service;
             this.computeReq = computeReq;
             this.computeDesc = computeDesc;
             this.amazonEC2Client = amazonEC2Client;
             this.opContext = OperationContext.getOperationContext();
             this.instanceId = instanceId;
+            this.taskExpirationTimeMicros = taskExpirationTimeMicros;
         }
 
         @Override
@@ -587,7 +613,7 @@ public class AWSInstanceService extends StatelessService {
             };
             AWSTaskStatusChecker.create(amazonEC2Client, instanceId,
                     AWSInstanceService.AWS_TERMINATED_NAME, consumer,
-                    computeReq, service).start();
+                    computeReq, service, taskExpirationTimeMicros).start();
         }
     }
 
@@ -595,9 +621,10 @@ public class AWSInstanceService extends StatelessService {
     private AsyncHandler<TerminateInstancesRequest, TerminateInstancesResult> buildTerminationCallbackHandler(
             StatelessService service, ComputeInstanceRequest computeReq,
             ComputeStateWithDescription computeDesc,
-            AmazonEC2AsyncClient amazonEC2Client, String instanceId) {
+            AmazonEC2AsyncClient amazonEC2Client, String instanceId,
+            long taskExpirationTimeMicros) {
         return new AWSTerminateHandler(service, computeReq, computeDesc,
-                amazonEC2Client, instanceId);
+                amazonEC2Client, instanceId, taskExpirationTimeMicros);
     }
 
     private void deleteComputeResource(StatelessService service,

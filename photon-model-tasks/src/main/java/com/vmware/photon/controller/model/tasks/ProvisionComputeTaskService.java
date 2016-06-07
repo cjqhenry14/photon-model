@@ -431,6 +431,7 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
         subTaskInitState.errorThreshold = 0;
         subTaskInitState.parentTaskLink = getSelfLink();
         subTaskInitState.tenantLinks = currentState.tenantLinks;
+        subTaskInitState.documentExpirationTimeMicros = currentState.documentExpirationTimeMicros;
         Operation startPost = Operation
                 .createPost(this, UUID.randomUUID().toString())
                 .setBody(subTaskInitState).setCompletion(c);

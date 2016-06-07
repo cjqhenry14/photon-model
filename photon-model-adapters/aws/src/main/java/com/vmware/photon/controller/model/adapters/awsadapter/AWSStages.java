@@ -18,6 +18,6 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
  */
 public enum AWSStages {
 
-    VMDESC, PARENTDESC, PARENTAUTH, CLIENT, DELETE, CREATE, VMDISKS, FIREWALL, DONE, ERROR
+    VMDESC, PARENTDESC, PARENTAUTH, PROVISIONTASK, CLIENT, DELETE, CREATE, VMDISKS, FIREWALL, DONE, ERROR
 
 }

@@ -122,13 +122,13 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public static final String TEST_CASE_DELETE_VM = "Delete VM ";
     public static final String TEST_CASE_DELETE_VMS = "Delete multiple VMs ";
     public static final String TEST_CASE_MOCK_MODE = "Mock Mode ";
+    public static final int DEFAULT_TEST_PAGE_SIZE = 5;
 
     public String accessKey = "accessKey";
     public String secretKey = "secretKey";
     public static List<String> testComputeDescriptions = new ArrayList<String>(
             Arrays.asList(zoneId + "~" + T2_NANO_INSTANCE_TYPE,
                     zoneId + "~" + instanceType_t2_micro));
-
 
     @Before
     public void setUp() throws Exception {
@@ -155,7 +155,6 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
                     new AWSEnumerationAdapterService());
             serviceSelfLinks.add(AWSEnumerationAdapterService.SELF_LINK);
 
-
             // create the compute host, resource pool and the VM state to be used in the test.
             createResourcePoolComputeHostAndVMState();
             waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
@@ -171,8 +170,12 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             return;
         }
         try {
-            // Delete all vms from the endpoint that w
+            // Delete all vms from the endpoint that were provisioned from the test.
             host.log("Deleting %d instance created from the test ", instancesToCleanUp.size());
+            if (instancesToCleanUp.size() == 0) {
+                cleanupEC2ClientResources(client);
+                return;
+            }
             deleteAllVMsOnThisEndpoint(host, isMock,
                     outComputeHost.documentSelfLink, instancesToCleanUp);
             // Check that all the instances that are required to be deleted are in
@@ -193,8 +196,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // Overriding the page size to test the pagination logic with limited instances on AWS.
             // This is a functional test
             // so the latency numbers maybe higher from this test due to low page size.
-            setQueryPageSize(5);
-            setQueryResultLimit(5);
+            setQueryPageSize(DEFAULT_TEST_PAGE_SIZE);
+            setQueryResultLimit(DEFAULT_TEST_PAGE_SIZE);
             baseLineState = getBaseLineInstanceCount(host, client, testComputeDescriptions);
             host.log(baseLineState.toString());
             // Provision a single VM . Check initial state.

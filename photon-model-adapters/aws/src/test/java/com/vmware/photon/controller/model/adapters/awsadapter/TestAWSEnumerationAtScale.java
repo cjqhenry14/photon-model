@@ -87,6 +87,7 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
     public int batchSize = 50;
     public int errorRate = 5;
     public int modifyRate = 10;
+    public int awsAccountLimit = 1000;
     public static List<String> testComputeDescriptions = new ArrayList<String>(
             Arrays.asList(zoneId + "~" + T2_NANO_INSTANCE_TYPE,
                     zoneId + "~" + instanceType_t2_micro));
@@ -184,6 +185,12 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
             enumerateResources(host, isMock, outPool.documentSelfLink,
                     outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
                     TEST_CASE_BASELINE_VMs);
+            // Check if the requested number of instances are under the set account limits
+            if ((baseLineState.baselineVMCount + instanceCountAtScale) >= awsAccountLimit) {
+                host.log("Requested number of resources will exceed account limit. Reducing number"
+                        + " of requested instances");
+                instanceCountAtScale = awsAccountLimit - baseLineState.baselineVMCount;
+            }
             // Create {instanceCountAtScale} VMs on AWS
             host.log("Running scale test by provisioning %d instances", instanceCountAtScale);
             int initialCount = instanceCountAtScale % batchSize > 0

@@ -35,10 +35,8 @@ public class LRUCache<K, V> extends LinkedHashMap<K, V> {
     }
 
     /**
-     *  This method is invoked by put and putAll after inserting a new entry into the map. It provides the
-     *  implementor with the opportunity to remove the eldest entry each time a new one is added. This is
-     *  useful if the map represents a cache: it allows the map to reduce memory consumption by deleting
-     *  stale entries.
+     *This method is called each time a new entry is added to the map. It does bounds checking to see if the map
+     *has grown to its maximum size and then evicts entries based on the set algorithm (access order or insertion order).
      */
     protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
         return this.size() > maxSize;

@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com.amazonaws.handlers.AsyncHandler;
@@ -102,6 +103,7 @@ public class TestAWSSetupUtils {
     public static final String BASELINE_INSTANCE_COUNT = "Baseline Instance Count ";
     public static final String BASELINE_COMPUTE_DESCRIPTION_COUNT = " Baseline Compute Description Count ";
     private static final float HUNDERED = 100.0f;
+    public static final int AWS_VM_REQUEST_TIMEOUT_MINUTES = 5;
 
     /**
      * Class to hold the baseline counts for the compute states and the compute descriptions that are present on the AWS endpoint
@@ -310,6 +312,9 @@ public class TestAWSSetupUtils {
                 .setTermMatchValue(documentSelfLink);
         deletionState.resourceQuerySpec = resourceQuerySpec;
         deletionState.isMockRequest = isMock;
+        // Waiting for default request timeout in minutes for the machine to be turned OFF on AWS.
+        deletionState.documentExpirationTimeMicros = Utils.getNowMicrosUtc()
+                + TimeUnit.MINUTES.toMicros(AWS_VM_REQUEST_TIMEOUT_MINUTES);
         if (deleteDocumentOnly) {
             deletionState.options = EnumSet.of(TaskOptions.DOCUMENT_CHANGES_ONLY);
         }
@@ -447,7 +452,6 @@ public class TestAWSSetupUtils {
         RunInstancesRequest runInstancesRequest = new RunInstancesRequest()
                 .withImageId(EC2_IMAGEID).withInstanceType(instanceType)
                 .withMinCount(numberOfInstance).withMaxCount(numberOfInstance)
-                .withMonitoring(true)
                 .withSecurityGroupIds(DEFAULT_SECURITY_GROUP_NAME);
 
         // handler invoked once the EC2 runInstancesAsync commands completes
