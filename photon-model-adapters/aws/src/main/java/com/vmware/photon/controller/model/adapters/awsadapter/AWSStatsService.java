@@ -150,12 +150,6 @@ public class AWSStatsService extends StatelessService {
                 return;
             }
 
-            // Initialize APICallCount stat
-            setStat(PhotonModelConstants.API_CALL_COUNT, 0);
-            ServiceStat stat = getStat(PhotonModelConstants.API_CALL_COUNT);
-            stat.unit = PhotonModelConstants.UNIT_COUNT;
-            adjustStat(stat, 0);
-
             AWSStatsDataHolder statsData = new AWSStatsDataHolder();
             statsData.statsRequest = statsRequest;
             getVMDescription(statsData);
@@ -264,9 +258,8 @@ public class AWSStatsService extends StatelessService {
 
             logFine("Retrieving %s metric from AWS", metricName);
             AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler = new AWSStatsHandler(
-                    this, statsData, metricNames.length);
+                    this, statsData, metricNames.length, isAggregateStats);
             statsData.statsClient.getMetricStatisticsAsync(metricRequest, resultHandler);
-            adjustStat(PhotonModelConstants.API_CALL_COUNT, 1);
         }
     }
 
@@ -294,7 +287,6 @@ public class AWSStatsService extends StatelessService {
         AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> resultHandler = new AWSBillingStatsHandler(
                 this, statsData);
         statsData.billingClient.getMetricStatisticsAsync(request, resultHandler);
-        adjustStat(PhotonModelConstants.API_CALL_COUNT, 1);
     }
 
     private void getAWSAsyncStatsClient(AWSStatsDataHolder statsData) {
@@ -391,15 +383,17 @@ public class AWSStatsService extends StatelessService {
             AsyncHandler<GetMetricStatisticsRequest, GetMetricStatisticsResult> {
 
         private final int numOfMetrics;
+        private final Boolean isAggregateStats;
         private AWSStatsDataHolder statsData;
         private StatelessService service;
         private OperationContext opContext;
 
         public AWSStatsHandler(StatelessService service, AWSStatsDataHolder statsData,
-                int numOfMetrics) {
+                int numOfMetrics, Boolean isAggregateStats) {
             this.statsData = statsData;
             this.service = service;
             this.numOfMetrics = numOfMetrics;
+            this.isAggregateStats = isAggregateStats;
             this.opContext = OperationContext.getOperationContext();
         }
 
@@ -433,8 +427,15 @@ public class AWSStatsService extends StatelessService {
 
             if (statsData.numResponses.incrementAndGet() == numOfMetrics) {
                 // Put the number of API requests as a stat
+                ServiceStat apiCallCountStat = new ServiceStat();
+                apiCallCountStat.latestValue = numOfMetrics;
+                if (isAggregateStats) {
+                    // Number of Aggregate metrics + 1 call for cost metric
+                    apiCallCountStat.latestValue += 1;
+                }
+                apiCallCountStat.unit = PhotonModelConstants.UNIT_COUNT;
                 statsData.statsResponse.statValues.put(PhotonModelConstants.API_CALL_COUNT,
-                        this.service.getStat(PhotonModelConstants.API_CALL_COUNT));
+                        apiCallCountStat);
 
                 ComputeStatsResponse respBody = new ComputeStatsResponse();
                 statsData.statsResponse.computeLink = statsData.computeDesc.documentSelfLink;
