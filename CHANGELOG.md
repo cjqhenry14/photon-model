@@ -18,6 +18,10 @@
   task still creates links that match the id, but that is no longer
   validated or required by the resources.
 
+* Refactored package structure in photon-azure-adapter project from
+  com.vmware.photon.controller.model.adapters.azureadapter.\* to
+  com.vmware.photon.controller.model.adapters.azure.\*.
+
 ## 0.3.2
 
 * AWS stats service implementation
