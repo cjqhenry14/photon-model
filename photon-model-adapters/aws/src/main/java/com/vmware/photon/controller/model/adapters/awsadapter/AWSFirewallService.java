@@ -93,6 +93,7 @@ public class AWSFirewallService extends StatelessService {
     @Override
     public void handleStop(Operation op) {
         this.clientManager.cleanUp();
+        super.handleStop(op);
     }
 
     @Override

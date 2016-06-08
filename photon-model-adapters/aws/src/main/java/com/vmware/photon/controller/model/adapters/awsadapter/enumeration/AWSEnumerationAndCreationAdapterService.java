@@ -138,6 +138,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
     @Override
     public void handleStop(Operation op) {
         this.clientManager.cleanUp();
+        super.handleStop(op);
     }
 
     @Override
