@@ -66,16 +66,28 @@ public class VSphereAdapterSnapshotService extends StatelessService {
 
         Operation.createGet(ComputeStateWithDescription.buildUri(computeUri))
                 .setCompletion(o -> {
-                    thenWithComputeState(state, o.getBody(ComputeStateWithDescription.class), mgr);
+                    thenWithParentState(state, o.getBody(ComputeStateWithDescription.class), mgr);
+                }, mgr).sendWith(this);
+    }
+
+    private void thenWithParentState(SnapshotState state, ComputeStateWithDescription compute,
+            TaskManager mgr) {
+        URI computeUri = UriUtils.buildUri(this.getHost(), compute.parentLink);
+
+        Operation.createGet(ComputeStateWithDescription.buildUri(computeUri))
+                .setCompletion(o -> {
+                    thenWithComputeState(state, compute,
+                            o.getBody(ComputeStateWithDescription.class),
+                            mgr);
                 }, mgr).sendWith(this);
     }
 
     private void thenWithComputeState(SnapshotState snapshot, ComputeStateWithDescription compute,
-            TaskManager mgr) {
+            ComputeStateWithDescription parent, TaskManager mgr) {
         VSphereIOThreadPool pool = VSphereIOThreadPoolAllocator.getPool(this);
 
-        pool.submit(this, compute.adapterManagementReference,
-                compute.description.authCredentialsLink,
+        pool.submit(this, parent.adapterManagementReference,
+                parent.description.authCredentialsLink,
                 (connection, e) -> {
                     if (e != null) {
                         mgr.patchTaskToFailure(e);
