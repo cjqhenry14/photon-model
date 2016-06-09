@@ -14,6 +14,7 @@
 package com.vmware.photon.controller.model.adapters.azure.instance;
 
 import static com.vmware.photon.controller.model.ComputeProperties.CUSTOM_DISPLAY_NAME;
+import static com.vmware.photon.controller.model.ComputeProperties.RESOURCE_GROUP_NAME;
 import static com.vmware.photon.controller.model.adapters.azure.constants.AzureConstants.AZURE_OSDISK_CACHING;
 import static com.vmware.photon.controller.model.adapters.azure.constants.AzureConstants.AZURE_TENANT_ID;
 import static com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ENVIRONMENT_NAME_AZURE;
@@ -222,6 +223,7 @@ public class AzureTestUtil {
         resource.documentSelfLink = resource.id;
         resource.customProperties = new HashMap<>();
         resource.customProperties.put(CUSTOM_DISPLAY_NAME, azureVMName);
+        resource.customProperties.put(RESOURCE_GROUP_NAME, azureVMName);
 
         ComputeState vmComputeState = TestUtils.doPost(host, resource, ComputeState.class,
                 UriUtils.buildUri(host, ComputeService.FACTORY_LINK));
