@@ -133,7 +133,8 @@ public class BasicConnection implements Connection {
     }
 
     @SuppressWarnings("unchecked")
-    private void _connect() throws RuntimeFaultFaultMsg, InvalidLocaleFaultMsg, InvalidLoginFaultMsg {
+    private void _connect()
+            throws RuntimeFaultFaultMsg, InvalidLocaleFaultMsg, InvalidLoginFaultMsg {
         this.vimService = new VimService();
         this.vimPort = this.vimService.getVimPort();
         BindingProvider bindingProvider = getBindingsProvider();
@@ -163,7 +164,8 @@ public class BasicConnection implements Connection {
 
     private void updateRequestTimeout() {
         if (this.requestTimeoutMillis > 0 && getBindingsProvider() != null) {
-            getBindingsProvider().getRequestContext().put(REQUEST_TIMEOUT, this.requestTimeoutMillis);
+            getBindingsProvider().getRequestContext()
+                    .put(REQUEST_TIMEOUT, (int) this.requestTimeoutMillis);
         }
     }
 
@@ -171,7 +173,8 @@ public class BasicConnection implements Connection {
         return (BindingProvider) this.vimPort;
     }
 
-    public void disconnect() {
+    @Override
+    public void close() {
         if (this.userSession == null) {
             return;
         }
@@ -181,7 +184,7 @@ public class BasicConnection implements Connection {
         } catch (Exception e) {
             Throwable cause = e.getCause();
             throw new BasicConnectionException(
-                    "failed to disconnect properly: " + e.getMessage() + " : " + cause
+                    "failed to close properly: " + e.getMessage() + " : " + cause
                             .getMessage(), cause);
         } finally {
             // A connection is very memory intensive, I'm helping the garbage collector here
@@ -223,5 +226,17 @@ public class BasicConnection implements Connection {
         public BasicConnectionException(String s, Throwable t) {
             super(s, t);
         }
+    }
+
+    @Override
+    public Connection createUnmanagedCopy() {
+        BasicConnection res = new BasicConnection();
+        res.setURI(this.getURI());
+        res.setPassword(this.getPassword());
+        res.setIgnoreSslErrors(this.ignoreSslErrors);
+        res.setUsername(this.getUsername());
+        res.setRequestTimeout(this.getRequestTimeout(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS);
+        res.connect();
+        return res;
     }
 }

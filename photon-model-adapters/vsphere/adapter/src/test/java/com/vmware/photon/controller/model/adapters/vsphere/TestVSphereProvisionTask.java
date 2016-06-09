@@ -67,7 +67,7 @@ import com.vmware.xenon.services.common.QueryTask.QuerySpecification;
  * All public fields below can be specified via command line arguments
  *
  * If the 'isMock' flag is set to true the test runs the adapter in mock
- * mode and does not actually create a VM. isMock is set to true if no {@link #vcUrl}
+ * mode and does not actually create a VM. isMock is set to true if no {@link #vcUsername}
  * is defined.
 
  */
@@ -75,13 +75,13 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
 
     private static final String DEFAULT_AUTH_TYPE = "Username/Password";
 
-    public String vcUrl = System.getProperty("vc.url");
-    public String vcUsername = System.getProperty("vc.username");
-    public String vcPassword = System.getProperty("vc.password");
+    public String vcUrl;
+    public String vcUsername = System.getProperty(TestProperties.VC_USERNAME);
+    public String vcPassword = System.getProperty(TestProperties.VC_PASSWORD);
 
-    public String zoneId = System.getProperty("vc.zoneId");
-    public String dataStoreId = System.getProperty("vc.dataStoreId");
-    public String networkId = System.getProperty("vc.networkId");
+    public String zoneId = System.getProperty(TestProperties.VC_ZONE_ID);
+    public String dataStoreId = System.getProperty(TestProperties.VC_DATASTORE_ID);
+    public String networkId = System.getProperty(TestProperties.VC_NETWORK_ID);
 
     public URI cdromUri = getCdromUri();
 
@@ -115,11 +115,22 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
                         VSphereAdapterSnapshotService.class)),
                 new VSphereAdapterSnapshotService());
 
+        host.startService(
+                Operation.createPost(UriUtils.buildUri(host,
+                        VSphereAdapterResourceEnumerationService.class)),
+                new VSphereAdapterResourceEnumerationService());
+
         serviceSelfLinks.add(VSphereAdapterInstanceService.SELF_LINK);
         serviceSelfLinks.add(VSphereAdapterPowerService.SELF_LINK);
         serviceSelfLinks.add(VSphereAdapterSnapshotService.SELF_LINK);
+        serviceSelfLinks.add(VSphereAdapterResourceEnumerationService.SELF_LINK);
 
         ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
+
+        vcUrl = System.getProperty(TestProperties.VC_URL);
+        if (vcUrl == null) {
+            vcUrl = "http://not-configured";
+        }
     }
 
     @After
@@ -374,7 +385,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
     }
 
     public boolean isMock() {
-        return vcUrl == null || vcUrl.length() == 0;
+        return vcUsername == null || vcUsername.length() == 0;
     }
 
     public URI getCdromUri() {

@@ -88,6 +88,8 @@ import com.vmware.vim25.VirtualSIOController;
  */
 public class InstanceClient extends BaseHelper {
     private static final Logger logger = Logger.getLogger(InstanceClient.class.getName());
+    public static final String CONFIG_DESC_LINK = "photon.descriptionLink";
+    public static final String CONFIG_PARENT_LINK = "photon.parentLink";
     private final ComputeStateWithDescription state;
     private final ComputeStateWithDescription parent;
 
@@ -488,20 +490,18 @@ public class InstanceClient extends BaseHelper {
      */
     private void enrichStateFromVm(ComputeState state, ManagedObjectReference ref)
             throws InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
-        Map<String, Object> props =
-                get.entityProps(ref, "config.instanceUuid", "config.hardware.device");
-        state.id = (String) props.get("config.instanceUuid");
+        Map<String, Object> props = get.entityProps(ref,
+                VimNames.PATH_INSTANCE_UUID,
+                VimNames.PATH_CONFIG_NAME,
+                VimNames.PATH_HARDWARE_DEVICE);
 
-        ArrayOfVirtualDevice devices = (ArrayOfVirtualDevice) props.get("config.hardware.device");
-        for (VirtualDevice dev : devices.getVirtualDevice()) {
-            if (dev instanceof VirtualEthernetCard) {
-                state.primaryMAC = ((VirtualEthernetCard) dev).getMacAddress();
-                break;
-            }
-        }
+        VmOverlay vm = new VmOverlay(ref, props);
+        state.id = vm.getInstanceUuid();
+        state.primaryMAC = vm.getPrimaryMac();
 
         CustomProperties.of(state)
-                .put(CustomProperties.VM_MOREF, ref);
+                .put(CustomProperties.VM_MOREF, ref)
+                .put(CustomProperties.VM_NAME, vm.getName());
     }
 
     /**
@@ -599,8 +599,8 @@ public class InstanceClient extends BaseHelper {
         spec.setGuestId("otherGuest64");
         spec.setMemoryMB(toMb(state.description.totalMemoryBytes));
 
-        spec.getExtraConfig().add(configEntry("photon.descriptionLink", state.descriptionLink));
-        spec.getExtraConfig().add(configEntry("photon.parentLink", state.parentLink));
+        spec.getExtraConfig().add(configEntry(CONFIG_DESC_LINK, state.descriptionLink));
+        spec.getExtraConfig().add(configEntry(CONFIG_PARENT_LINK, state.parentLink));
 
         VirtualMachineFileInfo files = new VirtualMachineFileInfo();
         // Use a full path to the config file to avoid creating a VM with the same name

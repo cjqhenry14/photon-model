@@ -60,7 +60,7 @@ public class ConnectionRule extends ExternalResource {
     @Override
     protected void after() {
         if (this.connection != null) {
-            this.connection.disconnect();
+            this.connection.close();
         }
     }
 }

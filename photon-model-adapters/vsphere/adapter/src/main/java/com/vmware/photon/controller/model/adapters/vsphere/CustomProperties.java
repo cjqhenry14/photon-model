@@ -35,7 +35,11 @@ public class CustomProperties {
      */
     public static final String VM_MOREF = "vm.moref";
 
+    public static final String VM_NAME = "vm.name";
+
     public static final String SNAPSHOT_MOREF = "snapshot.moref";
+
+    public static final String ENUMERATED_BY = "enumerated.by";
 
     private final Supplier<Map<String, String>> getPropsForRead;
     private final Supplier<Map<String, String>> getPropsForWrite;

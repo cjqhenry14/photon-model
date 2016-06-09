@@ -42,15 +42,13 @@ public class ProvisionContext {
 
     public ComputeStateWithDescription parent;
     public ComputeStateWithDescription child;
-
-    public List<DiskState> disks;
-
-    public ResourcePoolState resourcePool;
-    public VSphereIOThreadPool pool;
-    public AuthCredentialsServiceState vSphereCredentials;
-    public Consumer<Throwable> errorHandler;
-
     public ServiceDocument task;
+    public List<DiskState> disks;
+    public AuthCredentialsServiceState vSphereCredentials;
+    public ResourcePoolState resourcePool;
+
+    public VSphereIOThreadPool pool;
+    public Consumer<Throwable> errorHandler;
 
     public ProvisionContext(ComputeInstanceRequest req) {
         this.computeReference = req.computeReference;
@@ -127,6 +125,7 @@ public class ProvisionContext {
                 ctx.vSphereCredentials = op.getBody(AuthCredentialsServiceState.class);
                 populateContextThen(service, ctx, onSuccess);
             }, ctx.errorHandler);
+            return;
         }
 
         if (ctx.task == null) {
@@ -134,6 +133,7 @@ public class ProvisionContext {
                 ctx.task = op.getBody(ServiceDocument.class);
                 populateContextThen(service, ctx, onSuccess);
             }, ctx.errorHandler);
+            return;
         }
 
         if (ctx.disks == null) {

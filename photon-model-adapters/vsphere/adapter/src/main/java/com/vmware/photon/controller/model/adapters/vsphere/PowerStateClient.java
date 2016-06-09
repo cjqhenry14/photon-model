@@ -35,8 +35,6 @@ import com.vmware.xenon.common.Utils;
  */
 public class PowerStateClient extends BaseHelper {
 
-    public static final String PROP_PATH_POWER_STATE = "summary.runtime.powerState";
-
     private final GetMoRef get;
 
     public PowerStateClient(Connection connection) {
@@ -118,8 +116,8 @@ public class PowerStateClient extends BaseHelper {
         }
 
         Object[] currentPowerState = wait.wait(vm,
-                new String[] { PROP_PATH_POWER_STATE },
-                new String[] { PROP_PATH_POWER_STATE },
+                new String[] { VimNames.PATH_POWER_STATE },
+                new String[] { VimNames.PATH_POWER_STATE },
                 new Object[][] {
                         new Object[] {
                                 VirtualMachinePowerState.POWERED_OFF
@@ -135,7 +133,7 @@ public class PowerStateClient extends BaseHelper {
 
     public PowerState getPowerState(ManagedObjectReference vm) throws InvalidPropertyFaultMsg,
             RuntimeFaultFaultMsg {
-        VirtualMachinePowerState vmps = get.entityProp(vm, PROP_PATH_POWER_STATE);
+        VirtualMachinePowerState vmps = get.entityProp(vm, VimNames.PATH_POWER_STATE);
         return VSphereToPhotonMapping.convertPowerState(vmps);
     }
 }

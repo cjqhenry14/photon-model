@@ -33,6 +33,7 @@ public final class VimUtils {
     public static final String SCHEME_DATASTORE = "datastore";
 
     private static final String DELIMITER = ":";
+    public static final String EXCEPTION_SUFFIX = "FaultMsg";
 
     private VimUtils() {
 
@@ -48,7 +49,7 @@ public final class VimUtils {
      */
     public static <T> T rethrow(LocalizedMethodFault lmf) throws Exception {
         Class<?> type = lmf.getFault().getClass();
-        String possibleWrapperType = type.getName() + "FaultMsg";
+        String possibleWrapperType = type.getName() + EXCEPTION_SUFFIX;
 
         Exception ex;
         try {
@@ -156,5 +157,13 @@ public final class VimUtils {
                 } });
 
         return (TaskInfo) info[0];
+    }
+
+    public static boolean isVirtualMachine(ManagedObjectReference obj) {
+        if (obj == null) {
+            return false;
+        }
+
+        return VimNames.TYPE_VM.equals(obj.getType());
     }
 }

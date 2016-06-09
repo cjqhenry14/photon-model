@@ -63,13 +63,22 @@ public class TaskManager implements CompletionHandler {
     }
 
     public void patchTaskToFailure(Throwable failure) {
-        createFailurePatch(failure).sendWith(service);
+        createFailurePatch(null, failure).sendWith(service);
+    }
+
+    public void patchTaskToFailure(String msg, Throwable failure) {
+        createFailurePatch(msg, failure).sendWith(service);
     }
 
     public Operation createFailurePatch(Throwable failure) {
+        return createFailurePatch(null, failure);
+    }
+
+    public Operation createFailurePatch(String msg, Throwable failure) {
         ProvisionComputeTaskState body = new ProvisionComputeTaskState();
         body.taskInfo = new TaskState();
         body.taskInfo.stage = TaskStage.FAILED;
+        body.failureMessage = msg;
         body.taskInfo.failure = Utils.toServiceErrorResponse(failure);
 
         return Operation

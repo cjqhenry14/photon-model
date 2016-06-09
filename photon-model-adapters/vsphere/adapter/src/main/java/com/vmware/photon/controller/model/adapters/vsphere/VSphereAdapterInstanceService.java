@@ -33,6 +33,7 @@ import com.vmware.xenon.common.UriUtils;
 /**
  */
 public class VSphereAdapterInstanceService extends StatelessService {
+
     public static final String SELF_LINK = VSphereUriPaths.INSTANCE_SERVICE;
 
     @Override

@@ -49,6 +49,8 @@ public interface Connection {
 
     ManagedObjectReference getServiceInstanceReference();
 
+    void close();
+
     URI getURI();
 
     /**
@@ -65,4 +67,11 @@ public interface Connection {
      * set by {@link #setRequestTimeout}
      */
     long getRequestTimeout(TimeUnit unit);
+
+    /**
+     * Returns a copy of this connection. The lifecycle of the returned object is not managed
+     * and users need to close it explicitly.
+     * @return
+     */
+    Connection createUnmanagedCopy();
 }

@@ -108,7 +108,7 @@ public class VSphereIOThreadPool {
     }
 
     private void executeCallback(BasicConnection connection, ConnectionCallback callback) {
-        this.executorService.submit((Runnable) () -> {
+        this.executorService.submit(() -> {
             try {
                 // login and session creation
                 connection.connect();
@@ -127,7 +127,7 @@ public class VSphereIOThreadPool {
 
     private void closeQuietly(BasicConnection connection) {
         try {
-            connection.disconnect();
+            connection.close();
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error closing connection to " + connection.getURI(), e);
         }
