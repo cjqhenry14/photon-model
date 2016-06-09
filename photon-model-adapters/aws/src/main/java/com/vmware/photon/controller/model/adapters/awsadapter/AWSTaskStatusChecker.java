@@ -98,6 +98,9 @@ public class AWSTaskStatusChecker {
                     service.logWarning(
                             "Could not retrieve status for instance %s. Retrying... Exception on AWS is %s",
                             instanceId, exception);
+                    AWSTaskStatusChecker.create(amazonEC2Client,
+                            instanceId, desiredState, consumer,
+                            computeRequest, service, expirationTimeMicros).start();
                     return;
                 }
                 AdapterUtils.sendFailurePatchToProvisioningTask(service,
