@@ -124,13 +124,13 @@ public class AWSInstanceService extends StatelessService {
             getVMDescription(aws, AWSStages.PARENTDESC);
             break;
         case PARENTDESC:
-            getParentDescription(aws, AWSStages.PARENTAUTH);
-            break;
-        case PARENTAUTH:
-            getParentAuth(aws, AWSStages.PROVISIONTASK);
+            getParentDescription(aws, AWSStages.PROVISIONTASK);
             break;
         case PROVISIONTASK:
-            getProvisioningTaskReference(aws, AWSStages.CLIENT);
+            getProvisioningTaskReference(aws, AWSStages.PARENTAUTH);
+            break;
+        case PARENTAUTH:
+            getParentAuth(aws, AWSStages.CLIENT);
             break;
         case CLIENT:
             aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,

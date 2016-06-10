@@ -80,7 +80,6 @@ public class AWSInstanceServiceTest extends Suite{
             req.authCredentialsLink = this.authCredentialsLink;
             req.regionId = "us-east-1";
             req.isMockRequest = true;
-            req.requestType = ComputeInstanceRequest.InstanceRequestType.CREATE;
             int statusCode = patchServiceSynchronously(
                     AWSInstanceService.SELF_LINK, req);
             assertEquals(statusCode, 200);
