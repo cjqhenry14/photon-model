@@ -73,6 +73,11 @@ public class DiskService extends StatefulService {
         public String dataCenterId;
 
         /**
+         * Link to the Storage description associated with the disk.
+         */
+        public String storageDescriptionLink;
+
+        /**
          * Identifier of the resource pool associated with this disk service
          * instance.
          */

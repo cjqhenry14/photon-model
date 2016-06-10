@@ -33,6 +33,7 @@ import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
 import com.vmware.photon.controller.model.resources.ResourceGroupService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
+import com.vmware.photon.controller.model.resources.StorageDescriptionService;
 
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.Operation;
@@ -58,7 +59,8 @@ public abstract class BaseModelTest extends BasicReusableHostTestCase {
                 FirewallService.createFactory(), NetworkService.createFactory(),
                 NetworkInterfaceService.createFactory(),
                 ResourceDescriptionService.createFactory(), ResourceGroupService.createFactory(),
-                ResourcePoolService.createFactory(), SnapshotService.createFactory());
+                ResourcePoolService.createFactory(), SnapshotService.createFactory(),
+                StorageDescriptionService.createFactory());
     }
 
     protected void startRequiredServices() throws Throwable {
