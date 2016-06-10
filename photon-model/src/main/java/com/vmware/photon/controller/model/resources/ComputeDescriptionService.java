@@ -18,12 +18,13 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
+
 
 import com.esotericsoftware.kryo.serializers.VersionFieldSerializer.Since;
 
 import com.vmware.photon.controller.model.UriPaths;
+
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
@@ -47,7 +48,7 @@ public class ComputeDescriptionService extends StatefulService {
      * This class represents the document state associated with a
      * {@link ComputeDescriptionService} task.
      */
-    public static class     ComputeDescription extends ServiceDocument {
+    public static class     ComputeDescription extends ResourceState {
 
         public static final String CUSTOM_PROPERTY_KEY_TEMPLATE = "Template";
         public static final String FIELD_NAME_RESOURCE_POOL_ID = "resourcePoolId";
@@ -117,12 +118,6 @@ public class ComputeDescriptionService extends StatefulService {
         public String networkId;
 
         /**
-         * List of tenants which can access this compute host, represented in
-         * the form of documentSelfLinks.
-         */
-        public List<String> tenantLinks;
-
-        /**
          * Self-link to the AuthCredentialsService used to access this compute
          * host.
          */
@@ -162,12 +157,6 @@ public class ComputeDescriptionService extends StatefulService {
          * Currency unit used for pricing.
          */
         public String currencyUnit;
-
-        /**
-         * Custom property bag that can be used to store host specific
-         * properties.
-         */
-        public Map<String, String> customProperties;
 
         /**
          * URI reference to the adapter used to create an instance of this host.
@@ -326,6 +315,15 @@ public class ComputeDescriptionService extends StatefulService {
     }
 
     @Override
+    public void handlePatch(Operation patch) {
+        ComputeDescription currentState = getState(patch);
+        ComputeDescription patchBody = getBody(patch);
+
+        boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(), currentState, patchBody);
+        ResourceUtils.complePatchOperation(patch, hasStateChanged);
+    }
+
+    @Override
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
         ComputeDescription template = (ComputeDescription) td;
@@ -366,8 +364,7 @@ public class ComputeDescriptionService extends StatefulService {
         pdCustomProperties.indexingOptions = EnumSet
                 .of(ServiceDocumentDescription.PropertyIndexingOption.EXPAND);
 
-        ServiceDocumentDescription
-                .expandTenantLinks(template.documentDescription);
+        ResourceUtils.updateIndexingOptions(template.documentDescription);
 
         template.environmentName = ComputeDescription.ENVIRONMENT_NAME_ON_PREMISE;
         template.cpuCount = 2;

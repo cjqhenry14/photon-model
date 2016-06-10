@@ -30,8 +30,10 @@ import com.vmware.photon.controller.model.resources.FirewallService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
+import com.vmware.photon.controller.model.resources.ResourceGroupService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
+
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
@@ -55,7 +57,7 @@ public abstract class BaseModelTest extends BasicReusableHostTestCase {
                 ComputeDescriptionService.createFactory(), DiskService.createFactory(),
                 FirewallService.createFactory(), NetworkService.createFactory(),
                 NetworkInterfaceService.createFactory(),
-                ResourceDescriptionService.createFactory(),
+                ResourceDescriptionService.createFactory(), ResourceGroupService.createFactory(),
                 ResourcePoolService.createFactory(), SnapshotService.createFactory());
     }
 

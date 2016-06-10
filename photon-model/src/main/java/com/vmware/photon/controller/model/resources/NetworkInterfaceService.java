@@ -13,16 +13,16 @@
 
 package com.vmware.photon.controller.model.resources;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.apache.commons.validator.routines.InetAddressValidator;
 
 import com.vmware.photon.controller.model.UriPaths;
+
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.ServiceDocumentDescription;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 
 /**
@@ -40,7 +40,7 @@ public class NetworkInterfaceService extends StatefulService {
     /**
      * Represents the state of a network interface.
      */
-    public static class NetworkInterfaceState extends ServiceDocument {
+    public static class NetworkInterfaceState extends ResourceState {
         /**
          * The name or id of the interface on the compute.
          */
@@ -56,6 +56,7 @@ public class NetworkInterfaceService extends StatefulService {
         /**
          * The IP information of the interface. Optional.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String leaseLink;
 
         /**
@@ -68,11 +69,6 @@ public class NetworkInterfaceService extends StatefulService {
          * The bridge this interface will be instantiated on. Optional.
          */
         public String networkBridgeLink;
-
-        /**
-         * A list of tenant links which can access this network interface.
-         */
-        public List<String> tenantLinks;
     }
 
     public NetworkInterfaceService() {
@@ -115,20 +111,18 @@ public class NetworkInterfaceService extends StatefulService {
     @Override
     public void handlePatch(Operation patch) {
         NetworkInterfaceState currentState = getState(patch);
-        NetworkInterfaceState patchBody = patch
-                .getBody(NetworkInterfaceState.class);
+        NetworkInterfaceState patchBody = getBody(patch);
 
-        if (patchBody.leaseLink != null) {
-            currentState.leaseLink = patchBody.leaseLink;
-        }
+        boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(),
+                currentState, patchBody);
+        ResourceUtils.complePatchOperation(patch, hasStateChanged);
 
-        patch.setBody(currentState).complete();
     }
 
     @Override
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
-        ServiceDocumentDescription.expandTenantLinks(td.documentDescription);
+        ResourceUtils.updateIndexingOptions(td.documentDescription);
         return td;
     }
 

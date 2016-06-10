@@ -13,8 +13,6 @@
 
 package com.vmware.photon.controller.model.resources;
 
-import java.util.UUID;
-
 import com.vmware.photon.controller.model.UriPaths;
 
 import com.vmware.xenon.common.FactoryService;
@@ -24,46 +22,31 @@ import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 
 /**
- * Represents a snapshot resource.
+ * Describes a resource group instance. A resource group is a grouping
+ * of photon model resources that have the same groupLink field
  */
-public class SnapshotService extends StatefulService {
-    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/snapshots";
+public class ResourceGroupService extends StatefulService {
+
+    public static final String FACTORY_LINK = UriPaths.RESOURCES + "/groups";
 
     public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(SnapshotService.class);
+        return FactoryService.createIdempotent(ResourceGroupService.class);
     }
 
     /**
      * This class represents the document state associated with a
-     * {@link SnapshotService} task.
+     * {@link com.vmware.photon.controller.model.resources.ResourceGroupService}.
      */
-    public static class SnapshotState extends ResourceState {
+    public static class ResourceGroupState extends ResourceState {
         /**
-         * Identifier of this snapshot.
-         */
-        public String id;
-
-        /**
-         * Name of this snapshot.
+         * name of the resource group instance
          */
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String name;
-
-        /**
-         * Description of this snapshot.
-         */
-        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
-        public String description;
-
-        /**
-         * Compute link for this snapshot.
-         */
-        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
-        public String computeLink;
     }
 
-    public SnapshotService() {
-        super(SnapshotState.class);
+    public ResourceGroupService() {
+        super(ResourceGroupState.class);
         super.toggleOption(ServiceOption.PERSISTENCE, true);
         super.toggleOption(ServiceOption.REPLICATION, true);
         super.toggleOption(ServiceOption.OWNER_SELECTION, true);
@@ -82,7 +65,7 @@ public class SnapshotService extends StatefulService {
     @Override
     public void handlePut(Operation put) {
         try {
-            SnapshotState returnState = processInput(put);
+            ResourceGroupState returnState = processInput(put);
             setState(put, returnState);
             put.complete();
         } catch (Throwable t) {
@@ -90,33 +73,26 @@ public class SnapshotService extends StatefulService {
         }
     }
 
-    private SnapshotState processInput(Operation op) {
+    private ResourceGroupState processInput(Operation op) {
         if (!op.hasBody()) {
             throw (new IllegalArgumentException("body is required"));
         }
-        SnapshotState state = op.getBody(SnapshotState.class);
+        ResourceGroupState state = op.getBody(ResourceGroupState.class);
         validateState(state);
         return state;
     }
 
-    public static void validateState(SnapshotState state) {
-        if (state.id == null) {
-            state.id = UUID.randomUUID().toString();
-        }
-
-        if (state.name == null || state.name.isEmpty()) {
+    private void validateState(ResourceGroupState state) {
+        if (state.name == null) {
             throw new IllegalArgumentException("name is required");
         }
 
-        if (state.computeLink == null || state.computeLink.isEmpty()) {
-            throw new IllegalArgumentException("computeLink is required");
-        }
     }
 
     @Override
     public void handlePatch(Operation patch) {
-        SnapshotState currentState = getState(patch);
-        SnapshotState patchBody = getBody(patch);
+        ResourceGroupState currentState = getState(patch);
+        ResourceGroupState patchBody = getBody(patch);
 
         boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(),
                 currentState, patchBody);
@@ -127,12 +103,9 @@ public class SnapshotService extends StatefulService {
     @Override
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
-        SnapshotState template = (SnapshotState) td;
+        ResourceGroupState template = (ResourceGroupState) td;
         ResourceUtils.updateIndexingOptions(td.documentDescription);
-
-        template.id = UUID.randomUUID().toString();
-        template.name = "snapshot01";
-        template.description = "";
+        template.name = "resource-group-1";
         return template;
     }
 }

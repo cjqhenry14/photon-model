@@ -17,10 +17,12 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.junit.Before;
@@ -32,6 +34,7 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
+
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.UriUtils;
@@ -196,7 +199,10 @@ public class NetworkServiceTest extends Suite {
             } catch (Exception e) {
                 patchState.instanceAdapterReference = null;
             }
-
+            patchState.tenantLinks = new ArrayList<String>();
+            patchState.tenantLinks.add("tenant1");
+            patchState.groupLinks = new HashSet<String>();
+            patchState.groupLinks.add("group1");
             patchServiceSynchronously(returnState.documentSelfLink,
                     patchState);
 
@@ -215,6 +221,8 @@ public class NetworkServiceTest extends Suite {
                     is(patchState.resourcePoolLink));
             assertThat(returnState.instanceAdapterReference,
                     is(patchState.instanceAdapterReference));
+            assertEquals(returnState.tenantLinks.size(), 2);
+            assertEquals(returnState.groupLinks, patchState.groupLinks);
 
         }
     }

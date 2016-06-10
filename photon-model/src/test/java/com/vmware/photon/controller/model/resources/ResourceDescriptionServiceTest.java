@@ -16,9 +16,11 @@ package com.vmware.photon.controller.model.resources;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.junit.Before;
@@ -30,6 +32,7 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
+
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.UriUtils;
@@ -43,6 +46,7 @@ import com.vmware.xenon.services.common.TenantService;
 @RunWith(ResourceDescriptionServiceTest.class)
 @SuiteClasses({ ResourceDescriptionServiceTest.ConstructorTest.class,
         ResourceDescriptionServiceTest.HandleStartTest.class,
+        ResourceDescriptionServiceTest.HandlePatchTest.class,
         ResourceDescriptionServiceTest.QueryTest.class })
 public class ResourceDescriptionServiceTest extends Suite {
 
@@ -143,6 +147,36 @@ public class ResourceDescriptionServiceTest extends Suite {
                     ResourceDescriptionService.FACTORY_LINK, startState,
                     ResourceDescriptionService.ResourceDescription.class,
                     IllegalArgumentException.class);
+        }
+    }
+
+    /**
+     * This class implements tests for the handlePatch method.
+     */
+    public static class HandlePatchTest extends BaseModelTest {
+        @Test
+        public void testPatch() throws Throwable {
+            ResourceDescriptionService.ResourceDescription startState = buildValidStartState();
+
+            ResourceDescriptionService.ResourceDescription returnState = postServiceSynchronously(
+                    ResourceDescriptionService.FACTORY_LINK,
+                            startState, ResourceDescriptionService.ResourceDescription.class);
+
+            ResourceDescriptionService.ResourceDescription patchState = new ResourceDescriptionService.ResourceDescription();
+            patchState.tenantLinks = new ArrayList<String>();
+            patchState.tenantLinks.add("tenant1");
+            patchState.groupLinks = new HashSet<String>();
+            patchState.groupLinks.add("group1");
+            patchServiceSynchronously(returnState.documentSelfLink,
+                    patchState);
+
+            returnState = getServiceSynchronously(
+                    returnState.documentSelfLink,
+                    ResourceDescriptionService.ResourceDescription.class);
+
+            assertEquals(returnState.tenantLinks, patchState.tenantLinks);
+            assertEquals(returnState.groupLinks, patchState.groupLinks);
+
         }
     }
 

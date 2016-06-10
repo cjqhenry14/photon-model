@@ -16,10 +16,12 @@ package com.vmware.photon.controller.model.resources;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.junit.Before;
@@ -31,6 +33,7 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
+
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.UriUtils;
@@ -200,7 +203,8 @@ public class NetworkInterfaceServiceTest extends Suite {
             patchState.networkDescriptionLink = "10.0.0.4";
             patchState.tenantLinks = new ArrayList<>();
             patchState.tenantLinks.add("tenant-linkA");
-
+            patchState.groupLinks = new HashSet<String>();
+            patchState.groupLinks.add("group1");
             patchServiceSynchronously(returnState.documentSelfLink,
                     patchState);
 
@@ -215,6 +219,8 @@ public class NetworkInterfaceServiceTest extends Suite {
                     is(startState.networkBridgeLink));
             assertThat(returnState.networkDescriptionLink,
                     is(startState.networkDescriptionLink));
+            assertEquals(returnState.tenantLinks, patchState.tenantLinks);
+            assertEquals(returnState.groupLinks, patchState.groupLinks);
         }
     }
 

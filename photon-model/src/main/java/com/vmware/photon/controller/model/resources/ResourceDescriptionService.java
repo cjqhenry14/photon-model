@@ -15,14 +15,13 @@ package com.vmware.photon.controller.model.resources;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 import com.vmware.photon.controller.model.UriPaths;
+
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.StatefulService;
 
 /**
@@ -41,7 +40,7 @@ public class ResourceDescriptionService extends StatefulService {
      * This class represents the document state associated with a
      * {@link ResourceDescriptionService} task.
      */
-    public static class ResourceDescription extends ServiceDocument {
+    public static class ResourceDescription extends ResourceState {
 
         /**
          * Type of compute to create. Used to find Computes which can create
@@ -76,16 +75,6 @@ public class ResourceDescriptionService extends StatefulService {
          * The URI to the network bridge task service.
          */
         public URI networkBridgeTaskServiceReference;
-
-        /**
-         * Custom properties passes in for the resources to be provisioned.
-         */
-        public Map<String, String> customProperties;
-
-        /**
-         * A list of tenant links which can access this resource description.
-         */
-        public List<String> tenantLinks;
     }
 
     public ResourceDescriptionService() {
@@ -116,6 +105,17 @@ public class ResourceDescriptionService extends StatefulService {
         }
     }
 
+    @Override
+    public void handlePatch(Operation patch) {
+        ResourceDescription currentState = getState(patch);
+        ResourceDescription patchBody = getBody(patch);
+
+        boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(),
+                currentState, patchBody);
+        ResourceUtils.complePatchOperation(patch, hasStateChanged);
+
+    }
+
     private ResourceDescription processInput(Operation op) {
         if (!op.hasBody()) {
             throw (new IllegalArgumentException("body is required"));
@@ -134,7 +134,7 @@ public class ResourceDescriptionService extends StatefulService {
     @Override
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
-        ServiceDocumentDescription.expandTenantLinks(td.documentDescription);
+        ResourceUtils.updateIndexingOptions(td.documentDescription);
         return td;
     }
 }

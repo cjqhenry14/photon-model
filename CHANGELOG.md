@@ -2,6 +2,10 @@
 
 ## 0.3.3
 
+* Add ResourceState as a base class for all photon model resource states
+
+* Add ResourceGroupService to represent a group of resources
+
 * Providers should use ComputeState's id field is used to store the resource
   external identifier.
   

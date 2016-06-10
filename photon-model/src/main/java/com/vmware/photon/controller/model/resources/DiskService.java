@@ -14,15 +14,15 @@
 package com.vmware.photon.controller.model.resources;
 
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import com.vmware.photon.controller.model.UriPaths;
+
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.ServiceDocumentDescription;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 
 /**
@@ -54,7 +54,7 @@ public class DiskService extends StatefulService {
      * This class represents the document state associated with a
      * {@link com.vmware.photon.controller.model.resources.DiskService} task.
      */
-    public static class DiskState extends ServiceDocument {
+    public static class DiskState extends ResourceState {
         /**
          * Identifier of this disk service instance.
          */
@@ -63,6 +63,7 @@ public class DiskService extends StatefulService {
         /**
          * Identifier of the zone associated with this disk service instance.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String zoneId;
 
         /**
@@ -97,28 +98,19 @@ public class DiskService extends StatefulService {
         /**
          * Name of this disk service instance.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String name;
 
         /**
          * Status of this disk service instance.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public DiskStatus status = DiskStatus.DETACHED;
 
         /**
          * Capacity (in MB) of this disk service instance.
          */
         public long capacityMBytes;
-
-        /**
-         * Custom property bag that can be used to store disk specific
-         * properties.
-         */
-        public Map<String, String> customProperties;
-
-        /**
-         * A list of tenant links can access this disk resource.
-         */
-        public List<String> tenantLinks;
 
         /**
          * If set, disks will be connected in ascending order by the
@@ -273,56 +265,17 @@ public class DiskService extends StatefulService {
     @Override
     public void handlePatch(Operation patch) {
         DiskState currentState = getState(patch);
-        DiskState patchBody = patch.getBody(DiskState.class);
+        DiskState patchBody = getBody(patch);
 
-        boolean isChanged = false;
-
-        if (patchBody.zoneId != null
-                && !patchBody.zoneId.equals(currentState.zoneId)) {
-            currentState.zoneId = patchBody.zoneId;
-            isChanged = true;
-        }
-
-        if (patchBody.name != null && !patchBody.name.equals(currentState.name)) {
-            currentState.name = patchBody.name;
-            isChanged = true;
-        }
-
-        if (patchBody.status != null && patchBody.status != currentState.status) {
-            currentState.status = patchBody.status;
-            isChanged = true;
-        }
-
+        boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(),
+                currentState, patchBody);
         if (patchBody.capacityMBytes != 0
                 && patchBody.capacityMBytes != currentState.capacityMBytes) {
             currentState.capacityMBytes = patchBody.capacityMBytes;
-            isChanged = true;
+            hasStateChanged = true;
         }
 
-        if (currentState.authCredentialsLink == null && patchBody.authCredentialsLink != null) {
-            currentState.authCredentialsLink = patchBody.authCredentialsLink;
-            isChanged = true;
-        }
-
-        if (patchBody.customProperties != null
-                && !patchBody.customProperties.isEmpty()) {
-            if (currentState.customProperties == null
-                    || currentState.customProperties.isEmpty()) {
-                currentState.customProperties = patchBody.customProperties;
-            } else {
-                for (Map.Entry<String, String> e : patchBody.customProperties
-                        .entrySet()) {
-                    currentState.customProperties.put(e.getKey(), e.getValue());
-                }
-            }
-            isChanged = true;
-        }
-
-        if (!isChanged) {
-            patch.setStatusCode(Operation.STATUS_CODE_NOT_MODIFIED);
-        }
-
-        patch.complete();
+        ResourceUtils.complePatchOperation(patch, hasStateChanged);
     }
 
     @Override
@@ -330,8 +283,7 @@ public class DiskService extends StatefulService {
         ServiceDocument td = super.getDocumentTemplate();
         DiskState template = (DiskState) td;
 
-        ServiceDocumentDescription.expandTenantLinks(td.documentDescription);
-
+        ResourceUtils.updateIndexingOptions(td.documentDescription);
         template.id = UUID.randomUUID().toString();
         template.type = DiskType.SSD;
         template.status = DiskStatus.DETACHED;

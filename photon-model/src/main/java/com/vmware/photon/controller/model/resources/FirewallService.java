@@ -16,7 +16,6 @@ package com.vmware.photon.controller.model.resources;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.apache.commons.net.util.SubnetUtils;
@@ -26,7 +25,7 @@ import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.ServiceDocumentDescription;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 
 /**
@@ -45,44 +44,55 @@ public class FirewallService extends StatefulService {
     /**
      * Firewall State document.
      */
-    public static class FirewallState extends ServiceDocument {
+    public static class FirewallState extends ResourceState {
         public String id;
+
+        /**
+         * Name of the firewall instance
+         */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String name;
 
         /**
          * Region identifier of this firewall service instance.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String regionID;
 
         /**
          * Link to secrets. Required
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String authCredentialsLink;
 
         /**
          * The pool which this resource is a part of.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String resourcePoolLink;
 
         /**
          * The adapter to use to create the firewall.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public URI instanceAdapterReference;
 
-        // network that FW will protect
+        /**
+         *  network that firewall will protect
+         */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String networkDescriptionLink;
 
-        public Map<String, String> customProperties;
-
         /**
-         * A list of tenant links can access this firewall resource.
+         *  incoming rules
          */
-        public List<String> tenantLinks;
-
-        // incoming rules
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public List<Allow> ingress;
 
-        // outgoing rules
+        /**
+         *  outgoing rules
+         */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public List<Allow> egress;
 
         /**
@@ -267,75 +277,12 @@ public class FirewallService extends StatefulService {
     @Override
     public void handlePatch(Operation patch) {
         FirewallState currentState = getState(patch);
-        FirewallState patchBody = patch.getBody(FirewallState.class);
+        FirewallState patchBody = getBody(patch);
 
-        boolean isChanged = false;
+        boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(),
+                currentState, patchBody);
+        ResourceUtils.complePatchOperation(patch, hasStateChanged);
 
-        if (patchBody.name != null
-                && !patchBody.name.equalsIgnoreCase(currentState.name)) {
-            currentState.name = patchBody.name;
-            isChanged = true;
-        }
-
-        if (patchBody.regionID != null
-                && !patchBody.regionID.equalsIgnoreCase(currentState.regionID)) {
-            currentState.regionID = patchBody.regionID;
-            isChanged = true;
-        }
-
-        if (patchBody.authCredentialsLink != null
-                && !patchBody.authCredentialsLink
-                        .equalsIgnoreCase(currentState.authCredentialsLink)) {
-            currentState.authCredentialsLink = patchBody.authCredentialsLink;
-            isChanged = true;
-        }
-
-        if (patchBody.resourcePoolLink != null
-                && !patchBody.resourcePoolLink
-                        .equalsIgnoreCase(currentState.resourcePoolLink)) {
-            currentState.resourcePoolLink = patchBody.resourcePoolLink;
-            isChanged = true;
-        }
-
-        if (patchBody.instanceAdapterReference != null
-                && !patchBody.instanceAdapterReference
-                        .equals(currentState.instanceAdapterReference)) {
-            currentState.instanceAdapterReference = patchBody.instanceAdapterReference;
-            isChanged = true;
-        }
-
-        // allow rules are overwritten -- it's not a merge
-        // will result in a new version of the service on every call
-        // as ingress & egress are never null
-        if (patchBody.ingress != null) {
-            currentState.ingress = patchBody.ingress;
-            isChanged = true;
-        }
-
-        if (patchBody.egress != null) {
-            currentState.egress = patchBody.egress;
-            isChanged = true;
-        }
-
-        if (patchBody.customProperties != null
-                && !patchBody.customProperties.isEmpty()) {
-            if (currentState.customProperties == null
-                    || currentState.customProperties.isEmpty()) {
-                currentState.customProperties = patchBody.customProperties;
-            } else {
-                for (Map.Entry<String, String> e : patchBody.customProperties
-                        .entrySet()) {
-                    currentState.customProperties.put(e.getKey(), e.getValue());
-                }
-            }
-            isChanged = true;
-        }
-
-        if (!isChanged) {
-            patch.setStatusCode(Operation.STATUS_CODE_NOT_MODIFIED);
-        }
-
-        patch.complete();
     }
 
     @Override
@@ -343,8 +290,7 @@ public class FirewallService extends StatefulService {
         ServiceDocument td = super.getDocumentTemplate();
         FirewallState template = (FirewallState) td;
 
-        ServiceDocumentDescription.expandTenantLinks(td.documentDescription);
-
+        ResourceUtils.updateIndexingOptions(td.documentDescription);
         template.id = UUID.randomUUID().toString();
         template.name = "firewall-one";
 

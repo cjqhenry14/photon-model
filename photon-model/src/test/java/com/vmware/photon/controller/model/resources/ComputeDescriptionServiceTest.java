@@ -17,10 +17,12 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
@@ -33,6 +35,7 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
+
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.UriUtils;
@@ -46,6 +49,7 @@ import com.vmware.xenon.services.common.TenantService;
 @RunWith(ComputeDescriptionServiceTest.class)
 @SuiteClasses({ ComputeDescriptionServiceTest.ConstructorTest.class,
         ComputeDescriptionServiceTest.HandleStartTest.class,
+        ComputeDescriptionServiceTest.HandlePatchTest.class,
         ComputeDescriptionServiceTest.QueryTest.class })
 public class ComputeDescriptionServiceTest extends Suite {
     private static final String TEST_DESC_PROPERTY_NAME = "testDescProperty";
@@ -213,6 +217,35 @@ public class ComputeDescriptionServiceTest extends Suite {
         }
     }
 
+    /**
+     * This class implements tests for the handlePatch method.
+     */
+    public static class HandlePatchTest extends BaseModelTest {
+        @Test
+        public void testPatch() throws Throwable {
+            ComputeDescriptionService.ComputeDescription startState = buildValidStartState();
+
+            ComputeDescriptionService.ComputeDescription returnState = postServiceSynchronously(
+                    ComputeDescriptionService.FACTORY_LINK,
+                            startState, ComputeDescriptionService.ComputeDescription.class);
+
+            ComputeDescriptionService.ComputeDescription patchState = new ComputeDescriptionService.ComputeDescription();
+            patchState.tenantLinks = new ArrayList<String>();
+            patchState.tenantLinks.add("tenant1");
+            patchState.groupLinks = new HashSet<String>();
+            patchState.groupLinks.add("group1");
+            patchServiceSynchronously(returnState.documentSelfLink,
+                    patchState);
+
+            returnState = getServiceSynchronously(
+                    returnState.documentSelfLink,
+                    ComputeDescriptionService.ComputeDescription.class);
+
+            assertEquals(returnState.tenantLinks, patchState.tenantLinks);
+            assertEquals(returnState.groupLinks, patchState.groupLinks);
+
+        }
+    }
     /**
      * This class implements tests for query.
      */

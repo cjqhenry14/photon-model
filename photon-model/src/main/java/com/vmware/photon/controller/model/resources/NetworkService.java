@@ -14,17 +14,16 @@
 package com.vmware.photon.controller.model.resources;
 
 import java.net.URI;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.apache.commons.net.util.SubnetUtils;
 
 import com.vmware.photon.controller.model.UriPaths;
+
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.ServiceDocumentDescription;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 
 /**
@@ -41,37 +40,44 @@ public class NetworkService extends StatefulService {
     /**
      * Network State document.
      */
-    public static class NetworkState extends ServiceDocument {
+    public static class NetworkState extends ResourceState {
         public String id;
+
+        /**
+         * Name of the network instance
+         */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String name;
+
+        /**
+         * Subnet CIDR
+         */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String subnetCIDR;
 
         /**
          * Region identifier of this description service instance.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String regionID;
 
         /**
          * Link to secrets. Required
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String authCredentialsLink;
 
         /**
          * The pool which this resource is a part of. Required
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String resourcePoolLink;
 
         /**
          * The network adapter to use to create the network. Required
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public URI instanceAdapterReference;
-
-        public Map<String, String> customProperties;
-
-        /**
-         * A list of tenant links can access this disk resource.
-         */
-        public List<String> tenantLinks;
     }
 
     public NetworkService() {
@@ -144,76 +150,18 @@ public class NetworkService extends StatefulService {
     @Override
     public void handlePatch(Operation patch) {
         NetworkState currentState = getState(patch);
-        NetworkState patchBody = patch.getBody(NetworkState.class);
+        NetworkState patchBody = getBody(patch);
 
-        boolean isChanged = false;
-
-        if (patchBody.name != null
-                && !patchBody.name.equalsIgnoreCase(currentState.name)) {
-            currentState.name = patchBody.name;
-            isChanged = true;
-        }
-
-        if (patchBody.subnetCIDR != null
-                && !patchBody.subnetCIDR
-                        .equalsIgnoreCase(currentState.subnetCIDR)) {
-            currentState.subnetCIDR = patchBody.subnetCIDR;
-            isChanged = true;
-        }
-
-        if (patchBody.customProperties != null
-                && !patchBody.customProperties.isEmpty()) {
-            if (currentState.customProperties == null
-                    || currentState.customProperties.isEmpty()) {
-                currentState.customProperties = patchBody.customProperties;
-            } else {
-                for (Map.Entry<String, String> e : patchBody.customProperties
-                        .entrySet()) {
-                    currentState.customProperties.put(e.getKey(), e.getValue());
-                }
-            }
-            isChanged = true;
-        }
-        if (patchBody.regionID != null
-                && !patchBody.regionID.equalsIgnoreCase(currentState.regionID)) {
-            currentState.regionID = patchBody.regionID;
-            isChanged = true;
-        }
-
-        if (patchBody.authCredentialsLink != null
-                && !patchBody.authCredentialsLink
-                        .equalsIgnoreCase(currentState.authCredentialsLink)) {
-            currentState.authCredentialsLink = patchBody.authCredentialsLink;
-            isChanged = true;
-        }
-
-        if (patchBody.resourcePoolLink != null
-                && !patchBody.resourcePoolLink
-                        .equalsIgnoreCase(currentState.resourcePoolLink)) {
-            currentState.resourcePoolLink = patchBody.resourcePoolLink;
-            isChanged = true;
-        }
-
-        if (patchBody.instanceAdapterReference != null
-                && !patchBody.instanceAdapterReference
-                        .equals(currentState.instanceAdapterReference)) {
-            currentState.instanceAdapterReference = patchBody.instanceAdapterReference;
-            isChanged = true;
-        }
-
-        if (!isChanged) {
-            patch.setStatusCode(Operation.STATUS_CODE_NOT_MODIFIED);
-        }
-
-        patch.complete();
+        boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(),
+                currentState, patchBody);
+        ResourceUtils.complePatchOperation(patch, hasStateChanged);
     }
 
     @Override
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
         NetworkState template = (NetworkState) td;
-
-        ServiceDocumentDescription.expandTenantLinks(td.documentDescription);
+        ResourceUtils.updateIndexingOptions(td.documentDescription);
 
         template.id = UUID.randomUUID().toString();
         template.subnetCIDR = "10.1.0.0/16";

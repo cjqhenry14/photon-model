@@ -17,7 +17,6 @@ import java.net.URI;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.apache.commons.validator.routines.InetAddressValidator;
@@ -25,10 +24,12 @@ import org.apache.commons.validator.routines.InetAddressValidator;
 import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
+
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.UriUtils;
 
@@ -67,7 +68,7 @@ public class ComputeService extends StatefulService {
     /**
      * Compute State document.
      */
-    public static class ComputeState extends ServiceDocument {
+    public static class ComputeState extends ResourceState {
         public static final String FIELD_NAME_ID = "id";
         public static final String FIELD_NAME_DESCRIPTION_LINK = "descriptionLink";
         public static final String FIELD_NAME_RESOURCE_POOL_LINK = "resourcePoolLink";
@@ -78,16 +79,19 @@ public class ComputeService extends StatefulService {
         /**
          * Identifier of this compute instance.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String id;
 
         /**
          * URI reference to corresponding ComputeDescription.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String descriptionLink;
 
         /**
          * URI reference to corresponding resource pool.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String resourcePoolLink;
 
         /**
@@ -98,6 +102,7 @@ public class ComputeService extends StatefulService {
         /**
          * MAC address of this compute instance.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String primaryMAC;
 
         /**
@@ -113,6 +118,7 @@ public class ComputeService extends StatefulService {
         /**
          * URI reference to resource pool management site.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public URI adapterManagementReference;
 
         /**
@@ -124,16 +130,6 @@ public class ComputeService extends StatefulService {
          * Network interfaces associated with this compute instance.
          */
         public List<String> networkLinks;
-
-        /**
-         * Custom properties of this compute instance.
-         */
-        public Map<String, String> customProperties;
-
-        /**
-         * A list of tenant links which can access this compute resource.
-         */
-        public List<String> tenantLinks;
     }
 
     /**
@@ -296,45 +292,34 @@ public class ComputeService extends StatefulService {
     @Override
     public void handlePatch(Operation patch) {
         ComputeState currentState = getState(patch);
-        ComputeState patchBody = patch.getBody(ComputeState.class);
+        ComputeState patchBody = getBody(patch);
 
-        boolean isChanged = false;
-
-        if (patchBody.id != null && !patchBody.id.equals(currentState.id)) {
-            currentState.id = patchBody.id;
-            isChanged = true;
-        }
+        boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(), currentState, patchBody);
 
         if (patchBody.address != null
                 && !patchBody.address.equals(currentState.address)) {
             InetAddressValidator.getInstance().isValidInet4Address(
                     patchBody.address);
             currentState.address = patchBody.address;
-            isChanged = true;
+            hasStateChanged = true;
         }
 
         if (patchBody.powerState != null
                 && patchBody.powerState != PowerState.UNKNOWN
                 && patchBody.powerState != currentState.powerState) {
             currentState.powerState = patchBody.powerState;
-            isChanged = true;
-        }
-
-        if (patchBody.primaryMAC != null
-                && !patchBody.primaryMAC.equals(currentState.primaryMAC)) {
-            currentState.primaryMAC = patchBody.primaryMAC;
-            isChanged = true;
+            hasStateChanged = true;
         }
 
         if (patchBody.diskLinks != null) {
             if (currentState.diskLinks == null) {
                 currentState.diskLinks = patchBody.diskLinks;
-                isChanged = true;
+                hasStateChanged = true;
             } else {
                 for (String link : patchBody.diskLinks) {
                     if (!currentState.diskLinks.contains(link)) {
                         currentState.diskLinks.add(link);
-                        isChanged = true;
+                        hasStateChanged = true;
                     }
                 }
             }
@@ -343,56 +328,18 @@ public class ComputeService extends StatefulService {
         if (patchBody.networkLinks != null) {
             if (currentState.networkLinks == null) {
                 currentState.networkLinks = patchBody.networkLinks;
-                isChanged = true;
+                hasStateChanged = true;
             } else {
                 for (String link : patchBody.networkLinks) {
                     if (!currentState.networkLinks.contains(link)) {
                         currentState.networkLinks.add(link);
-                        isChanged = true;
+                        hasStateChanged = true;
                     }
                 }
             }
         }
 
-        if (patchBody.resourcePoolLink != null
-                && !patchBody.resourcePoolLink
-                        .equals(currentState.resourcePoolLink)) {
-            currentState.resourcePoolLink = patchBody.resourcePoolLink;
-            isChanged = true;
-        }
-
-        if (patchBody.adapterManagementReference != null
-                && !patchBody.adapterManagementReference
-                        .equals(currentState.adapterManagementReference)) {
-            currentState.adapterManagementReference = patchBody.adapterManagementReference;
-            isChanged = true;
-        }
-
-        if (patchBody.descriptionLink != null
-                && !patchBody.descriptionLink
-                        .equals(currentState.descriptionLink)) {
-            currentState.descriptionLink = patchBody.descriptionLink;
-            isChanged = true;
-        }
-
-        if (patchBody.customProperties != null
-                && !patchBody.customProperties.isEmpty()) {
-            if (currentState.customProperties == null
-                    || currentState.customProperties.isEmpty()) {
-                currentState.customProperties = patchBody.customProperties;
-            } else {
-                for (Map.Entry<String, String> e : patchBody.customProperties
-                        .entrySet()) {
-                    currentState.customProperties.put(e.getKey(), e.getValue());
-                }
-            }
-            isChanged = true;
-        }
-
-        if (!isChanged) {
-            patch.setStatusCode(Operation.STATUS_CODE_NOT_MODIFIED);
-        }
-        patch.complete();
+        ResourceUtils.complePatchOperation(patch, hasStateChanged);
     }
 
     @Override
@@ -405,7 +352,7 @@ public class ComputeService extends StatefulService {
         pdCustomProperties.indexingOptions = EnumSet
                 .of(ServiceDocumentDescription.PropertyIndexingOption.EXPAND);
 
-        ServiceDocumentDescription.expandTenantLinks(td.documentDescription);
+        ResourceUtils.updateIndexingOptions(td.documentDescription);
 
         ComputeState template = (ComputeState) td;
 

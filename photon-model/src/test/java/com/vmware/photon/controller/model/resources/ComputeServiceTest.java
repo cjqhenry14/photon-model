@@ -17,11 +17,13 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
@@ -34,6 +36,7 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
+
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.UriUtils;
@@ -279,6 +282,10 @@ public class ComputeServiceTest extends Suite {
             patchBody.resourcePoolLink = "http://newResourcePool";
             patchBody.adapterManagementReference = URI
                     .create("http://newAdapterManagementReference");
+            patchBody.tenantLinks = new ArrayList<String>();
+            patchBody.tenantLinks.add("tenant1");
+            patchBody.groupLinks = new HashSet<String>();
+            patchBody.groupLinks.add("group1");
             patchServiceSynchronously(returnState.documentSelfLink,
                     patchBody);
 
@@ -294,6 +301,8 @@ public class ComputeServiceTest extends Suite {
                     is(patchBody.resourcePoolLink));
             assertThat(getState.adapterManagementReference,
                     is(patchBody.adapterManagementReference));
+            assertEquals(getState.tenantLinks, patchBody.tenantLinks);
+            assertEquals(getState.groupLinks, patchBody.groupLinks);
         }
 
         @Test

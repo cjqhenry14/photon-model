@@ -14,15 +14,14 @@
 package com.vmware.photon.controller.model.resources;
 
 import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import com.vmware.photon.controller.model.UriPaths;
+
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.ServiceDocumentDescription;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.QueryTask;
@@ -44,7 +43,7 @@ public class ResourcePoolService extends StatefulService {
      * This class represents the document state associated with a
      * {@link ResourcePoolService} task.
      */
-    public static class ResourcePoolState extends ServiceDocument {
+    public static class ResourcePoolState extends ResourceState {
 
         /**
          * Enumeration used to define properties of the resource pool.
@@ -61,11 +60,13 @@ public class ResourcePoolService extends StatefulService {
         /**
          * Name of this resource pool.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String name;
 
         /**
          * Project name of this resource pool.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String projectName;
 
         /**
@@ -116,29 +117,19 @@ public class ResourcePoolService extends StatefulService {
         /**
          * Maximum CPU Cost (per minute) in this resource pool.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public Double maxCpuCostPerMinute;
 
         /**
          * Maximum Disk cost (per minute) in this resource pool.
          */
+        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public Double maxDiskCostPerMinute;
 
         /**
          * Currency unit used for pricing.
          */
         public String currencyUnit;
-
-        /**
-         * Custom property bag that can be used to store pool specific
-         * properties.
-         */
-        public Map<String, String> customProperties;
-
-        /**
-         * A list of tenant links which can access this resource pool,
-         * represented in the form of documentSelfLinks.
-         */
-        public List<String> tenantLinks;
 
         /**
          * Query description for the resource pool.
@@ -188,39 +179,11 @@ public class ResourcePoolService extends StatefulService {
     @Override
     public void handlePatch(Operation patch) {
         ResourcePoolState currentState = getState(patch);
-        ResourcePoolState patchBody = patch.getBody(ResourcePoolState.class);
+        ResourcePoolState patchBody = getBody(patch);
 
-        boolean isChanged = false;
-
-        if (patchBody.name != null && !patchBody.name.equals(currentState.name)) {
-            currentState.name = patchBody.name;
-            isChanged = true;
-        }
-
-        if (patchBody.maxCpuCostPerMinute != null
-                && !patchBody.maxCpuCostPerMinute
-                        .equals(currentState.maxCpuCostPerMinute)) {
-            currentState.maxCpuCostPerMinute = patchBody.maxCpuCostPerMinute;
-            isChanged = true;
-        }
-
-        if (patchBody.maxDiskCostPerMinute != null
-                && !patchBody.maxDiskCostPerMinute
-                        .equals(currentState.maxDiskCostPerMinute)) {
-            currentState.maxDiskCostPerMinute = patchBody.maxDiskCostPerMinute;
-            isChanged = true;
-        }
-
-        if (patchBody.projectName != null
-                && !patchBody.projectName.equals(currentState.projectName)) {
-            currentState.projectName = patchBody.projectName;
-            isChanged = true;
-        }
-
-        if (!isChanged) {
-            patch.setStatusCode(Operation.STATUS_CODE_NOT_MODIFIED);
-        }
-        patch.complete();
+        boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(),
+                currentState, patchBody);
+        ResourceUtils.complePatchOperation(patch, hasStateChanged);
     }
 
     public static void validateState(ResourcePoolState state) {
@@ -255,7 +218,7 @@ public class ResourcePoolService extends StatefulService {
     @Override
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
-        ServiceDocumentDescription.expandTenantLinks(td.documentDescription);
+        ResourceUtils.updateIndexingOptions(td.documentDescription);
         return td;
     }
 }

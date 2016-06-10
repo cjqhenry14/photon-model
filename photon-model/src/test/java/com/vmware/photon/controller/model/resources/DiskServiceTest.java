@@ -15,12 +15,14 @@ package com.vmware.photon.controller.model.resources;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.UUID;
 
 import org.junit.Before;
@@ -32,6 +34,7 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.RunnerBuilder;
 
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
+
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.UriUtils;
@@ -394,6 +397,8 @@ public class DiskServiceTest extends Suite {
             startState.authCredentialsLink = "auth-credentials-link1";
             startState.tenantLinks = new ArrayList<>();
             startState.tenantLinks.add("tenant-link1");
+            startState.groupLinks = new HashSet<String>();
+            startState.groupLinks.add("group1");
             startState.bootOrder = 1;
             startState.bootArguments = new String[] { "boot-argument1" };
             startState.currencyUnit = "currency-unit1";
@@ -411,6 +416,9 @@ public class DiskServiceTest extends Suite {
             patchState.bootOrder = 2;
             patchState.bootArguments = new String[] { "boot-argument2" };
             patchState.currencyUnit = "currency-unit2";
+            patchState.groupLinks = new HashSet<String>();
+            patchState.groupLinks.add("group2");
+
 
             patchServiceSynchronously(returnState.documentSelfLink,
                     patchState);
@@ -421,7 +429,9 @@ public class DiskServiceTest extends Suite {
                     is(startState.resourcePoolLink));
             assertThat(returnState.authCredentialsLink,
                     is(startState.authCredentialsLink));
-            assertThat(returnState.tenantLinks, is(startState.tenantLinks));
+            assertEquals(returnState.tenantLinks.size(), 2);
+            assertEquals(returnState.groupLinks.size(), 2);
+
             assertThat(returnState.bootOrder, is(startState.bootOrder));
             assertThat(returnState.bootArguments, is(startState.bootArguments));
             assertThat(returnState.currencyUnit, is(startState.currencyUnit));
