@@ -38,6 +38,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.QueryTask;
 import com.vmware.xenon.services.common.QueryTask.Query;
 import com.vmware.xenon.services.common.QueryTask.Query.Occurance;
@@ -357,7 +358,8 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         OperationJoin.JoinedCompletionHandler joinCompletion = (ox,
                 exc) -> {
             if (exc != null) {
-                logSevere("Failure creating compute descriptions:");
+                logSevere("Failure creating compute descriptions. Exception is %s",
+                        Utils.toString(exc));
                 AdapterUtils.sendFailurePatchToEnumerationTask(this,
                         context.cdState.parentTaskLink, exc.values().iterator().next());
             }

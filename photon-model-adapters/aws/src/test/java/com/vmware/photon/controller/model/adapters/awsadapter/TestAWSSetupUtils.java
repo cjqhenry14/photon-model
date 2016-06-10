@@ -151,6 +151,7 @@ public class TestAWSSetupUtils {
 
         awshostDescription.id = UUID.randomUUID().toString();
         awshostDescription.name = aws;
+        awshostDescription.environmentName = aws;
         awshostDescription.documentSelfLink = awshostDescription.id;
         awshostDescription.supportedChildren = new ArrayList<String>();
         awshostDescription.supportedChildren.add(ComputeType.VM_GUEST.name());

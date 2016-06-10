@@ -503,6 +503,7 @@ public class AWSInstanceService extends StatelessService {
                 OperationJoin.JoinedCompletionHandler joinCompletion = (ox,
                         exc) -> {
                     if (exc != null) {
+                        service.logSevere("Error updating VM state. %s", Utils.toString(exc));
                         AdapterUtils.sendFailurePatchToProvisioningTask(service,
                                 computeReq.provisioningTaskReference,
                                 new IllegalStateException("Error updating VM state"));

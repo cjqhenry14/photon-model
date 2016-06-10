@@ -209,11 +209,11 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
                 if (aws.enumerationHostMap
                         .containsKey(getHostEnumKey(aws.computeHostDescription))) {
                     logInfo("Enumeration for creation already started for %s",
-                            aws.computeHostDescription.name);
+                            aws.computeHostDescription.environmentName);
                 } else {
                     aws.enumerationHostMap.put(getHostEnumKey(aws.computeHostDescription), true);
                     logInfo("Started enumeration for creation for %s",
-                            aws.computeHostDescription.name);
+                            aws.computeHostDescription.environmentName);
                 }
                 aws.computeEnumerationRequest.enumerationAction = EnumerationAction.REFRESH;
                 handleEnumerationRequest(aws);
@@ -221,7 +221,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             case REFRESH:
                 if (aws.pageNo == 1) {
                     logInfo("Running enumeration service for creation in refresh mode for %s",
-                            aws.computeHostDescription.name);
+                            aws.computeHostDescription.environmentName);
                 }
                 logInfo("Processing page %d ", aws.pageNo);
                 aws.pageNo++;
@@ -235,11 +235,11 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
                 if (!aws.enumerationHostMap
                         .containsKey(getHostEnumKey(aws.computeHostDescription))) {
                     logInfo("Enumeration for creation is not running or has already been stopped for %s",
-                            aws.computeHostDescription.name);
+                            aws.computeHostDescription.environmentName);
                 } else {
                     aws.enumerationHostMap.remove(getHostEnumKey(aws.computeHostDescription));
                     logInfo("Stopping enumeration service for creation for %s",
-                            aws.computeHostDescription.name);
+                            aws.computeHostDescription.environmentName);
                 }
                 setOperationDurationStat(aws.awsAdapterOperation);
                 aws.awsAdapterOperation.complete();

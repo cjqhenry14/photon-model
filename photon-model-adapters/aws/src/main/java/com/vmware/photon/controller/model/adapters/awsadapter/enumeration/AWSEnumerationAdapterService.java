@@ -31,6 +31,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
@@ -242,7 +243,7 @@ public class AWSEnumerationAdapterService extends StatelessService {
             if (exc != null) {
                 logSevere(
                         "Error kicking off the enumeration workflows for AWS. %s",
-                        exc.values().iterator().next());
+                        Utils.toString(exc));
                 AdapterUtils.sendFailurePatchToEnumerationTask(this,
                         context.computeEnumerationRequest.enumerationTaskReference,
                         exc.values().iterator().next());

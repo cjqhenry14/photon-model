@@ -354,7 +354,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
             if (exc != null) {
                 logSevere(
                         "Error creating a compute state and the associated network %s",
-                        exc.get(0));
+                        Utils.toString(exc));
                 AdapterUtils.sendFailurePatchToEnumerationTask(this,
                         context.computeState.parentTaskLink, exc.values().iterator().next());
 
@@ -480,6 +480,10 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
                 NetworkState networkStateToUpdate = aws.vpcNetworkStateMap
                         .get(resultVPC.getVpcId());
                 networkStateToUpdate.subnetCIDR = resultVPC.getCidrBlock();
+                if (networkStateToUpdate.subnetCIDR == null) {
+                    service.logWarning("AWS did not return CIDR information for VPC %s",
+                            resultVPC.toString());
+                }
                 aws.vpcNetworkStateMap.put(resultVPC.getVpcId(), networkStateToUpdate);
             }
             aws.networkCreationStage = next;

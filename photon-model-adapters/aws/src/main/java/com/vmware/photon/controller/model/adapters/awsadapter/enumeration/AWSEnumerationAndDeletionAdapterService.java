@@ -156,28 +156,29 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
                 if (aws.enumerationHostMap
                         .containsKey(getHostEnumKey(aws.computeHostDescription))) {
                     logInfo("Enumeration for deletion already started for %s",
-                            aws.computeHostDescription.name);
+                            aws.computeHostDescription.environmentName);
                 } else {
                     aws.enumerationHostMap.put(getHostEnumKey(aws.computeHostDescription), true);
-                    logInfo("Started deletion enumeration for %s", aws.computeHostDescription.name);
+                    logInfo("Started deletion enumeration for %s",
+                            aws.computeHostDescription.environmentName);
                 }
                 aws.computeEnumerationRequest.enumerationAction = EnumerationAction.REFRESH;
                 handleEnumerationRequestForDeletion(aws);
                 break;
             case REFRESH:
                 logInfo("Running enumeration service for deletion in refresh mode for %s",
-                        aws.computeHostDescription.name);
+                        aws.computeHostDescription.environmentName);
                 deleteResourcesInLocalSystem(aws);
                 break;
             case STOP:
                 if (!aws.enumerationHostMap
                         .containsKey(getHostEnumKey(aws.computeHostDescription))) {
                     logInfo("Enumeration for deletion is not running or has already been stopped for %s",
-                            aws.computeHostDescription.name);
+                            aws.computeHostDescription.environmentName);
                 } else {
                     aws.enumerationHostMap.remove(getHostEnumKey(aws.computeHostDescription));
                     logInfo("Stopping deletion enumeration service for %s",
-                            aws.computeHostDescription.name);
+                            aws.computeHostDescription.environmentName);
                 }
                 setOperationDurationStat(aws.awsAdapterOperation);
                 aws.awsAdapterOperation.complete();
@@ -284,10 +285,13 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
                 .setQuery(query).setResultLimit(resultLimit);
         queryTaskBuilder.addOption(QueryOption.EXPAND_CONTENT);
 
+        QueryTask queryTask = queryTaskBuilder.build();
+        queryTask.tenantLinks = queryTask.tenantLinks = aws.computeHostDescription.tenantLinks;
+
         // create the query to find resources
         sendRequest(Operation
                 .createPost(this, ServiceUriPaths.CORE_QUERY_TASKS)
-                .setBody(queryTaskBuilder.build())
+                .setBody(queryTask)
                 .setCompletion((o, e) -> {
                     if (e != null) {
                         logSevere("Failure retrieving query results: %s",
