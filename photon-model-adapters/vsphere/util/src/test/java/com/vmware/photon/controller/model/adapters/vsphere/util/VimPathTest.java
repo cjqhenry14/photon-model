@@ -11,16 +11,25 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package com.vmware.photon.controller.model.adapters.vsphere;
+package com.vmware.photon.controller.model.adapters.vsphere.util;
+
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
+import com.vmware.photon.controller.model.adapters.vsphere.util.VimPath;
 
 /**
- * Hosts vim-api related strings (types, property names, paths. etc)
  */
-public class VimNames {
-    public static final String TYPE_VM = "VirtualMachine";
-    public static final String PATH_POWER_STATE = "runtime.powerState";
-    public static final String PATH_INSTANCE_UUID = "config.instanceUuid";
-    public static final String PATH_HARDWARE_DEVICE = "config.hardware.device";
-    public static final String PATH_CONFIG_NAME = "config.name";
-    public static final String PATH_EXTRA_CONFIG = "config.extraConfig";
+public class VimPathTest {
+
+    @Test
+    public void testSimpleProp() {
+
+        assertEquals("summary.guest", VimPath.vm_summary_guest);
+        assertEquals("summary", VimPath.vm_summary);
+
+        assertEquals("summary.quickStats", VimPath.vm_summary_quickStats);
+        assertEquals("summary.quickStats.compressedMemory", VimPath.vm_summary_quickStats_compressedMemory);
+    }
 }

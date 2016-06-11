@@ -93,6 +93,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
 
         if (request.isMockRequest) {
             mgr.patchTask(TaskStage.FINISHED);
+            return;
         }
 
         URI parentUri = ComputeStateWithDescription

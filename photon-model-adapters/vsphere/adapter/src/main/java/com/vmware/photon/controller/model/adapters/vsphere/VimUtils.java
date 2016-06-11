@@ -16,6 +16,8 @@ package com.vmware.photon.controller.model.adapters.vsphere;
 import java.lang.reflect.Constructor;
 import java.net.URI;
 
+import com.vmware.photon.controller.model.adapters.vsphere.util.VimNames;
+import com.vmware.photon.controller.model.adapters.vsphere.util.VimPath;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.WaitForValues;
 import com.vmware.vim25.InvalidCollectorVersionFaultMsg;
@@ -149,8 +151,8 @@ public final class VimUtils {
         WaitForValues waitForValues = new WaitForValues(connection);
 
         Object[] info = waitForValues.wait(task,
-                new String[] { "info" },
-                new String[] { "info.state" },
+                new String[] { VimPath.task_info },
+                new String[] { VimPath.task_info_state },
                 new Object[][] { new Object[] {
                         TaskInfoState.SUCCESS,
                         TaskInfoState.ERROR

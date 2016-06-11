@@ -20,6 +20,8 @@ import java.util.Iterator;
 import java.util.List;
 
 import com.vmware.photon.controller.model.adapters.vsphere.InstanceClient.ClientException;
+import com.vmware.photon.controller.model.adapters.vsphere.util.VimNames;
+import com.vmware.photon.controller.model.adapters.vsphere.util.VimPath;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BaseHelper;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
@@ -98,20 +100,20 @@ public class EnumerationClient extends BaseHelper {
 
         // RP -> VM
         TraversalSpec rpToVm = new TraversalSpec();
+        rpToVm.setType(VimNames.TYPE_RESOURCE_POOL);
         rpToVm.setName("rpToVm");
-        rpToVm.setType("ResourcePool");
         rpToVm.setPath("vm");
         rpToVm.setSkip(Boolean.FALSE);
 
         // vApp -> VM
         TraversalSpec vAppToVM = new TraversalSpec();
+        vAppToVM.setType(VimNames.TYPE_VAPP);
         vAppToVM.setName("vAppToVM");
-        vAppToVM.setType("VirtualApp");
         vAppToVM.setPath("vm");
 
         // HostSystem -> VM
         TraversalSpec hToVm = new TraversalSpec();
-        hToVm.setType("HostSystem");
+        hToVm.setType(VimNames.TYPE_HOST);
         hToVm.setPath("vm");
         hToVm.setName("hToVm");
         hToVm.getSelectSet().add(getSelectionSpec("VisitFolders"));
@@ -119,47 +121,47 @@ public class EnumerationClient extends BaseHelper {
 
         // DC -> DS
         TraversalSpec dcToDs = new TraversalSpec();
-        dcToDs.setType("Datacenter");
+        dcToDs.setType(VimNames.TYPE_DATACENTER);
         dcToDs.setPath("datastore");
         dcToDs.setName("dcToDs");
         dcToDs.setSkip(Boolean.FALSE);
 
         // Recurse through all ResourcePools
         TraversalSpec rpToRp = new TraversalSpec();
-        rpToRp.setType("ResourcePool");
+        rpToRp.setType(VimNames.TYPE_RESOURCE_POOL);
         rpToRp.setPath("resourcePool");
         rpToRp.setSkip(Boolean.FALSE);
         rpToRp.setName("rpToRp");
         rpToRp.getSelectSet().add(getSelectionSpec("rpToRp"));
 
         TraversalSpec crToRp = new TraversalSpec();
-        crToRp.setType("ComputeResource");
+        crToRp.setType(VimNames.TYPE_COMPUTE_RESOURCE);
         crToRp.setPath("resourcePool");
         crToRp.setSkip(Boolean.FALSE);
         crToRp.setName("crToRp");
         crToRp.getSelectSet().add(getSelectionSpec("rpToRp"));
 
         TraversalSpec crToH = new TraversalSpec();
+        crToH.setType(VimNames.TYPE_COMPUTE_RESOURCE);
         crToH.setSkip(Boolean.FALSE);
-        crToH.setType("ComputeResource");
         crToH.setPath("host");
         crToH.setName("crToH");
 
         TraversalSpec dcToHf = new TraversalSpec();
+        dcToHf.setType(VimNames.TYPE_DATACENTER);
         dcToHf.setSkip(Boolean.FALSE);
-        dcToHf.setType("Datacenter");
         dcToHf.setPath("hostFolder");
         dcToHf.setName("dcToHf");
         dcToHf.getSelectSet().add(getSelectionSpec("VisitFolders"));
 
         TraversalSpec vAppToRp = new TraversalSpec();
+        vAppToRp.setType(VimNames.TYPE_VAPP);
         vAppToRp.setName("vAppToRp");
-        vAppToRp.setType("VirtualApp");
         vAppToRp.setPath("resourcePool");
         vAppToRp.getSelectSet().add(getSelectionSpec("rpToRp"));
 
         TraversalSpec dcToVmf = new TraversalSpec();
-        dcToVmf.setType("Datacenter");
+        dcToVmf.setType(VimNames.TYPE_DATACENTER);
         dcToVmf.setSkip(Boolean.FALSE);
         dcToVmf.setPath("vmFolder");
         dcToVmf.setName("dcToVmf");
@@ -167,11 +169,12 @@ public class EnumerationClient extends BaseHelper {
 
         // For Folder -> Folder recursion
         TraversalSpec visitFolders = new TraversalSpec();
-        visitFolders.setType("Folder");
+        visitFolders.setType(VimNames.TYPE_FOLDER);
         visitFolders.setPath("childEntity");
         visitFolders.setSkip(Boolean.FALSE);
         visitFolders.setName("VisitFolders");
-        List<SelectionSpec> sspecarrvf = new ArrayList<SelectionSpec>();
+
+        List<SelectionSpec> sspecarrvf = new ArrayList<>();
         sspecarrvf.add(getSelectionSpec("crToRp"));
         sspecarrvf.add(getSelectionSpec("crToH"));
         sspecarrvf.add(getSelectionSpec("dcToVmf"));
@@ -185,7 +188,7 @@ public class EnumerationClient extends BaseHelper {
 
         visitFolders.getSelectSet().addAll(sspecarrvf);
 
-        List<SelectionSpec> resultspec = new ArrayList<SelectionSpec>();
+        List<SelectionSpec> resultspec = new ArrayList<>();
         resultspec.add(visitFolders);
         resultspec.add(crToRp);
         resultspec.add(crToH);
@@ -211,22 +214,22 @@ public class EnumerationClient extends BaseHelper {
         PropertySpec vmSpec = new PropertySpec();
         vmSpec.setType(VimNames.TYPE_VM);
         vmSpec.getPathSet().addAll(Arrays.asList(
-                "config.name",
-                VimNames.PATH_INSTANCE_UUID,
-                VimNames.PATH_HARDWARE_DEVICE,
-                "summary.config.numCpu",
-                VimNames.PATH_EXTRA_CONFIG,
-                VimNames.PATH_POWER_STATE,
-                "runtime.maxCpuUsage",
-                "runtime.maxMemoryUsage"
+                VimPath.vm_config_name,
+                VimPath.vm_config_instanceUuid,
+                VimPath.vm_config_hardware_device,
+                VimPath.vm_summary_config_numCpu,
+                VimPath.vm_config_extraConfig,
+                VimPath.vm_runtime_powerState,
+                VimPath.vm_runtime_maxCpuUsage,
+                VimPath.vm_runtime_maxMemoryUsage
         ));
 
         PropertySpec hostSpec = new PropertySpec();
-        hostSpec.setType("HostSystem");
+        hostSpec.setType(VimNames.TYPE_HOST);
         hostSpec.getPathSet().addAll(Arrays.asList(
-                "summary.hardware.memorySize",
-                "summary.hardware.cpuMhz",
-                "summary.hardware.numCpuCores",
+                VimPath.host_summary_hardware_memorySize,
+                VimPath.host_summary_hardware_cpuMhz,
+                VimPath.host_summary_hardware_numCpuCores,
                 "name"
         ));
 

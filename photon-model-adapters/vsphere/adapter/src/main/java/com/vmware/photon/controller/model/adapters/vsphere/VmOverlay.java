@@ -15,6 +15,8 @@ package com.vmware.photon.controller.model.adapters.vsphere;
 
 import java.util.Map;
 
+import com.vmware.photon.controller.model.adapters.vsphere.util.VimNames;
+import com.vmware.photon.controller.model.adapters.vsphere.util.VimPath;
 import com.vmware.photon.controller.model.resources.ComputeService.PowerState;
 
 import com.vmware.vim25.ArrayOfOptionValue;
@@ -43,19 +45,19 @@ public class VmOverlay extends AbstractOverlay {
 
     public PowerState getPowerState() {
         return VSphereToPhotonMapping.convertPowerState(
-                (VirtualMachinePowerState) getOrFail(VimNames.PATH_POWER_STATE));
+                (VirtualMachinePowerState) getOrFail(VimPath.vm_runtime_powerState));
     }
 
     public String getInstanceUuid() {
-        return (String) getOrFail(VimNames.PATH_INSTANCE_UUID);
+        return (String) getOrFail(VimPath.vm_config_instanceUuid);
     }
 
     public String getName() {
-        return (String) getOrFail(VimNames.PATH_CONFIG_NAME);
+        return (String) getOrFail(VimPath.vm_config_name);
     }
 
     public String getParentLink() {
-        ArrayOfOptionValue arr = (ArrayOfOptionValue) getOrFail(VimNames.PATH_EXTRA_CONFIG);
+        ArrayOfOptionValue arr = (ArrayOfOptionValue) getOrFail(VimPath.vm_config_extraConfig);
         for (OptionValue ov : arr.getOptionValue()) {
             if (InstanceClient.CONFIG_PARENT_LINK.equals(ov.getKey())) {
                 return (String) ov.getValue();
@@ -66,7 +68,7 @@ public class VmOverlay extends AbstractOverlay {
     }
 
     public String getDescriptionLink() {
-        ArrayOfOptionValue arr = (ArrayOfOptionValue) getOrFail("config.extraConfig");
+        ArrayOfOptionValue arr = (ArrayOfOptionValue) getOrFail(VimPath.vm_config_extraConfig);
         for (OptionValue ov : arr.getOptionValue()) {
             if (InstanceClient.CONFIG_DESC_LINK.equals(ov.getKey())) {
                 return (String) ov.getValue();
@@ -77,7 +79,7 @@ public class VmOverlay extends AbstractOverlay {
     }
 
     public String getPrimaryMac() {
-        ArrayOfVirtualDevice devices = (ArrayOfVirtualDevice) getOrFail(VimNames.PATH_HARDWARE_DEVICE);
+        ArrayOfVirtualDevice devices = (ArrayOfVirtualDevice) getOrFail(VimPath.vm_config_hardware_device);
         for (VirtualDevice dev : devices.getVirtualDevice()) {
             if (dev instanceof VirtualEthernetCard) {
                 return ((VirtualEthernetCard) dev).getMacAddress();

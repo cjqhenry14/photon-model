@@ -15,6 +15,7 @@ package com.vmware.photon.controller.model.adapters.vsphere;
 
 import java.util.concurrent.TimeUnit;
 
+import com.vmware.photon.controller.model.adapters.vsphere.util.VimPath;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BaseHelper;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
@@ -116,8 +117,8 @@ public class PowerStateClient extends BaseHelper {
         }
 
         Object[] currentPowerState = wait.wait(vm,
-                new String[] { VimNames.PATH_POWER_STATE },
-                new String[] { VimNames.PATH_POWER_STATE },
+                new String[] { VimPath.vm_runtime_powerState },
+                new String[] { VimPath.vm_runtime_powerState },
                 new Object[][] {
                         new Object[] {
                                 VirtualMachinePowerState.POWERED_OFF
@@ -133,7 +134,7 @@ public class PowerStateClient extends BaseHelper {
 
     public PowerState getPowerState(ManagedObjectReference vm) throws InvalidPropertyFaultMsg,
             RuntimeFaultFaultMsg {
-        VirtualMachinePowerState vmps = get.entityProp(vm, VimNames.PATH_POWER_STATE);
+        VirtualMachinePowerState vmps = get.entityProp(vm, VimPath.vm_runtime_powerState);
         return VSphereToPhotonMapping.convertPowerState(vmps);
     }
 }

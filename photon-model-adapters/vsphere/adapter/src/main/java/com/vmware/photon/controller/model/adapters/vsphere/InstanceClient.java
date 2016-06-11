@@ -24,6 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import com.vmware.photon.controller.model.adapters.vsphere.util.VimPath;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BaseHelper;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
@@ -491,9 +492,9 @@ public class InstanceClient extends BaseHelper {
     private void enrichStateFromVm(ComputeState state, ManagedObjectReference ref)
             throws InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
         Map<String, Object> props = get.entityProps(ref,
-                VimNames.PATH_INSTANCE_UUID,
-                VimNames.PATH_CONFIG_NAME,
-                VimNames.PATH_HARDWARE_DEVICE);
+                VimPath.vm_config_instanceUuid,
+                VimPath.vm_config_name,
+                VimPath.vm_config_hardware_device);
 
         VmOverlay vm = new VmOverlay(ref, props);
         state.id = vm.getInstanceUuid();
