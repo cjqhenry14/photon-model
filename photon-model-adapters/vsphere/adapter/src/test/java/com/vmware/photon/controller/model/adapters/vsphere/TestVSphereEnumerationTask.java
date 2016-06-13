@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
@@ -129,6 +130,7 @@ public class TestVSphereEnumerationTask extends BasicReusableHostTestCase {
         return returnPool;
     }
 
+    @Ignore
     @Test
     public void testRefresh() throws Throwable {
         // Create a resource pool where the VM will be housed
