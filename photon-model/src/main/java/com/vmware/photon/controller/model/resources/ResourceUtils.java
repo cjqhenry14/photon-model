@@ -65,12 +65,15 @@ public class ResourceUtils {
             if (source.tenantLinks == null
                     || source.tenantLinks.isEmpty()) {
                 source.tenantLinks = patch.tenantLinks;
+                isChanged = true;
             } else {
                 for (String e : patch.tenantLinks) {
-                    source.tenantLinks.add(e);
+                    if (!source.tenantLinks.contains(e)) {
+                        source.tenantLinks.add(e);
+                        isChanged = true;
+                    }
                 }
             }
-            isChanged = true;
         }
 
         if (patch.groupLinks != null
@@ -78,12 +81,12 @@ public class ResourceUtils {
             if (source.groupLinks == null
                     || source.groupLinks.isEmpty()) {
                 source.groupLinks = patch.groupLinks;
+                isChanged = true;
             } else {
-                for (String e : patch.groupLinks) {
-                    source.groupLinks.add(e);
+                if (source.groupLinks.addAll(patch.groupLinks)) {
+                    isChanged = true;
                 }
             }
-            isChanged = true;
         }
         return isChanged;
     }
