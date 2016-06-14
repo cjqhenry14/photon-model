@@ -16,6 +16,8 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.HYPHEN;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PRIVATE_INTERFACE;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PUBLIC_INTERFACE;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.allocateSecurityGroup;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getSecurityGroup;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -38,6 +40,7 @@ import com.amazonaws.services.ec2.model.TerminateInstancesResult;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManagerFactory;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
@@ -76,12 +79,12 @@ public class AWSInstanceService extends StatelessService {
     private static final String AWS_TERMINATED_NAME = "terminated";
 
     public AWSInstanceService() {
-        this.clientManager = new AWSClientManager();
+        this.clientManager = AWSClientManagerFactory.getClientManager(false);
     }
 
     @Override
     public void handleStop(Operation op) {
-        this.clientManager.cleanUp();
+        AWSClientManagerFactory.returnClientManager(this.clientManager, false);
         super.handleStop(op);
     }
 
@@ -166,7 +169,7 @@ public class AWSInstanceService extends StatelessService {
             getVMDisks(aws, AWSStages.FIREWALL);
             break;
         case FIREWALL:
-            aws.securityGroupId = aws.fwService.allocateSecurityGroup(aws);
+            aws.securityGroupId = allocateSecurityGroup(aws);
             aws.subnetId = getSubnetId(aws);
             aws.stage = AWSStages.CREATE;
             handleAllocation(aws);
@@ -355,8 +358,7 @@ public class AWSInstanceService extends StatelessService {
         //
         // This will be removed in EN-1251
         if (aws.securityGroupId == null) {
-            aws.securityGroupId = aws.fwService.getSecurityGroup(
-                    aws.amazonEC2Client).getGroupId();
+            aws.securityGroupId = getSecurityGroup(aws.amazonEC2Client).getGroupId();
             // if we still don't have it kill allocation
             if (aws.securityGroupId == null) {
                 aws.error = new IllegalStateException("SecurityGroup not found");

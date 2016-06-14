@@ -19,9 +19,9 @@ import com.vmware.photon.controller.model.UriPaths;
  * URI definitions for AWS adapters.
  */
 public class AWSUriPaths {
-
+    public static final String AWS = "/aws";
     public static final String PROVISIONING_AWS = UriPaths.PROVISIONING
-            + "/aws";
+            + AWS;
     public static final String AWS_INSTANCE_ADAPTER = PROVISIONING_AWS
             + "/instance-adapter";
     public static final String AWS_NETWORK_ADAPTER = PROVISIONING_AWS

@@ -15,6 +15,8 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 
 import static org.junit.Assert.assertTrue;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getDefaultVPCSubnet;
+
 import java.util.List;
 
 import com.amazonaws.AmazonServiceException;
@@ -33,6 +35,8 @@ import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 import com.vmware.photon.controller.model.tasks.TaskUtils;
 
 import com.vmware.xenon.common.CommandLineArgumentParser;
+import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.test.VerificationHost;
 
 
@@ -74,6 +78,10 @@ public class TestAWSNetworkService {
             ProvisioningUtils.startProvisioningServices(this.host);
 
             this.netSvc = new AWSNetworkService();
+            host.startService(
+                    Operation.createPost(UriUtils.buildUri(host,
+                            AWSNetworkService.class)),
+                    this.netSvc);
             this.aws = new AWSAllocation(null);
             this.aws.amazonEC2Client = TestUtils.getClient(this.privateKeyId,
                     this.privateKey, this.region, false);
@@ -87,7 +95,6 @@ public class TestAWSNetworkService {
         if (this.host == null) {
             return;
         }
-
         this.host.tearDownInProcessPeers();
         this.host.toggleNegativeTestMode(false);
         this.host.tearDown();
@@ -95,7 +102,7 @@ public class TestAWSNetworkService {
 
     @Test
     public void testGetDefaultVPCSubnet() throws Throwable {
-        String sub = this.netSvc.getDefaultVPCSubnet(aws);
+        String sub = getDefaultVPCSubnet(aws);
         // should always return an RFC1918 address
         TaskUtils.isRFC1918(sub);
     }

@@ -16,6 +16,18 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.DEFAULT_ALLOWED_NETWORK;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.DEFAULT_ALLOWED_PORTS;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.DEFAULT_PROTOCOL;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.DEFAULT_SECURITY_GROUP_DESC;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.DEFAULT_SECURITY_GROUP_NAME;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.allocateSecurityGroup;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.buildRules;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.createSecurityGroup;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getDefaultRules;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getSecurityGroup;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.updateIngressRules;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +46,8 @@ import com.vmware.photon.controller.model.resources.FirewallService.FirewallStat
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 
 import com.vmware.xenon.common.CommandLineArgumentParser;
+import com.vmware.xenon.common.Operation;
+import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.test.VerificationHost;
 
 public class TestAWSFirewallService {
@@ -76,6 +90,10 @@ public class TestAWSFirewallService {
             this.host.start();
             ProvisioningUtils.startProvisioningServices(this.host);
             this.svc = new AWSFirewallService();
+            host.startService(
+                    Operation.createPost(UriUtils.buildUri(host,
+                            AWSFirewallService.class)),
+                    this.svc);
             this.client = TestUtils.getClient(this.privateKeyId,this.privateKey,this.region,false);
             // legacy that can be removed when instance
             // refactored
@@ -92,7 +110,6 @@ public class TestAWSFirewallService {
         if (this.host == null) {
             return;
         }
-
         this.host.tearDownInProcessPeers();
         this.host.toggleNegativeTestMode(false);
         this.host.tearDown();
@@ -104,7 +121,7 @@ public class TestAWSFirewallService {
     @Test
     public void testInvalidGetSecurityGroup() throws Throwable {
         expectedEx.expect(AmazonServiceException.class);
-        svc.getSecurityGroup(this.client, "foo-bar");
+        getSecurityGroup(this.client, "foo-bar");
     }
 
     /*
@@ -113,8 +130,8 @@ public class TestAWSFirewallService {
      */
     @Test
     public void testDefaultSecurityGroup() throws Throwable {
-        svc.createSecurityGroup(this.client, null);
-        svc.getSecurityGroup(this.client);
+        createSecurityGroup(this.client, null);
+        getSecurityGroup(this.client);
         svc.deleteSecurityGroup(this.client);
     }
 
@@ -126,13 +143,13 @@ public class TestAWSFirewallService {
     @Test
     public void testDefaultSecurityGroupPorts() throws Throwable {
         // create the group
-        String groupId = svc.createSecurityGroup(this.client, null);
+        String groupId = createSecurityGroup(this.client, null);
 
         // allow the default ports
-        svc.updateIngressRules(this.client, groupId, svc.getDefaultRules(this.subnet));
+        updateIngressRules(this.client, groupId, getDefaultRules(this.subnet));
 
         // get the updated CM group
-        SecurityGroup group = svc.getSecurityGroup(this.client);
+        SecurityGroup group = getSecurityGroup(this.client);
 
         List<IpPermission> rules = group.getIpPermissions();
 
@@ -162,8 +179,8 @@ public class TestAWSFirewallService {
      */
     @Test
     public void testAllocateSecurityGroup() throws Throwable {
-        svc.allocateSecurityGroup(this.aws);
-        SecurityGroup group = svc.getSecurityGroup(this.client);
+        allocateSecurityGroup(this.aws);
+        SecurityGroup group = getSecurityGroup(this.client);
         validateDefaultRules(group.getIpPermissions());
         svc.deleteSecurityGroup(this.client);
     }
@@ -173,21 +190,18 @@ public class TestAWSFirewallService {
      */
     @Test
     public void testAllocateSecurityGroupUpdate() throws Throwable {
-        String groupId = svc.createSecurityGroup(this.client,
-                AWSFirewallService.DEFAULT_SECURITY_GROUP_NAME,
-                AWSFirewallService.DEFAULT_SECURITY_GROUP_DESC,
-                null);
+        String groupId = createSecurityGroup(this.client,
+                DEFAULT_SECURITY_GROUP_NAME, DEFAULT_SECURITY_GROUP_DESC, null);
 
         List<IpPermission> rules = new ArrayList<>();
         rules.add(new IpPermission()
-                .withIpProtocol(AWSFirewallService.DEFAULT_PROTOCOL)
+                .withIpProtocol(DEFAULT_PROTOCOL)
                 .withFromPort(22)
                 .withToPort(22)
-                .withIpRanges(AWSFirewallService.DEFAULT_ALLOWED_NETWORK));
-        svc.updateIngressRules(this.client, groupId, rules);
-        svc.allocateSecurityGroup(this.aws);
-        SecurityGroup updatedGroup = svc.getSecurityGroup(this.client,
-                AWSFirewallService.DEFAULT_SECURITY_GROUP_NAME);
+                .withIpRanges(DEFAULT_ALLOWED_NETWORK));
+        updateIngressRules(this.client, groupId, rules);
+        allocateSecurityGroup(this.aws);
+        SecurityGroup updatedGroup = getSecurityGroup(this.client, DEFAULT_SECURITY_GROUP_NAME);
         validateDefaultRules(updatedGroup.getIpPermissions());
         svc.deleteSecurityGroup(this.client);
     }
@@ -199,12 +213,11 @@ public class TestAWSFirewallService {
     @Test
     public void testBuildRules() throws Throwable {
         ArrayList<Allow> rules = TestUtils.getAllowIngressRules();
-        List<IpPermission> awsRules = svc.buildRules(rules);
+        List<IpPermission> awsRules = buildRules(rules);
 
         for (IpPermission rule : awsRules) {
             assertDefaultRules(rule);
         }
-
     }
 
 
@@ -215,9 +228,9 @@ public class TestAWSFirewallService {
 
     @Test
     public void testUpdateIngressRules() throws Throwable {
-        String groupID = svc.createSecurityGroup(this.client, null);
+        String groupID = createSecurityGroup(this.client, null);
         ArrayList<Allow> rules = TestUtils.getAllowIngressRules();
-        svc.updateIngressRules(this.client,groupID,svc.buildRules(rules));
+        updateIngressRules(this.client, groupID, buildRules(rules));
         SecurityGroup awsSG = svc.getSecurityGroupByID(this.client,groupID);
 
         List<IpPermission> ingress = awsSG.getIpPermissions();
@@ -231,27 +244,27 @@ public class TestAWSFirewallService {
     }
 
     private void assertDefaultRules(IpPermission rule) {
-        assertTrue(rule.getIpProtocol().equalsIgnoreCase(AWSFirewallService.DEFAULT_PROTOCOL));
-        assertTrue(rule.getIpRanges().get(0).equalsIgnoreCase(AWSFirewallService.DEFAULT_ALLOWED_NETWORK));
+        assertTrue(rule.getIpProtocol().equalsIgnoreCase(DEFAULT_PROTOCOL));
+        assertTrue(rule.getIpRanges().get(0).equalsIgnoreCase(DEFAULT_ALLOWED_NETWORK));
         assertTrue(rule.getFromPort() == 22 || rule.getFromPort() == 80 || rule.getFromPort() == 41000);
         assertTrue(rule.getToPort() == 22 || rule.getToPort() == 80 || rule.getToPort() == 42000);
     }
 
     private void validateDefaultRules(List<IpPermission> rules) throws Throwable {
         ArrayList<Integer> ports = new ArrayList<>();
-        for (int port : AWSFirewallService.DEFAULT_ALLOWED_PORTS) {
+        for (int port : DEFAULT_ALLOWED_PORTS) {
             ports.add(port);
         }
 
         for (IpPermission rule : rules) {
-            assertTrue(rule.getIpProtocol().equalsIgnoreCase(AWSFirewallService.DEFAULT_PROTOCOL));
+            assertTrue(rule.getIpProtocol().equalsIgnoreCase(DEFAULT_PROTOCOL));
             if (rule.getFromPort() == 1) {
                 assertTrue(rule.getIpRanges().get(0)
                         .equalsIgnoreCase(this.subnet));
                 assertTrue(rule.getToPort() == 65535);
             } else {
                 assertTrue(rule.getIpRanges().get(0)
-                        .equalsIgnoreCase(AWSFirewallService.DEFAULT_ALLOWED_NETWORK));
+                        .equalsIgnoreCase(DEFAULT_ALLOWED_NETWORK));
                 assertEquals(rule.getFromPort(), rule.getToPort());
                 assertTrue(ports.contains(rule.getToPort()));
             }

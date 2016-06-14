@@ -50,6 +50,14 @@ public class AWSConstants {
             + AWSConstants.CLIENT_CACHE_INITIAL_SIZE;
     public static int CLIENT_CACHE_INITIAL_SIZE = Integer.getInteger(
             PROPERTY_NAME_CLIENT_CACHE_INITIAL_SIZE, 16);
+    public static final String PROPERTY_NAME_THREAD_POOL_CACHE_MAX_SIZE = UriPaths.PROPERTY_PREFIX
+            + AWSConstants.THREAD_POOL_CACHE_MAX_SIZE;
+    public static int THREAD_POOL_CACHE_MAX_SIZE = Integer.getInteger(
+            PROPERTY_NAME_CLIENT_CACHE_MAX_SIZE, 10);
+    public static final String PROPERTY_NAME_THREAD_POOL_CACHE_INITIAL_SIZE = UriPaths.PROPERTY_PREFIX
+            + AWSConstants.THREAD_POOL_CACHE_INITIAL_SIZE;
+    public static int THREAD_POOL_CACHE_INITIAL_SIZE = Integer.getInteger(
+            PROPERTY_NAME_CLIENT_CACHE_INITIAL_SIZE, 5);
 
     // AWS Metric related Constants
     public static final String CPU_UTILIZATION = "CPUUtilization";
@@ -106,4 +114,21 @@ public class AWSConstants {
     public static int getClientCacheInitialSize() {
         return CLIENT_CACHE_INITIAL_SIZE;
     }
+
+    public static void setThreadPoolCacheMaxSize(int size) {
+        THREAD_POOL_CACHE_MAX_SIZE = size;
+    }
+
+    public static int getThreadPoolCacheMaxSize() {
+        return THREAD_POOL_CACHE_MAX_SIZE;
+    }
+
+    public static void setThreadPoolCacheInitialSize(int size) {
+        THREAD_POOL_CACHE_INITIAL_SIZE = size;
+    }
+
+    public static int getThreadPoolCacheInitialSize() {
+        return THREAD_POOL_CACHE_INITIAL_SIZE;
+    }
+
 }

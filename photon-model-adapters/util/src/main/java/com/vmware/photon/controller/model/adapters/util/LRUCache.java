@@ -38,7 +38,7 @@ public class LRUCache<K, V> extends LinkedHashMap<K, V> {
      *This method is called each time a new entry is added to the map. It does bounds checking to see if the map
      *has grown to its maximum size and then evicts entries based on the set algorithm (access order or insertion order).
      */
-    protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+    protected synchronized boolean removeEldestEntry(Map.Entry<K, V> eldest) {
         return this.size() > maxSize;
     }
 }

@@ -36,6 +36,7 @@ import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService.AWSEnumerationRequest;
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManagerFactory;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
@@ -74,7 +75,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
 
     public AWSEnumerationAndDeletionAdapterService() {
         super.toggleOption(ServiceOption.INSTRUMENTATION, true);
-        this.clientManager = new AWSClientManager();
+        this.clientManager = AWSClientManagerFactory.getClientManager(false);
     }
 
     /**
@@ -122,7 +123,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
 
     @Override
     public void handleStop(Operation op) {
-        this.clientManager.cleanUp();
+        AWSClientManagerFactory.returnClientManager(this.clientManager, false);
         super.handleStop(op);
     }
 

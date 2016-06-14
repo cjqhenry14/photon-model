@@ -50,6 +50,7 @@ import com.amazonaws.services.ec2.model.Vpc;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils;
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManagerFactory;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
@@ -97,7 +98,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
 
     public AWSComputeStateCreationAdapterService() {
         super.toggleOption(ServiceOption.INSTRUMENTATION, true);
-        this.clientManager = new AWSClientManager();
+        this.clientManager = AWSClientManagerFactory.getClientManager(false);
     }
 
     /**
@@ -147,7 +148,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
 
     @Override
     public void handleStop(Operation op) {
-        this.clientManager.cleanUp();
+        AWSClientManagerFactory.returnClientManager(this.clientManager, false);
         super.handleStop(op);
     }
 

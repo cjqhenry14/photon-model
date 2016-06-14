@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.DEFAULT_ALLOWED_NETWORK;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.DEFAULT_PROTOCOL;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.zoneId;
 
 import java.net.URI;
@@ -63,22 +65,22 @@ public class TestUtils {
         ArrayList<FirewallService.FirewallState.Allow> rules = new ArrayList<>();
 
         FirewallService.FirewallState.Allow ssh = new FirewallService.FirewallState.Allow();
-        ssh.protocol = AWSFirewallService.DEFAULT_PROTOCOL;
-        ssh.ipRange = AWSFirewallService.DEFAULT_ALLOWED_NETWORK;
+        ssh.protocol = DEFAULT_PROTOCOL;
+        ssh.ipRange = DEFAULT_ALLOWED_NETWORK;
         ssh.ports = new ArrayList<String>();
         ssh.ports.add("22");
         rules.add(ssh);
 
         FirewallService.FirewallState.Allow http = new FirewallService.FirewallState.Allow();
-        http.protocol = AWSFirewallService.DEFAULT_PROTOCOL;
-        http.ipRange = AWSFirewallService.DEFAULT_ALLOWED_NETWORK;
+        http.protocol = DEFAULT_PROTOCOL;
+        http.ipRange = DEFAULT_ALLOWED_NETWORK;
         http.ports = new ArrayList<String>();
         http.ports.add("80");
         rules.add(http);
 
         FirewallService.FirewallState.Allow range = new FirewallService.FirewallState.Allow();
-        range.protocol = AWSFirewallService.DEFAULT_PROTOCOL;
-        range.ipRange = AWSFirewallService.DEFAULT_ALLOWED_NETWORK;
+        range.protocol = DEFAULT_PROTOCOL;
+        range.ipRange = DEFAULT_ALLOWED_NETWORK;
         range.ports = new ArrayList<String>();
         range.ports.add("41000-42000");
         rules.add(range);
@@ -91,7 +93,7 @@ public class TestUtils {
         ArrayList<FirewallService.FirewallState.Allow> rules = new ArrayList<>();
 
         FirewallService.FirewallState.Allow out = new FirewallService.FirewallState.Allow();
-        out.protocol = AWSFirewallService.DEFAULT_PROTOCOL;
+        out.protocol = DEFAULT_PROTOCOL;
         out.ipRange = subnet;
         out.ports = new ArrayList<String>();
         out.ports.add("1-65535");

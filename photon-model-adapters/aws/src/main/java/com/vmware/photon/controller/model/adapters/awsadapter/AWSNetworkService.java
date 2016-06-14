@@ -52,6 +52,7 @@ import com.amazonaws.services.ec2.model.Vpc;
 
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest;
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManagerFactory;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskService.ProvisionNetworkTaskState;
@@ -71,7 +72,7 @@ public class AWSNetworkService extends StatelessService {
     private AWSClientManager clientManager;
 
     public AWSNetworkService() {
-        this.clientManager = new AWSClientManager();
+        this.clientManager = AWSClientManagerFactory.getClientManager(false);
     }
 
     /**
@@ -98,7 +99,7 @@ public class AWSNetworkService extends StatelessService {
 
     @Override
     public void handleStop(Operation op) {
-        this.clientManager.cleanUp();
+        AWSClientManagerFactory.returnClientManager(this.clientManager, false);
         super.handleStop(op);
     }
 
@@ -300,19 +301,6 @@ public class AWSNetworkService extends StatelessService {
                             aws.stage = next;
                             handleStages(aws);
                         }));
-    }
-
-    public String getDefaultVPCSubnet(AWSAllocation aws) {
-        String subnet = null;
-        DescribeVpcsResult result = aws.amazonEC2Client.describeVpcs();
-        List<Vpc> vpcs = result.getVpcs();
-
-        for (Vpc vpc : vpcs) {
-            if (vpc.isDefault()) {
-                subnet = vpc.getCidrBlock();
-            }
-        }
-        return subnet;
     }
 
     public Vpc getVPC(String vpcID, AmazonEC2AsyncClient client) {

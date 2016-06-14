@@ -88,19 +88,20 @@ public class TestAWSProvisionTask  {
             this.host.setTimeoutSeconds(600);
             List<String> serviceSelfLinks = new ArrayList<String>();
 
-            host.startService(
+            this.host.startService(
                     Operation.createPost(UriUtils.buildUri(host,
                             AWSInstanceService.class)),
                     new AWSInstanceService());
             serviceSelfLinks.add(AWSInstanceService.SELF_LINK);
 
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host,
+            this.host.startService(
+                    Operation.createPost(UriUtils.buildUri(this.host,
                             AWSStatsService.class)),
                     new AWSStatsService());
             serviceSelfLinks.add(AWSStatsService.SELF_LINK);
 
-            ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
+            ProvisioningUtils.waitForServiceStart(this.host,
+                    serviceSelfLinks.toArray(new String[] {}));
         } catch (Throwable e) {
             throw new Exception(e);
         }
@@ -117,7 +118,7 @@ public class TestAWSProvisionTask  {
                 TestAWSSetupUtils.deleteVMs(vmState.documentSelfLink, isMock, this.host);
             } catch (Throwable deleteEx) {
                 // just log and move on
-                host.log(Level.WARNING, "Exception deleting VM - %s", deleteEx.getMessage());
+                this.host.log(Level.WARNING, "Exception deleting VM - %s", deleteEx.getMessage());
             }
         }
         this.host.tearDownInProcessPeers();

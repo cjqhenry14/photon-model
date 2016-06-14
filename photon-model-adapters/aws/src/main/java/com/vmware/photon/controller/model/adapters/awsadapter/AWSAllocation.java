@@ -44,13 +44,10 @@ public class AWSAllocation {
     public Throwable error;
     public long taskExpirationMicros;
 
-    public AWSFirewallService fwService;
-
     /**
      * Initialize with request info and first stage.
      */
     public AWSAllocation(ComputeInstanceRequest computeReq) {
-        this.fwService = new AWSFirewallService();
         this.computeRequest = computeReq;
         this.stage = AWSStages.VMDESC;
     }

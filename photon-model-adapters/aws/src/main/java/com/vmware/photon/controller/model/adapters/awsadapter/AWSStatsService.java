@@ -13,8 +13,6 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.awaitTermination;
-
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,7 +21,6 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -39,6 +36,7 @@ import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
+import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManagerFactory;
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSStatsNormalizer;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.constants.PhotonModelConstants;
@@ -63,7 +61,7 @@ public class AWSStatsService extends StatelessService {
 
     public AWSStatsService() {
         super.toggleOption(ServiceOption.INSTRUMENTATION, true);
-        this.clientManager = new AWSClientManager(true);
+        this.clientManager = AWSClientManagerFactory.getClientManager(true);
     }
 
     public static final String SELF_LINK = AWSUriPaths.AWS_STATS_ADAPTER;
@@ -115,48 +113,34 @@ public class AWSStatsService extends StatelessService {
         }
     }
 
-    private ExecutorService executorService;
-
     @Override
     public void handleStart(Operation startPost) {
-        executorService = getHost().allocateExecutor(this);
-
         super.handleStart(startPost);
     }
 
     @Override
     public void handleStop(Operation delete) {
-        executorService.shutdown();
-        awaitTermination(this, executorService);
-        this.clientManager.cleanUp();
+        AWSClientManagerFactory.returnClientManager(this.clientManager, true);
         super.handleStop(delete);
     }
 
     @Override
-    public void handleRequest(Operation op) {
+    public void handlePatch(Operation op) {
         if (!op.hasBody()) {
             op.fail(new IllegalArgumentException("body is required"));
             return;
         }
         op.complete();
-        switch (op.getAction()) {
-        case PATCH:
-            ComputeStatsRequest statsRequest = op.getBody(ComputeStatsRequest.class);
-
-            if (statsRequest.isMockRequest) {
-                // patch status to parent task
-                AdapterUtils.sendPatchToProvisioningTask(this,
-                        UriUtils.buildUri(getHost(), statsRequest.parentTaskLink));
-                return;
-            }
-
-            AWSStatsDataHolder statsData = new AWSStatsDataHolder();
-            statsData.statsRequest = statsRequest;
-            getVMDescription(statsData);
-            break;
-        default:
-            super.handleRequest(op);
+        ComputeStatsRequest statsRequest = op.getBody(ComputeStatsRequest.class);
+        if (statsRequest.isMockRequest) {
+            // patch status to parent task
+            AdapterUtils.sendPatchToProvisioningTask(this,
+                    UriUtils.buildUri(getHost(), statsRequest.parentTaskLink));
+            return;
         }
+        AWSStatsDataHolder statsData = new AWSStatsDataHolder();
+        statsData.statsRequest = statsRequest;
+        getVMDescription(statsData);
     }
 
     private void getVMDescription(AWSStatsDataHolder statsData) {
@@ -292,14 +276,15 @@ public class AWSStatsService extends StatelessService {
     private void getAWSAsyncStatsClient(AWSStatsDataHolder statsData) {
         URI parentURI = UriUtils.buildUri(this.getHost(), statsData.statsRequest.parentTaskLink);
         statsData.statsClient = this.clientManager.getOrCreateCloudWatchClient(statsData.parentAuth,
-                statsData.computeDesc.description.zoneId, executorService, this, parentURI,
+                statsData.computeDesc.description.zoneId, this, parentURI,
                 statsData.statsRequest.isMockRequest);
     }
 
     private void getAWSAsyncBillingClient(AWSStatsDataHolder statsData) {
         URI parentURI = UriUtils.buildUri(this.getHost(), statsData.statsRequest.parentTaskLink);
-        statsData.billingClient = this.clientManager.getOrCreateCloudWatchClient(statsData.parentAuth,
-                COST_ZONE_ID, executorService, this, parentURI,
+        statsData.billingClient = this.clientManager.getOrCreateCloudWatchClient(
+                statsData.parentAuth,
+                COST_ZONE_ID, this, parentURI,
                 statsData.statsRequest.isMockRequest);
 
     }
