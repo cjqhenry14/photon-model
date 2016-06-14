@@ -22,6 +22,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Represents a snapshot resource.
@@ -41,11 +42,14 @@ public class SnapshotService extends StatefulService {
         /**
          * Identifier of this snapshot.
          */
+        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 
         /**
          * Name of this snapshot.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String name;
 
@@ -58,6 +62,7 @@ public class SnapshotService extends StatefulService {
         /**
          * Compute link for this snapshot.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String computeLink;
     }
@@ -95,22 +100,8 @@ public class SnapshotService extends StatefulService {
             throw (new IllegalArgumentException("body is required"));
         }
         SnapshotState state = op.getBody(SnapshotState.class);
-        validateState(state);
+        Utils.validateState(getStateDescription(), state);
         return state;
-    }
-
-    public static void validateState(SnapshotState state) {
-        if (state.id == null) {
-            state.id = UUID.randomUUID().toString();
-        }
-
-        if (state.name == null || state.name.isEmpty()) {
-            throw new IllegalArgumentException("name is required");
-        }
-
-        if (state.computeLink == null || state.computeLink.isEmpty()) {
-            throw new IllegalArgumentException("computeLink is required");
-        }
     }
 
     @Override

@@ -27,6 +27,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Represents a firewall resource.
@@ -45,6 +46,8 @@ public class FirewallService extends StatefulService {
      * Firewall State document.
      */
     public static class FirewallState extends ResourceState {
+        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 
         /**
@@ -56,42 +59,49 @@ public class FirewallService extends StatefulService {
         /**
          * Region identifier of this firewall service instance.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String regionID;
 
         /**
          * Link to secrets. Required
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String authCredentialsLink;
 
         /**
          * The pool which this resource is a part of.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String resourcePoolLink;
 
         /**
          * The adapter to use to create the firewall.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public URI instanceAdapterReference;
 
         /**
          *  network that firewall will protect
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String networkDescriptionLink;
 
         /**
          *  incoming rules
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public List<Allow> ingress;
 
         /**
          *  outgoing rules
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public List<Allow> egress;
 
@@ -148,36 +158,32 @@ public class FirewallService extends StatefulService {
         return state;
     }
 
-    public static void validateState(FirewallState state) {
-        if (state.id == null) {
-            state.id = UUID.randomUUID().toString();
-        }
+    public void validateState(FirewallState state) {
+        Utils.validateState(getStateDescription(), state);
 
-        if (state.networkDescriptionLink == null
-                || state.networkDescriptionLink.isEmpty()) {
+        if (state.networkDescriptionLink.isEmpty()) {
             throw new IllegalArgumentException(
                     "a network description link is required");
         }
         // for now require a minimum of one rule
-        if (state.ingress == null || state.ingress.size() == 0) {
+        if (state.ingress.size() == 0) {
             throw new IllegalArgumentException(
                     "a minimum of one ingress rule is required");
         }
-        if (state.egress == null || state.egress.size() == 0) {
+        if (state.egress.size() == 0) {
             throw new IllegalArgumentException(
                     "a minimum of one egress rule is required");
         }
 
-        if (state.regionID == null || state.regionID.isEmpty()) {
+        if (state.regionID.isEmpty()) {
             throw new IllegalArgumentException("regionID required");
         }
 
-        if (state.authCredentialsLink == null
-                || state.authCredentialsLink.isEmpty()) {
+        if (state.authCredentialsLink.isEmpty()) {
             throw new IllegalArgumentException("authCredentialsLink required");
         }
 
-        if (state.resourcePoolLink == null || state.resourcePoolLink.isEmpty()) {
+        if (state.resourcePoolLink.isEmpty()) {
             throw new IllegalArgumentException("resourcePoolLink required");
         }
 

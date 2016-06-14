@@ -22,7 +22,10 @@ import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocument;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
+import com.vmware.xenon.common.Utils;
+
 
 /**
  * Describes the resource that is used by a compute type.
@@ -46,11 +49,13 @@ public class ResourceDescriptionService extends StatefulService {
          * Type of compute to create. Used to find Computes which can create
          * this child.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String computeType;
 
         /**
          * The compute description that defines the resource instances.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String computeDescriptionLink;
 
         /**
@@ -121,14 +126,8 @@ public class ResourceDescriptionService extends StatefulService {
             throw (new IllegalArgumentException("body is required"));
         }
         ResourceDescription state = op.getBody(ResourceDescription.class);
-        validate(state);
+        Utils.validateState(getStateDescription(), state);
         return state;
-    }
-
-    public static void validate(ResourceDescription state) {
-        if (state.computeType == null || state.computeDescriptionLink == null) {
-            throw new IllegalArgumentException("incomplete ResourceDescription");
-        }
     }
 
     @Override

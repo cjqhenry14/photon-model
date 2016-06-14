@@ -24,6 +24,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Describes a disk instance.
@@ -58,6 +59,8 @@ public class DiskService extends StatefulService {
         /**
          * Identifier of this disk service instance.
          */
+        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 
         /**
@@ -98,11 +101,13 @@ public class DiskService extends StatefulService {
         /**
          * Type of this disk service instance.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public DiskType type;
 
         /**
          * Name of this disk service instance.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String name;
 
@@ -235,17 +240,7 @@ public class DiskService extends StatefulService {
     }
 
     private void validateState(DiskState state) {
-        if (state.id == null) {
-            state.id = UUID.randomUUID().toString();
-        }
-
-        if (state.name == null) {
-            throw new IllegalArgumentException("name is required");
-        }
-
-        if (state.type == null) {
-            throw new IllegalArgumentException("type is required");
-        }
+        Utils.validateState(getStateDescription(), state);
 
         if (state.capacityMBytes <= 1 && state.sourceImageReference == null
                 && state.customizationServiceReference == null) {

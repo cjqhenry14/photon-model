@@ -13,8 +13,6 @@
 
 package com.vmware.photon.controller.model.resources;
 
-import java.util.UUID;
-
 import com.vmware.photon.controller.model.UriPaths;
 
 import com.vmware.xenon.common.FactoryService;
@@ -22,6 +20,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
+import com.vmware.xenon.common.Utils;
 
 public class StorageDescriptionService extends StatefulService {
 
@@ -46,6 +45,8 @@ public class StorageDescriptionService extends StatefulService {
         /**
          * Identifier of the Storage service Instance
          */
+        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 
         /**
@@ -58,6 +59,7 @@ public class StorageDescriptionService extends StatefulService {
          * Name of the Storage description.
          */
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String name;
 
         /**
@@ -106,18 +108,8 @@ public class StorageDescriptionService extends StatefulService {
             throw (new IllegalArgumentException("body is required"));
         }
         StorageDescription state = op.getBody(StorageDescription.class);
-        validateState(state);
+        Utils.validateState(getStateDescription(), state);
         return state;
-    }
-
-    private void validateState(StorageDescription state) {
-        if (state.id == null) {
-            state.id = UUID.randomUUID().toString();
-        }
-
-        if (state.name == null) {
-            throw new IllegalArgumentException("name is required");
-        }
     }
 
     @Override

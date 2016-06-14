@@ -20,6 +20,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Describes a resource group instance. A resource group is a grouping
@@ -42,6 +43,7 @@ public class ResourceGroupService extends StatefulService {
          * name of the resource group instance
          */
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String name;
     }
 
@@ -78,15 +80,8 @@ public class ResourceGroupService extends StatefulService {
             throw (new IllegalArgumentException("body is required"));
         }
         ResourceGroupState state = op.getBody(ResourceGroupState.class);
-        validateState(state);
+        Utils.validateState(getStateDescription(), state);
         return state;
-    }
-
-    private void validateState(ResourceGroupState state) {
-        if (state.name == null) {
-            throw new IllegalArgumentException("name is required");
-        }
-
     }
 
     @Override

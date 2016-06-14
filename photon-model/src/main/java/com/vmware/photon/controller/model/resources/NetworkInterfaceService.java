@@ -13,8 +13,6 @@
 
 package com.vmware.photon.controller.model.resources;
 
-import java.util.UUID;
-
 import org.apache.commons.validator.routines.InetAddressValidator;
 
 import com.vmware.photon.controller.model.UriPaths;
@@ -24,6 +22,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Represents a network interface.
@@ -44,6 +43,8 @@ public class NetworkInterfaceService extends StatefulService {
         /**
          * The name or id of the interface on the compute.
          */
+        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 
         /**
@@ -127,9 +128,7 @@ public class NetworkInterfaceService extends StatefulService {
     }
 
     private void validateState(NetworkInterfaceState state) {
-        if (state.id == null) {
-            state.id = UUID.randomUUID().toString();
-        }
+        Utils.validateState(getStateDescription(), state);
 
         if (state.address != null) {
             if (state.networkDescriptionLink != null) {

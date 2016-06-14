@@ -14,7 +14,6 @@
 package com.vmware.photon.controller.model.resources;
 
 import java.util.EnumSet;
-import java.util.UUID;
 
 import com.vmware.photon.controller.model.UriPaths;
 
@@ -55,6 +54,8 @@ public class ResourcePoolService extends StatefulService {
         /**
          * Identifier of this resource pool.
          */
+        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 
         /**
@@ -186,10 +187,9 @@ public class ResourcePoolService extends StatefulService {
         ResourceUtils.complePatchOperation(patch, hasStateChanged);
     }
 
-    public static void validateState(ResourcePoolState state) {
-        if (state.id == null) {
-            state.id = UUID.randomUUID().toString();
-        }
+    public void validateState(ResourcePoolState state) {
+        Utils.validateState(getStateDescription(), state);
+
         if (state.properties == null) {
             state.properties = EnumSet
                     .noneOf(ResourcePoolState.ResourcePoolProperty.class);

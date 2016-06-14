@@ -25,6 +25,7 @@ import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Represents a network resource.
@@ -41,6 +42,8 @@ public class NetworkService extends StatefulService {
      * Network State document.
      */
     public static class NetworkState extends ResourceState {
+        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 
         /**
@@ -52,30 +55,35 @@ public class NetworkService extends StatefulService {
         /**
          * Subnet CIDR
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String subnetCIDR;
 
         /**
          * Region identifier of this description service instance.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String regionID;
 
         /**
          * Link to secrets. Required
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String authCredentialsLink;
 
         /**
          * The pool which this resource is a part of. Required
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String resourcePoolLink;
 
         /**
          * The network adapter to use to create the network. Required
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public URI instanceAdapterReference;
     }
@@ -117,31 +125,9 @@ public class NetworkService extends StatefulService {
         return state;
     }
 
-    public static void validateState(NetworkState state) {
-        if (state.id == null) {
-            state.id = UUID.randomUUID().toString();
-        }
+    public void validateState(NetworkState state) {
+        Utils.validateState(getStateDescription(), state);
 
-        if (state.subnetCIDR == null) {
-            throw new IllegalArgumentException(
-                    "subnet in CIDR notation is required");
-        }
-        if (state.regionID == null || state.regionID.isEmpty()) {
-            throw new IllegalArgumentException("regionID required");
-        }
-
-        if (state.authCredentialsLink == null
-                || state.authCredentialsLink.isEmpty()) {
-            throw new IllegalArgumentException("authCredentialsLink required");
-        }
-
-        if (state.resourcePoolLink == null || state.resourcePoolLink.isEmpty()) {
-            throw new IllegalArgumentException("resourcePoolLink required");
-        }
-
-        if (state.instanceAdapterReference == null) {
-            throw new IllegalArgumentException("networkServiceAdapter required");
-        }
         // do we have a subnet in CIDR notation
         // creating new SubnetUtils to validate
         new SubnetUtils(state.subnetCIDR);

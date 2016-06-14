@@ -32,6 +32,7 @@ import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Represents a compute resource.
@@ -79,12 +80,15 @@ public class ComputeService extends StatefulService {
         /**
          * Identifier of this compute instance.
          */
+        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String id;
 
         /**
          * URI reference to corresponding ComputeDescription.
          */
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String descriptionLink;
 
@@ -234,12 +238,7 @@ public class ComputeService extends StatefulService {
             throw (new IllegalArgumentException("body is required"));
         }
         ComputeState state = op.getBody(ComputeState.class);
-        if (state.descriptionLink == null || state.descriptionLink.isEmpty()) {
-            throw new IllegalArgumentException("descriptionLink is required");
-        }
-        if (state.id == null) {
-            state.id = UUID.randomUUID().toString();
-        }
+        Utils.validateState(getStateDescription(), state);
         return state;
     }
 
@@ -271,21 +270,6 @@ public class ComputeService extends StatefulService {
             default:
                 break;
             }
-        }
-    }
-
-    public void validateState(ComputeState state) {
-        if (state.id == null) {
-            throw new IllegalArgumentException("id is required");
-        }
-
-        if (state.powerState == PowerState.ON) {
-            // do not require service references for running hosts.
-            return;
-        }
-
-        if (state.descriptionLink == null) {
-            throw new IllegalArgumentException("descriptionLink is required");
         }
     }
 

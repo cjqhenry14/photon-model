@@ -20,7 +20,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
-
 import com.esotericsoftware.kryo.serializers.VersionFieldSerializer.Since;
 
 import com.vmware.photon.controller.model.UriPaths;
@@ -29,8 +28,10 @@ import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.common.Utils;
 
 /**
  * Describes a compute resource. The same description service instance can be
@@ -74,6 +75,8 @@ public class ComputeDescriptionService extends StatefulService {
         /**
          * Identifier of this description service instance.
          */
+        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 
         /**
@@ -230,7 +233,9 @@ public class ComputeDescriptionService extends StatefulService {
         return state;
     }
 
-    public static void validateState(ComputeDescription state) {
+    public void validateState(ComputeDescription state) {
+        Utils.validateState(getStateDescription(), state);
+
         if (state.environmentName == null) {
             state.environmentName = ComputeDescription.ENVIRONMENT_NAME_ON_PREMISE;
         }
@@ -244,10 +249,6 @@ public class ComputeDescriptionService extends StatefulService {
 
         if (state.totalMemoryBytes == 0) {
             state.totalMemoryBytes = (long) Math.pow(2, 30); // 1GB
-        }
-
-        if (state.id == null) {
-            state.id = UUID.randomUUID().toString();
         }
     }
 
