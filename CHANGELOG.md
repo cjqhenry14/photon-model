@@ -1,5 +1,7 @@
 # CHANGELOG
 
+## 0.4.1-SNAPSHOT
+
 ## 0.4.0
 
 * Add ResourceState as a base class for all photon model resource states
