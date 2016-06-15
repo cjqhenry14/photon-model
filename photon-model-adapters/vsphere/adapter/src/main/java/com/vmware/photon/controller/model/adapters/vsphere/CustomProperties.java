@@ -19,9 +19,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
-import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-import com.vmware.photon.controller.model.resources.SnapshotService.SnapshotState;
+import com.vmware.photon.controller.model.resources.ResourceState;
 import com.vmware.vim25.ManagedObjectReference;
 
 /**
@@ -33,11 +31,7 @@ public class CustomProperties {
     /**
      * Key for the MoRef of a vm provisioned by the adapter.
      */
-    public static final String VM_MOREF = "vm.moref";
-
-    public static final String VM_NAME = "vm.name";
-
-    public static final String SNAPSHOT_MOREF = "snapshot.moref";
+    public static final String MOREF = "moref";
 
     public static final String ENUMERATED_BY = "enumerated.by";
 
@@ -45,96 +39,36 @@ public class CustomProperties {
     private final Supplier<Map<String, String>> getPropsForWrite;
     private final Consumer<String> remove;
 
-    public CustomProperties(SnapshotState snapshot) {
+    public CustomProperties(ResourceState resourceState) {
+        if (resourceState == null) {
+            throw new IllegalArgumentException("resourceState is required");
+        }
+
         getPropsForRead = () -> {
-            if (snapshot.customProperties == null) {
+            if (resourceState.customProperties == null) {
                 return Collections.emptyMap();
             } else {
-                return snapshot.customProperties;
+                return resourceState.customProperties;
             }
         };
 
         getPropsForWrite = () -> {
-            if (snapshot.customProperties == null) {
-                snapshot.customProperties = new HashMap<>();
+            if (resourceState.customProperties == null) {
+                resourceState.customProperties = new HashMap<>();
             }
 
-            return snapshot.customProperties;
+            return resourceState.customProperties;
         };
 
         remove = (String key) -> {
-            if (snapshot.customProperties != null) {
-                snapshot.customProperties.remove(key);
+            if (resourceState.customProperties != null) {
+                resourceState.customProperties.remove(key);
             }
         };
     }
 
-    public static CustomProperties of(ComputeDescription desc) {
-        return new CustomProperties(desc);
-    }
-
-    public static CustomProperties of(ComputeState desc) {
-        return new CustomProperties(desc);
-    }
-
-    public static CustomProperties of(SnapshotState snapshot) {
+    public static CustomProperties of(ResourceState snapshot) {
         return new CustomProperties(snapshot);
-    }
-
-    protected CustomProperties(ComputeDescription description) {
-        if (description == null) {
-            throw new NullPointerException("description cannot be null");
-        }
-
-        getPropsForRead = () -> {
-            if (description.customProperties == null) {
-                return Collections.emptyMap();
-            } else {
-                return description.customProperties;
-            }
-        };
-
-        getPropsForWrite = () -> {
-            if (description.customProperties == null) {
-                description.customProperties = new HashMap<>();
-            }
-
-            return description.customProperties;
-        };
-
-        remove = (String key) -> {
-            if (description.customProperties != null) {
-                description.customProperties.remove(key);
-            }
-        };
-    }
-
-    protected CustomProperties(ComputeState state) {
-        if (state == null) {
-            throw new NullPointerException("state cannot be null");
-        }
-
-        getPropsForRead = () -> {
-            if (state.customProperties == null) {
-                return Collections.emptyMap();
-            } else {
-                return state.customProperties;
-            }
-        };
-
-        getPropsForWrite = () -> {
-            if (state.customProperties == null) {
-                state.customProperties = new HashMap<>();
-            }
-
-            return state.customProperties;
-        };
-
-        remove = (String key) -> {
-            if (state.customProperties != null) {
-                state.customProperties.remove(key);
-            }
-        };
     }
 
     public String getString(String key) {

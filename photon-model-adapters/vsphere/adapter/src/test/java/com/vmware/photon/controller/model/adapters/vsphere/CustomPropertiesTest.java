@@ -19,26 +19,15 @@ import org.junit.Test;
 
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.vim25.ManagedObjectReference;
 
 /**
  */
 public class CustomPropertiesTest {
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void putOnNullState() {
-        CustomProperties.of((ComputeState) null);
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void putOnNullDescription() {
-        CustomProperties.of((ComputeDescription) null);
-    }
-
-    @Test(expected = NullPointerException.class)
-    public void putOnNullComputeStateWithDescription() {
-        CustomProperties.of((ComputeStateWithDescription) null);
+        CustomProperties.of( null);
     }
 
     @Test

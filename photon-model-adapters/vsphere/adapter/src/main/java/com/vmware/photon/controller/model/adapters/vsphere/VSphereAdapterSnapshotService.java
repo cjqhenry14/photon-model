@@ -101,7 +101,7 @@ public class VSphereAdapterSnapshotService extends StatelessService {
             SnapshotState snapshot, TaskManager mgr) {
 
         ManagedObjectReference vm = CustomProperties.of(compute)
-                .getMoRef(CustomProperties.VM_MOREF);
+                .getMoRef(CustomProperties.MOREF);
 
         if (vm == null) {
             mgr.patchTaskToFailure(new IllegalStateException("Cannot find VM to snapshot"));
@@ -129,7 +129,7 @@ public class VSphereAdapterSnapshotService extends StatelessService {
         }
 
         CustomProperties.of(snapshot)
-                .put(CustomProperties.SNAPSHOT_MOREF, (ManagedObjectReference) info.getResult());
+                .put(CustomProperties.MOREF, (ManagedObjectReference) info.getResult());
 
         Operation patchSnapshot = Operation
                 .createPatch(UriUtils.buildUri(getHost(), snapshot.documentSelfLink))

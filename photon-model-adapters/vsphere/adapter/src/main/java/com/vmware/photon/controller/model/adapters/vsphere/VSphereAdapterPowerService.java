@@ -139,7 +139,7 @@ public class VSphereAdapterPowerService extends StatelessService {
      */
     private ManagedObjectReference getVmMoRef(ComputeStateWithDescription state) {
         return CustomProperties.of(state)
-                .getMoRef(CustomProperties.VM_MOREF);
+                .getMoRef(CustomProperties.MOREF);
     }
 
     private void handleMockRequest(TaskManager mgr, ComputePowerRequest request,

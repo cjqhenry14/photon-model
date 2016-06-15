@@ -224,7 +224,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
 
             GetMoRef get = new GetMoRef(connection);
             ManagedObjectReference moref = CustomProperties.of(vm)
-                    .getMoRef(CustomProperties.VM_MOREF);
+                    .getMoRef(CustomProperties.MOREF);
 
             // try getting a property of vm: this must fail because vm is deleted
             try {
@@ -259,7 +259,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
 
         if (!isMock()) {
             assertNotNull(CustomProperties.of(stateAfterTaskComplete)
-                    .getMoRef(CustomProperties.SNAPSHOT_MOREF));
+                    .getMoRef(CustomProperties.MOREF));
 
         }
     }

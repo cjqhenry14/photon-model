@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
+import com.vmware.photon.controller.model.ComputeProperties;
 import com.vmware.photon.controller.model.adapterapi.ComputeEnumerateResourceRequest;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.adapters.util.TaskManager;
@@ -317,8 +318,8 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
         state.id = vm.getInstanceUuid();
 
         CustomProperties.of(state)
-                .put(CustomProperties.VM_MOREF, vm.getId())
-                .put(CustomProperties.VM_NAME, vm.getName());
+                .put(CustomProperties.MOREF, vm.getId())
+                .put(ComputeProperties.CUSTOM_DISPLAY_NAME, vm.getName());
         return state;
     }
 

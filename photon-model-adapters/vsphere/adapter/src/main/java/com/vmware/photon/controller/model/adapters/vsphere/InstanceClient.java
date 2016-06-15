@@ -24,6 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import com.vmware.photon.controller.model.ComputeProperties;
 import com.vmware.photon.controller.model.adapters.vsphere.util.VimPath;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BaseHelper;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Connection;
@@ -123,7 +124,7 @@ public class InstanceClient extends BaseHelper {
 
     public void deleteInstance() throws Exception {
         ManagedObjectReference vm = CustomProperties.of(state)
-                .getMoRef(CustomProperties.VM_MOREF);
+                .getMoRef(CustomProperties.MOREF);
 
         TaskInfo info;
         // power off
@@ -501,8 +502,8 @@ public class InstanceClient extends BaseHelper {
         state.primaryMAC = vm.getPrimaryMac();
 
         CustomProperties.of(state)
-                .put(CustomProperties.VM_MOREF, ref)
-                .put(CustomProperties.VM_NAME, vm.getName());
+                .put(CustomProperties.MOREF, ref)
+                .put(ComputeProperties.CUSTOM_DISPLAY_NAME, vm.getName());
     }
 
     /**
