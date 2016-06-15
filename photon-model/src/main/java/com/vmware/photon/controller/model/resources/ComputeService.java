@@ -80,7 +80,7 @@ public class ComputeService extends StatefulService {
         /**
          * Identifier of this compute instance.
          */
-        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.ID)
         @UsageOption(option = PropertyUsageOption.REQUIRED)
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public String id;

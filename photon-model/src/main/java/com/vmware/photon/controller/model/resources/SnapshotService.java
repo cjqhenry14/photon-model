@@ -42,7 +42,7 @@ public class SnapshotService extends StatefulService {
         /**
          * Identifier of this snapshot.
          */
-        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.ID)
         @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 

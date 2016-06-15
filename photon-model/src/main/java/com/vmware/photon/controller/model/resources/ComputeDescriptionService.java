@@ -75,7 +75,7 @@ public class ComputeDescriptionService extends StatefulService {
         /**
          * Identifier of this description service instance.
          */
-        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.ID)
         @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 

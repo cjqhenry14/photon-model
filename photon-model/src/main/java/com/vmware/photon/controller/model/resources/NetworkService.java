@@ -42,7 +42,7 @@ public class NetworkService extends StatefulService {
      * Network State document.
      */
     public static class NetworkState extends ResourceState {
-        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.ID)
         @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 

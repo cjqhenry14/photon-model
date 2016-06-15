@@ -45,7 +45,7 @@ public class StorageDescriptionService extends StatefulService {
         /**
          * Identifier of the Storage service Instance
          */
-        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.ID)
         @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 

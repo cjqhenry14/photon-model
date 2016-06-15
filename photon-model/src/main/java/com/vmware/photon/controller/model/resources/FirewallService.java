@@ -46,7 +46,7 @@ public class FirewallService extends StatefulService {
      * Firewall State document.
      */
     public static class FirewallState extends ResourceState {
-        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.ID)
         @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 

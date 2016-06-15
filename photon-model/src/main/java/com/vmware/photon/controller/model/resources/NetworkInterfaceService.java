@@ -43,7 +43,7 @@ public class NetworkInterfaceService extends StatefulService {
         /**
          * The name or id of the interface on the compute.
          */
-        @UsageOption(option = PropertyUsageOption.UNIQUE_IDENTIFIER)
+        @UsageOption(option = PropertyUsageOption.ID)
         @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String id;
 
