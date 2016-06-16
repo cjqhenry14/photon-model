@@ -197,7 +197,8 @@ public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
 
     private void createAzureVMResources(int numOfVMs) throws Throwable {
         for (int i = 0; i < numOfVMs; i++) {
-            createDefaultVMResource(host, azureVMName, computeHost.documentSelfLink,
+            String staleVMName = "stalevm-" + i;
+            createDefaultVMResource(host, staleVMName, computeHost.documentSelfLink,
                     resourcePoolLink);
         }
     }

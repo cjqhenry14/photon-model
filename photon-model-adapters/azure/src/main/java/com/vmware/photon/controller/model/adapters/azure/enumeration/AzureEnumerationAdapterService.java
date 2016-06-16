@@ -323,19 +323,19 @@ public class AzureEnumerationAdapterService extends StatelessService {
      * Helper method to paginate through resources to be deleted.
      */
     private void deleteHelper(EnumerationContext ctx) {
+        if (ctx.deletionNextPageLink == null) {
+            logInfo("Finished deletion of compute states for Azure");
+            ctx.subStage = EnumerationSubStages.FINISHED;
+            handleSubStage(ctx);
+            return;
+        }
+
         CompletionHandler completionHandler = (o, e) -> {
             if (e != null) {
                 handleError(ctx, e);
                 return;
             }
             QueryTask queryTask = o.getBody(QueryTask.class);
-
-            if (queryTask.results.nextPageLink == null || queryTask.results.documentCount == 0) {
-                logInfo("Finished deletion of compute states for Azure");
-                ctx.subStage = EnumerationSubStages.FINISHED;
-                handleSubStage(ctx);
-                return;
-            }
 
             ctx.deletionNextPageLink = queryTask.results.nextPageLink;
 
@@ -774,7 +774,8 @@ public class AzureEnumerationAdapterService extends StatelessService {
     }
 
     private void handleError(EnumerationContext ctx, Throwable e) {
-        logSevere(e);
+        logSevere("Failed at stage %s and sub-stage %s with exception: %s", ctx.stage, ctx.subStage,
+                Utils.toString(e));
         ctx.error = e;
         ctx.stage = EnumerationStages.ERROR;
         handleEnumerationRequest(ctx);

@@ -271,8 +271,9 @@ public class AzureInstanceService extends StatelessService {
             initNIC(ctx, AzureStages.CREATE);
             break;
         case CREATE:
-            createVM(ctx, AzureStages.ENABLE_MONITORING);
+            createVM(ctx, AzureStages.GET_STORAGE_KEYS);
             break;
+        // TODO VSYM-620: Enable monitoring on Azure VMs
         case ENABLE_MONITORING:
             try {
                 enableMonitoring(ctx, AzureStages.GET_STORAGE_KEYS);
