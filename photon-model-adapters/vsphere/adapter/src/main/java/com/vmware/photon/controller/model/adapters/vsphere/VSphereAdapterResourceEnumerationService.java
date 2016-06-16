@@ -285,6 +285,8 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
         ComputeState state = createComputeStateFromResults(request, vm);
         state.documentSelfLink = computeLink;
 
+        logFine("Syncing ComputeState %s", computeLink);
+
         Operation.createPatch(UriUtils.buildUri(getHost(), computeLink))
                 .setBody(state)
                 .sendWith(this);
@@ -293,6 +295,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
     private void createNewCompute(ComputeEnumerateResourceRequest request, VmOverlay vm) {
         ComputeState state = createComputeStateFromResults(request, vm);
 
+        logFine("Found new ComputeState %s", vm.getInstanceUuid());
         Operation.createPost(this, ComputeService.FACTORY_LINK)
                 .setBody(state)
                 .sendWith(this);

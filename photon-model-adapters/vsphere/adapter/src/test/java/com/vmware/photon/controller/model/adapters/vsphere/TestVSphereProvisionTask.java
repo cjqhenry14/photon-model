@@ -266,7 +266,8 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
 
     private SnapshotState createSnapshotState(ComputeState vm) throws Throwable {
         SnapshotState state = new SnapshotState();
-        state.name = "snapshot" + UUID.randomUUID();
+        state.id = "snapshot" + UUID.randomUUID();
+        state.name = state.id;
         state.computeLink = vm.documentSelfLink;
         state.description = "description: " + state.name;
 
