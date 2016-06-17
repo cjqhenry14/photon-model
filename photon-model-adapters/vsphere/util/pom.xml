@@ -59,11 +59,6 @@
       <version>${vsphere.sdk.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.vmware.photon.vsphere</groupId>
-      <artifactId>photon-vsphere-ssoclient</artifactId>
-      <version>${vsphere.sdk.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcprov-jdk15on</artifactId>
       <version>${bc.version}</version>
