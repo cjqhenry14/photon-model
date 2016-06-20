@@ -22,8 +22,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.vmware.photon.controller.model.ComputeProperties;
@@ -51,8 +49,6 @@ import com.vmware.photon.controller.model.tasks.SnapshotTaskService;
 import com.vmware.photon.controller.model.tasks.SnapshotTaskService.SnapshotTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.vim25.ManagedObjectReference;
-import com.vmware.xenon.common.BasicReusableHostTestCase;
-import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
@@ -60,28 +56,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
 import com.vmware.xenon.services.common.QueryTask;
 import com.vmware.xenon.services.common.QueryTask.QuerySpecification;
 
-/**
- * Test to provision a VM instance and tear it down.
- * The test exercises the vSphere instance adapter to create the VM.
- *
- * All public fields below can be specified via command line arguments
- *
- * If the 'isMock' flag is set to true the test runs the adapter in mock
- * mode and does not actually create a VM. isMock is set to true if no {@link #vcUsername}
- * is defined.
-
- */
-public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
-
-    private static final String DEFAULT_AUTH_TYPE = "Username/Password";
-
-    public String vcUrl;
-    public String vcUsername = System.getProperty(TestProperties.VC_USERNAME);
-    public String vcPassword = System.getProperty(TestProperties.VC_PASSWORD);
-
-    public String zoneId = System.getProperty(TestProperties.VC_ZONE_ID);
-    public String dataStoreId = System.getProperty(TestProperties.VC_DATASTORE_ID);
-    public String networkId = System.getProperty(TestProperties.VC_NETWORK_ID);
+public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
 
     public URI cdromUri = getCdromUri();
 
@@ -93,56 +68,6 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
     private ComputeState computeHost;
     private ComputeDescription vmDescription;
     private ComputeState vm;
-
-    @Before
-    public void setUp() throws Throwable {
-        ProvisioningUtils.startProvisioningServices(this.host);
-        this.host.setTimeoutSeconds(600);
-        List<String> serviceSelfLinks = new ArrayList<>();
-
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        VSphereAdapterInstanceService.class)),
-                new VSphereAdapterInstanceService());
-
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        VSphereAdapterPowerService.class)),
-                new VSphereAdapterPowerService());
-
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        VSphereAdapterSnapshotService.class)),
-                new VSphereAdapterSnapshotService());
-
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        VSphereAdapterResourceEnumerationService.class)),
-                new VSphereAdapterResourceEnumerationService());
-
-        serviceSelfLinks.add(VSphereAdapterInstanceService.SELF_LINK);
-        serviceSelfLinks.add(VSphereAdapterPowerService.SELF_LINK);
-        serviceSelfLinks.add(VSphereAdapterSnapshotService.SELF_LINK);
-        serviceSelfLinks.add(VSphereAdapterResourceEnumerationService.SELF_LINK);
-
-        ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
-
-        vcUrl = System.getProperty(TestProperties.VC_URL);
-        if (vcUrl == null) {
-            vcUrl = "http://not-configured";
-        }
-    }
-
-    @After
-    public void tearDown() throws InterruptedException {
-        if (this.host == null) {
-            return;
-        }
-
-        this.host.tearDownInProcessPeers();
-        this.host.toggleNegativeTestMode(false);
-        this.host.tearDown();
-    }
 
     private ResourcePoolState createResourcePool()
             throws Throwable {
@@ -215,12 +140,7 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         ProvisioningUtils.waitForTaskCompletion(this.host, uris, ResourceRemovalTaskState.class);
 
         if (!isMock()) {
-            BasicConnection connection = new BasicConnection();
-            connection.setIgnoreSslErrors(true);
-            connection.setUsername(vcUsername);
-            connection.setPassword(vcPassword);
-            connection.setURI(URI.create(vcUrl));
-            connection.connect();
+            BasicConnection connection = createConnection();
 
             GetMoRef get = new GetMoRef(connection);
             ManagedObjectReference moref = CustomProperties.of(vm)
@@ -383,10 +303,6 @@ public class TestVSphereProvisionTask extends BasicReusableHostTestCase {
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,
                 UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
-    }
-
-    public boolean isMock() {
-        return vcUsername == null || vcUsername.length() == 0;
     }
 
     public URI getCdromUri() {

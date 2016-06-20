@@ -18,8 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
@@ -34,8 +32,6 @@ import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService.ResourceEnumerationTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
-import com.vmware.xenon.common.BasicReusableHostTestCase;
-import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
@@ -43,17 +39,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
 /**
  *
  */
-public class TestVSphereEnumerationTask extends BasicReusableHostTestCase {
-
-    private static final String DEFAULT_AUTH_TYPE = "Username/Password";
-
-    public String vcUrl;
-    public String vcUsername = System.getProperty(TestProperties.VC_USERNAME);
-    public String vcPassword = System.getProperty(TestProperties.VC_PASSWORD);
-
-    public String zoneId = System.getProperty(TestProperties.VC_ZONE_ID);
-    public String dataStoreId = System.getProperty(TestProperties.VC_DATASTORE_ID);
-    public String networkId = System.getProperty(TestProperties.VC_NETWORK_ID);
+public class TestVSphereEnumerationTask extends BaseVSphereAdapterTest {
 
     // fields that are used across method calls, stash them as private fields
     private ResourcePoolState resourcePool;
@@ -62,56 +48,6 @@ public class TestVSphereEnumerationTask extends BasicReusableHostTestCase {
     private ComputeDescription computeHostDescription;
     private ComputeState computeHost;
     private ComputeDescription vmDescription;
-
-    @Before
-    public void setUp() throws Throwable {
-        ProvisioningUtils.startProvisioningServices(this.host);
-        this.host.setTimeoutSeconds(600);
-        List<String> serviceSelfLinks = new ArrayList<>();
-
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        VSphereAdapterInstanceService.class)),
-                new VSphereAdapterInstanceService());
-
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        VSphereAdapterPowerService.class)),
-                new VSphereAdapterPowerService());
-
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        VSphereAdapterSnapshotService.class)),
-                new VSphereAdapterSnapshotService());
-
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
-                        VSphereAdapterResourceEnumerationService.class)),
-                new VSphereAdapterResourceEnumerationService());
-
-        serviceSelfLinks.add(VSphereAdapterInstanceService.SELF_LINK);
-        serviceSelfLinks.add(VSphereAdapterPowerService.SELF_LINK);
-        serviceSelfLinks.add(VSphereAdapterSnapshotService.SELF_LINK);
-        serviceSelfLinks.add(VSphereAdapterResourceEnumerationService.SELF_LINK);
-
-        ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
-
-        vcUrl = System.getProperty("vc.url");
-        if (vcUrl == null) {
-            vcUrl = "http://not-configured";
-        }
-    }
-
-    @After
-    public void tearDown() throws InterruptedException {
-        if (this.host == null) {
-            return;
-        }
-
-        this.host.tearDownInProcessPeers();
-        this.host.toggleNegativeTestMode(false);
-        this.host.tearDown();
-    }
 
     private ResourcePoolState createResourcePool()
             throws Throwable {
@@ -242,9 +178,5 @@ public class TestVSphereEnumerationTask extends BasicReusableHostTestCase {
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,
                 UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
-    }
-
-    public boolean isMock() {
-        return vcUsername == null || vcUsername.length() == 0;
     }
 }
