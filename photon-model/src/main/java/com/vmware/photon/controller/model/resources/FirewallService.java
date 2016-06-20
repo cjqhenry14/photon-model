@@ -21,7 +21,6 @@ import java.util.UUID;
 import org.apache.commons.net.util.SubnetUtils;
 
 import com.vmware.photon.controller.model.UriPaths;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
@@ -295,8 +294,6 @@ public class FirewallService extends StatefulService {
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
         FirewallState template = (FirewallState) td;
-
-        ResourceUtils.updateIndexingOptions(td.documentDescription);
         template.id = UUID.randomUUID().toString();
         template.name = "firewall-one";
 

@@ -17,11 +17,9 @@ import java.net.URI;
 import java.util.List;
 
 import com.vmware.photon.controller.model.UriPaths;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
-import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.Utils;
@@ -128,12 +126,5 @@ public class ResourceDescriptionService extends StatefulService {
         ResourceDescription state = op.getBody(ResourceDescription.class);
         Utils.validateState(getStateDescription(), state);
         return state;
-    }
-
-    @Override
-    public ServiceDocument getDocumentTemplate() {
-        ServiceDocument td = super.getDocumentTemplate();
-        ResourceUtils.updateIndexingOptions(td.documentDescription);
-        return td;
     }
 }

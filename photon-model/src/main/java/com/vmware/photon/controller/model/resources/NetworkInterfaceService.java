@@ -16,10 +16,8 @@ package com.vmware.photon.controller.model.resources;
 import org.apache.commons.validator.routines.InetAddressValidator;
 
 import com.vmware.photon.controller.model.UriPaths;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.Utils;
@@ -118,13 +116,6 @@ public class NetworkInterfaceService extends StatefulService {
                 currentState, patchBody);
         ResourceUtils.complePatchOperation(patch, hasStateChanged);
 
-    }
-
-    @Override
-    public ServiceDocument getDocumentTemplate() {
-        ServiceDocument td = super.getDocumentTemplate();
-        ResourceUtils.updateIndexingOptions(td.documentDescription);
-        return td;
     }
 
     private void validateState(NetworkInterfaceState state) {

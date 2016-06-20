@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.vmware.photon.controller.model.UriPaths;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
@@ -283,7 +282,6 @@ public class DiskService extends StatefulService {
         ServiceDocument td = super.getDocumentTemplate();
         DiskState template = (DiskState) td;
 
-        ResourceUtils.updateIndexingOptions(td.documentDescription);
         template.id = UUID.randomUUID().toString();
         template.type = DiskType.SSD;
         template.status = DiskStatus.DETACHED;

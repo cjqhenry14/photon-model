@@ -16,7 +16,6 @@ package com.vmware.photon.controller.model.resources;
 import java.util.UUID;
 
 import com.vmware.photon.controller.model.UriPaths;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
@@ -119,7 +118,6 @@ public class SnapshotService extends StatefulService {
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
         SnapshotState template = (SnapshotState) td;
-        ResourceUtils.updateIndexingOptions(td.documentDescription);
 
         template.id = UUID.randomUUID().toString();
         template.name = "snapshot01";

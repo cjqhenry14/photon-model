@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.vmware.xenon.common.ServiceDocument;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyIndexingOption;
 
 /**
  * Base PODO for all photon model resource services
@@ -30,16 +31,19 @@ public class ResourceState extends ServiceDocument {
      * Custom property bag that can be used to store disk specific
      * properties.
      */
+    @PropertyOptions(indexing = { PropertyIndexingOption.EXPAND })
     public Map<String, String> customProperties;
 
     /**
      * A list of tenant links can access this disk resource.
      */
+    @PropertyOptions(indexing = { PropertyIndexingOption.EXPAND })
     public List<String> tenantLinks;
 
     /**
      * Set of groups the resource belongs to
      */
+    @PropertyOptions(indexing = { PropertyIndexingOption.EXPAND })
     public Set<String> groupLinks;
 
 }

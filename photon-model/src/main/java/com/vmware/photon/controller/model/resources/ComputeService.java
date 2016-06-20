@@ -14,7 +14,6 @@
 package com.vmware.photon.controller.model.resources;
 
 import java.net.URI;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -24,11 +23,9 @@ import org.apache.commons.validator.routines.InetAddressValidator;
 import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.UriUtils;
@@ -329,14 +326,6 @@ public class ComputeService extends StatefulService {
     @Override
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
-
-        // enable indexing of custom properties map.
-        ServiceDocumentDescription.PropertyDescription pdCustomProperties = td.documentDescription.propertyDescriptions
-                .get(ComputeState.FIELD_NAME_CUSTOM_PROPERTIES);
-        pdCustomProperties.indexingOptions = EnumSet
-                .of(ServiceDocumentDescription.PropertyIndexingOption.EXPAND);
-
-        ResourceUtils.updateIndexingOptions(td.documentDescription);
 
         ComputeState template = (ComputeState) td;
 

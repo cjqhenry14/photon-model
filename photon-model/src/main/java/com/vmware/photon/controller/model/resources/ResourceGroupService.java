@@ -14,7 +14,6 @@
 package com.vmware.photon.controller.model.resources;
 
 import com.vmware.photon.controller.model.UriPaths;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
@@ -99,7 +98,6 @@ public class ResourceGroupService extends StatefulService {
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
         ResourceGroupState template = (ResourceGroupState) td;
-        ResourceUtils.updateIndexingOptions(td.documentDescription);
         template.name = "resource-group-1";
         return template;
     }

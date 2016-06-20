@@ -13,12 +13,10 @@
 
 package com.vmware.photon.controller.model.resources;
 
-import java.util.EnumSet;
 import java.util.Map;
 
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentDescription;
-import com.vmware.xenon.common.ServiceDocumentDescription.PropertyIndexingOption;
 import com.vmware.xenon.common.Utils;
 
 public class ResourceUtils {
@@ -89,21 +87,5 @@ public class ResourceUtils {
             }
         }
         return isChanged;
-    }
-
-    /**
-     * Set the right indexing option for resource services
-     * @param description service description
-     */
-    public static void updateIndexingOptions(ServiceDocumentDescription description) {
-        ServiceDocumentDescription.expandTenantLinks(description);
-        ServiceDocumentDescription.PropertyDescription pdGroupLinks = description.propertyDescriptions
-                .get(ResourceState.FIELD_NAME_GROUP_LINKS);
-        if (pdGroupLinks == null) {
-            throw new IllegalStateException(ResourceState.FIELD_NAME_GROUP_LINKS
-                    + " property is missing in the service document");
-        }
-        pdGroupLinks.indexingOptions = EnumSet
-                .of(PropertyIndexingOption.EXPAND);
     }
 }

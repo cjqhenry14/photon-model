@@ -19,7 +19,6 @@ import java.util.UUID;
 import org.apache.commons.net.util.SubnetUtils;
 
 import com.vmware.photon.controller.model.UriPaths;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
@@ -147,7 +146,6 @@ public class NetworkService extends StatefulService {
     public ServiceDocument getDocumentTemplate() {
         ServiceDocument td = super.getDocumentTemplate();
         NetworkState template = (NetworkState) td;
-        ResourceUtils.updateIndexingOptions(td.documentDescription);
 
         template.id = UUID.randomUUID().toString();
         template.subnetCIDR = "10.1.0.0/16";

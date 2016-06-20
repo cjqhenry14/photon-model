@@ -14,10 +14,8 @@
 package com.vmware.photon.controller.model.resources;
 
 import com.vmware.photon.controller.model.UriPaths;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.Utils;
@@ -119,12 +117,5 @@ public class StorageDescriptionService extends StatefulService {
 
         boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(), currentState, patchBody);
         ResourceUtils.complePatchOperation(patch, hasStateChanged);
-    }
-
-    @Override
-    public ServiceDocument getDocumentTemplate() {
-        ServiceDocument serviceDocument = super.getDocumentTemplate();
-        ResourceUtils.updateIndexingOptions(serviceDocument.documentDescription);
-        return serviceDocument;
     }
 }

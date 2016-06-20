@@ -15,7 +15,6 @@ package com.vmware.photon.controller.model.resources;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -23,11 +22,10 @@ import java.util.UUID;
 import com.esotericsoftware.kryo.serializers.VersionFieldSerializer.Since;
 
 import com.vmware.photon.controller.model.UriPaths;
-
 import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.ServiceDocumentDescription;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyIndexingOption;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.UriUtils;
@@ -129,6 +127,7 @@ public class ComputeDescriptionService extends StatefulService {
         /**
          * List of compute types this host supports actuating.
          */
+        @PropertyOptions(indexing = { PropertyIndexingOption.EXPAND })
         public List<String> supportedChildren;
 
         /**
@@ -352,20 +351,6 @@ public class ComputeDescriptionService extends StatefulService {
             children.add(type.name());
         }
         template.supportedChildren = children;
-
-        // expand the supportedChildren field in order for it to be indexed
-        // separately.
-        ServiceDocumentDescription.PropertyDescription pdSupportedChildren = template.documentDescription.propertyDescriptions
-                .get(ComputeDescription.FIELD_NAME_SUPPORTED_CHILDREN);
-        pdSupportedChildren.indexingOptions = EnumSet
-                .of(ServiceDocumentDescription.PropertyIndexingOption.EXPAND);
-
-        ServiceDocumentDescription.PropertyDescription pdCustomProperties = template.documentDescription.propertyDescriptions
-                .get(ComputeDescription.FIELD_NAME_CUSTOM_PROPERTIES);
-        pdCustomProperties.indexingOptions = EnumSet
-                .of(ServiceDocumentDescription.PropertyIndexingOption.EXPAND);
-
-        ResourceUtils.updateIndexingOptions(template.documentDescription);
 
         template.environmentName = ComputeDescription.ENVIRONMENT_NAME_ON_PREMISE;
         template.cpuCount = 2;
