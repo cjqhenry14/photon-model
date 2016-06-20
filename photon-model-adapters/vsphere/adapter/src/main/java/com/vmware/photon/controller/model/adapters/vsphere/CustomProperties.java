@@ -23,7 +23,7 @@ import com.vmware.photon.controller.model.resources.ResourceState;
 import com.vmware.vim25.ManagedObjectReference;
 
 /**
- * Provides a convinience get/put interface over classes that hold customProperties.
+ * Provides a convenience get/put interface over classes that hold customProperties.
  * Does type conversion, default values and creates and empty map and assigns it to the
  * owner on the first call to any put* method.
  */
@@ -33,7 +33,13 @@ public class CustomProperties {
      */
     public static final String MOREF = "moref";
 
-    public static final String ENUMERATED_BY = "enumerated.by";
+    public static final String ENUMERATED_BY = "enumeratedBy";
+
+    /**
+     * When part of computeDescription, causes a vm to be created as a clone of the
+     * compute state.
+     */
+    public static final String TEMPLATE_LINK = "templateComputeLink";
 
     private final Supplier<Map<String, String>> getPropsForRead;
     private final Supplier<Map<String, String>> getPropsForWrite;

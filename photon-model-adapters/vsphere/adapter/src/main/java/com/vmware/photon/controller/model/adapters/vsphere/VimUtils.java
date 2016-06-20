@@ -117,6 +117,22 @@ public final class VimUtils {
     }
 
     /**
+     * Return the first non-null value or null if all values are null.
+     * @param values
+     * @return
+     */
+    @SafeVarargs
+    public static <T> T firstNonNull(T... values) {
+        for (T s : values) {
+            if (s != null) {
+                return s;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Builds a MoRef from a string produced bu {@link #convertMoRefToString(ManagedObjectReference)}
      * @param s
      * @return

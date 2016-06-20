@@ -99,26 +99,39 @@ public class VSphereAdapterInstanceService extends StatelessService {
                     try {
                         InstanceClient client = new InstanceClient(connection, ctx.child,
                                 ctx.parent);
-                        ComputeState state = client.createInstance();
+
+                        ComputeState state;
+
+                        // all sides effect collected, patch model:
+                        OperationJoin patchDisks = null;
+
+                        if (ctx.templateMoRef != null) {
+                            state = client.createInstanceFromTemplate(ctx.templateMoRef);
+                        } else {
+                            state = client.createInstance();
+                            client.attachDisks(ctx.disks);
+                            // attach disks, collecting side effects
+                            patchDisks = createDiskPatch(ctx.disks);
+                        }
+
                         if (state == null) {
                             // someone else won the race to create the vim
                             // assume they will patch the task if they have provisioned the vm
                             return;
                         }
 
-                        // attach disks, collecting side effects
-                        client.attachDisks(ctx.disks);
-
-                        // all sides effect collected, patch model:
-
-                        OperationJoin patchDisks = createDiskPatch(ctx.disks);
-                        Operation patchResource = createComputeResourcePatch(state, ctx.computeReference);
+                        Operation patchResource = createComputeResourcePatch(state,
+                                ctx.computeReference);
                         Operation finishTask = mgr.createTaskPatch(TaskStage.FINISHED);
 
-                        OperationSequence
-                                .create(patchDisks)
-                                .next(patchResource)
-                                .next(finishTask)
+                        OperationSequence seq = OperationSequence
+                                .create(patchResource);
+
+                        if (patchDisks != null) {
+                            seq = seq.next(patchDisks);
+                        }
+
+                        seq.next(finishTask)
                                 .setCompletion(ctx.failOnError())
                                 .sendWith(this);
                     } catch (Exception e) {

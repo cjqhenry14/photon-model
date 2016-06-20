@@ -34,7 +34,6 @@ import com.vmware.photon.controller.model.adapters.vsphere.util.finders.Finder;
 import com.vmware.photon.controller.model.adapters.vsphere.util.finders.FinderException;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
-import com.vmware.photon.controller.model.resources.ComputeService.PowerState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskStatus;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
@@ -76,8 +75,11 @@ import com.vmware.vim25.VirtualFloppyDeviceBackingInfo;
 import com.vmware.vim25.VirtualFloppyImageBackingInfo;
 import com.vmware.vim25.VirtualIDEController;
 import com.vmware.vim25.VirtualLsiLogicController;
+import com.vmware.vim25.VirtualMachineCloneSpec;
 import com.vmware.vim25.VirtualMachineConfigSpec;
 import com.vmware.vim25.VirtualMachineFileInfo;
+import com.vmware.vim25.VirtualMachineGuestOsIdentifier;
+import com.vmware.vim25.VirtualMachineRelocateSpec;
 import com.vmware.vim25.VirtualSCSIController;
 import com.vmware.vim25.VirtualSCSISharing;
 import com.vmware.vim25.VirtualSIOController;
@@ -122,6 +124,58 @@ public class InstanceClient extends BaseHelper {
         this.get = new GetMoRef(this.connection);
     }
 
+    public ComputeState createInstanceFromTemplate(ManagedObjectReference template)
+            throws Exception {
+        ManagedObjectReference vm = cloneVm(template);
+
+        if (vm == null) {
+            // vm was created by someone else
+            return null;
+        }
+
+        // store reference to created vm for further processing
+        this.vm = vm;
+
+        ComputeState state = new ComputeState();
+        state.resourcePoolLink = VimUtils.firstNonNull(this.state.resourcePoolLink, parent.resourcePoolLink);
+
+        enrichStateFromVm(state, vm);
+
+        return state;
+    }
+
+    private ManagedObjectReference cloneVm(ManagedObjectReference template) throws Exception {
+        ManagedObjectReference folder = getVmFolder();
+        ManagedObjectReference datastore = getDatastore();
+
+        VirtualMachineRelocateSpec relocSpec = new VirtualMachineRelocateSpec();
+        relocSpec.setDatastore(datastore);
+        relocSpec.setFolder(folder);
+
+        VirtualMachineCloneSpec cloneSpec = new VirtualMachineCloneSpec();
+        cloneSpec.setLocation(relocSpec);
+        cloneSpec.setPowerOn(true);
+        cloneSpec.setTemplate(false);
+
+        String displayName = getCustomProperty(ComputeProperties.CUSTOM_DISPLAY_NAME, state.description.name);
+        ManagedObjectReference cloneTask = getVimPort()
+                .cloneVMTask(template, folder, displayName, cloneSpec);
+
+        TaskInfo info = waitTaskEnd(cloneTask);
+
+        if (info.getState() == TaskInfoState.ERROR) {
+            MethodFault fault = info.getError().getFault();
+            if (fault instanceof FileAlreadyExists) {
+                // a .vmx file already exists, assume someone won the race to create the vm
+                return null;
+            } else {
+                return VimUtils.rethrow(info.getError());
+            }
+        }
+
+        return (ManagedObjectReference) info.getResult();
+    }
+
     public void deleteInstance() throws Exception {
         ManagedObjectReference vm = CustomProperties.of(state)
                 .getMoRef(CustomProperties.MOREF);
@@ -156,7 +210,7 @@ public class InstanceClient extends BaseHelper {
      *
      * @return
      */
-    public ComputeState createInstance() throws FinderException, Exception {
+    public ComputeState createInstance() throws Exception {
         ManagedObjectReference vm = createVm();
 
         if (vm == null) {
@@ -168,8 +222,7 @@ public class InstanceClient extends BaseHelper {
         this.vm = vm;
 
         ComputeState state = new ComputeState();
-        state.powerState = PowerState.OFF;
-        state.resourcePoolLink = firstNonNull(state.resourcePoolLink, parent.resourcePoolLink);
+        state.resourcePoolLink = VimUtils.firstNonNull(this.state.resourcePoolLink, parent.resourcePoolLink);
 
         enrichStateFromVm(state, vm);
 
@@ -196,10 +249,10 @@ public class InstanceClient extends BaseHelper {
         }
 
         // the path to folder holding all vm files
-        String dir = get.entityProp(vm, "summary.config.vmPathName");
+        String dir = get.entityProp(vm, VimPath.vm_config_files_vmPathName);
         dir = Paths.get(dir).getParent().toString();
 
-        ArrayOfVirtualDevice devices = get.entityProp(vm, "config.hardware.device");
+        ArrayOfVirtualDevice devices = get.entityProp(vm, VimPath.vm_config_hardware_device);
 
         VirtualDevice scsiController = getFirstScsiController(devices);
         int scsiUnit = findFreeUnit(scsiController, devices.getVirtualDevice());
@@ -495,31 +548,19 @@ public class InstanceClient extends BaseHelper {
         Map<String, Object> props = get.entityProps(ref,
                 VimPath.vm_config_instanceUuid,
                 VimPath.vm_config_name,
-                VimPath.vm_config_hardware_device);
+                VimPath.vm_config_hardware_device,
+                VimPath.vm_runtime_powerState);
 
         VmOverlay vm = new VmOverlay(ref, props);
         state.id = vm.getInstanceUuid();
         state.primaryMAC = vm.getPrimaryMac();
+        state.powerState = vm.getPowerState();
 
         CustomProperties.of(state)
                 .put(CustomProperties.MOREF, ref)
                 .put(ComputeProperties.CUSTOM_DISPLAY_NAME, vm.getName());
     }
 
-    /**
-     * Return the first non-null value or null if all values are null.
-     * @param values
-     * @return
-     */
-    private String firstNonNull(String... values) {
-        for (String s : values) {
-            if (s != null) {
-                return s;
-            }
-        }
-
-        return null;
-    }
 
     /**
      * Creates a VM in vsphere. This method will block untill the CreateVM_Task completes.
@@ -594,11 +635,11 @@ public class InstanceClient extends BaseHelper {
      */
     private VirtualMachineConfigSpec buildVirtualMachineConfigSpec(String datastoreName)
             throws InvalidPropertyFaultMsg, FinderException, RuntimeFaultFaultMsg {
-        String displayName = getCustomProperty("displayName", state.id);
+        String displayName = getCustomProperty(ComputeProperties.CUSTOM_DISPLAY_NAME, state.description.name);
         VirtualMachineConfigSpec spec = new VirtualMachineConfigSpec();
         spec.setName(displayName);
         spec.setNumCPUs((int) state.description.cpuCount);
-        spec.setGuestId("otherGuest64");
+        spec.setGuestId(VirtualMachineGuestOsIdentifier.OTHER_GUEST_64.value());
         spec.setMemoryMB(toMb(state.description.totalMemoryBytes));
 
         spec.getExtraConfig().add(configEntry(CONFIG_DESC_LINK, state.descriptionLink));
@@ -708,7 +749,7 @@ public class InstanceClient extends BaseHelper {
         Element parentResourcePool;
 
         // if a parent resource pool is not configured used the default one.
-        String parentResourcePath = firstNonNull(state.description.zoneId,
+        String parentResourcePath = VimUtils.firstNonNull(state.description.zoneId,
                 parent.description.zoneId);
 
         if (parentResourcePath != null) {

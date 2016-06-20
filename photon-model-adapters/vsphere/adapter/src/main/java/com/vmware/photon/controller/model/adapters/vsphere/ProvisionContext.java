@@ -26,6 +26,7 @@ import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.OperationJoin.JoinedCompletionHandler;
@@ -42,6 +43,9 @@ public class ProvisionContext {
 
     public ComputeStateWithDescription parent;
     public ComputeStateWithDescription child;
+
+    public ManagedObjectReference templateMoRef;
+
     public ServiceDocument task;
     public List<DiskState> disks;
     public AuthCredentialsServiceState vSphereCredentials;
@@ -77,6 +81,29 @@ public class ProvisionContext {
             AdapterUtils.getServiceState(service, computeUri, op -> {
                 ctx.child = op.getBody(ComputeStateWithDescription.class);
                 populateContextThen(service, ctx, onSuccess);
+            }, ctx.errorHandler);
+            return;
+        }
+
+        String templateLink = VimUtils.<String>firstNonNull(
+                CustomProperties.of(ctx.child).getString(CustomProperties.TEMPLATE_LINK),
+                CustomProperties.of(ctx.child.description).getString(CustomProperties.TEMPLATE_LINK)
+        );
+
+        if (templateLink != null && ctx.templateMoRef == null) {
+            URI computeUri = UriUtils.buildUri(service.getHost(), templateLink);
+
+            AdapterUtils.getServiceState(service, computeUri, op -> {
+                ComputeStateWithDescription body = op.getBody(ComputeStateWithDescription.class);
+                ctx.templateMoRef = CustomProperties.of(body).getMoRef(CustomProperties.MOREF);
+                if (ctx.templateMoRef == null) {
+                    String msg = String
+                            .format("The linked template %s does not contain a MoRef in its custom properties",
+                                    templateLink);
+                    ctx.fail(new IllegalStateException(msg));
+                } else {
+                    populateContextThen(service, ctx, onSuccess);
+                }
             }, ctx.errorHandler);
             return;
         }

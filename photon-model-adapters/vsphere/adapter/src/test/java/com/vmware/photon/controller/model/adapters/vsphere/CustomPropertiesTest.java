@@ -27,7 +27,7 @@ public class CustomPropertiesTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void putOnNullState() {
-        CustomProperties.of( null);
+        CustomProperties.of(null);
     }
 
     @Test

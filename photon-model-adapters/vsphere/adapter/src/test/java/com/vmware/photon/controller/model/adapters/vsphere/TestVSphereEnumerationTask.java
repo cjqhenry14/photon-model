@@ -26,14 +26,12 @@ import com.vmware.photon.controller.model.resources.ComputeDescriptionService.Co
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService.ResourceEnumerationTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.xenon.common.UriUtils;
-import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
@@ -48,22 +46,6 @@ public class TestVSphereEnumerationTask extends BaseVSphereAdapterTest {
     private ComputeDescription computeHostDescription;
     private ComputeState computeHost;
     private ComputeDescription vmDescription;
-
-    private ResourcePoolState createResourcePool()
-            throws Throwable {
-        ResourcePoolState inPool = new ResourcePoolState();
-        inPool.name = "resourcePool-" + UUID.randomUUID().toString();
-        inPool.id = inPool.name;
-
-        inPool.minCpuCount = 1;
-        inPool.minMemoryBytes = 1024;
-
-        ResourcePoolState returnPool =
-                TestUtils.doPost(this.host, inPool, ResourcePoolState.class,
-                        UriUtils.buildUri(this.host, ResourcePoolService.FACTORY_LINK));
-
-        return returnPool;
-    }
 
     @Test
     public void testRefresh() throws Throwable {
@@ -144,19 +126,6 @@ public class TestVSphereEnumerationTask extends BaseVSphereAdapterTest {
                 ComputeState.class,
                 UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
         return returnState;
-    }
-
-    private AuthCredentialsServiceState createAuth() throws Throwable {
-        AuthCredentialsServiceState auth = new AuthCredentialsServiceState();
-        auth.type = DEFAULT_AUTH_TYPE;
-        auth.privateKeyId = vcUsername;
-        auth.privateKey = vcPassword;
-        auth.documentSelfLink = UUID.randomUUID().toString();
-
-        AuthCredentialsServiceState result = TestUtils
-                .doPost(this.host, auth, AuthCredentialsServiceState.class,
-                        UriUtils.buildUri(this.host, AuthCredentialsService.FACTORY_LINK));
-        return result;
     }
 
     private ComputeDescription createComputeDescription() throws Throwable {

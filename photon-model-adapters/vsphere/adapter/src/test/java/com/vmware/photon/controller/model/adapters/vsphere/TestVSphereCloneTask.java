@@ -13,19 +13,14 @@
 
 package com.vmware.photon.controller.model.adapters.vsphere;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.UUID;
 
 import org.junit.Test;
 
 import com.vmware.photon.controller.model.ComputeProperties;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BasicConnection;
-import com.vmware.photon.controller.model.adapters.vsphere.util.connection.GetMoRef;
+import com.vmware.photon.controller.model.adapters.vsphere.util.VimNames;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
@@ -36,25 +31,13 @@ import com.vmware.photon.controller.model.resources.DiskService;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
-import com.vmware.photon.controller.model.resources.SnapshotService;
-import com.vmware.photon.controller.model.resources.SnapshotService.SnapshotState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
-import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
-import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
-import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
-import com.vmware.photon.controller.model.tasks.SnapshotTaskService;
-import com.vmware.photon.controller.model.tasks.SnapshotTaskService.SnapshotTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.vim25.ManagedObjectReference;
-import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
-import com.vmware.xenon.services.common.QueryTask;
-import com.vmware.xenon.services.common.QueryTask.QuerySpecification;
 
-public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
-
-    public URI cdromUri = getCdromUri();
+public class TestVSphereCloneTask extends BaseVSphereAdapterTest {
 
     // fields that are used across method calls, stash them as private fields
     private ResourcePoolState resourcePool;
@@ -64,10 +47,9 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
     private ComputeState computeHost;
 
     @Test
-    public void createInstanceSnapshotItAndDeleteIt() throws Throwable {
-        // Create a resource pool where the VM will be housed
-        resourcePool = createResourcePool();
+    public void createInstanceFromTemplate() throws Throwable {
         auth = createAuth();
+        resourcePool = createResourcePool();
 
         computeHostDescription = createComputeDescription();
         computeHost = createComputeHost();
@@ -76,88 +58,49 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
         ComputeState vm = createVmState(vmDescription);
 
         // kick off a provision task to do the actual VM creation
-        ProvisionComputeTaskState outTask = createProvisionTask(vm);
-        awaitTaskEnd(outTask);
+        ProvisionComputeTaskState provisionTask = createProvisionTask(vm);
+        awaitTaskEnd(provisionTask);
 
         vm = getComputeState(vm);
-
-        createSnapshot(vm);
-
-        ResourceRemovalTaskState deletionState = new ResourceRemovalTaskState();
-        QuerySpecification resourceQuerySpec = new QueryTask.QuerySpecification();
-        // query all ComputeState resources for the cluster
-        resourceQuerySpec.query
-                .setTermPropertyName(ServiceDocument.FIELD_NAME_SELF_LINK)
-                .setTermMatchValue(vm.documentSelfLink);
-
-        deletionState.resourceQuerySpec = resourceQuerySpec;
-        deletionState.isMockRequest = isMock();
-        ResourceRemovalTaskState outDelete = TestUtils.doPost(this.host,
-                deletionState,
-                ResourceRemovalTaskState.class,
-                UriUtils.buildUri(this.host,
-                        ResourceRemovalTaskService.FACTORY_LINK));
-
-        ArrayList<URI> uris = new ArrayList<>();
-        uris.add(UriUtils.buildUri(this.host, outDelete.documentSelfLink));
-        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ResourceRemovalTaskState.class);
-
-        if (!isMock()) {
-            BasicConnection connection = createConnection();
-
-            GetMoRef get = new GetMoRef(connection);
-            ManagedObjectReference moref = CustomProperties.of(vm)
-                    .getMoRef(CustomProperties.MOREF);
-
-            // try getting a property of vm: this must fail because vm is deleted
-            try {
-                get.entityProp(moref, "name");
-                fail("VM must have been deleted");
-            } catch (Exception e) {
-            }
+        // put fake moref in the vm
+        if (isMock()) {
+            ManagedObjectReference moref = new ManagedObjectReference();
+            moref.setValue("vm-0");
+            moref.setType(VimNames.TYPE_VM);
+            CustomProperties.of(vm).put(CustomProperties.MOREF, moref);
+            vm = TestUtils.doPost(this.host, vm,
+                    ComputeState.class,
+                    UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
         }
+
+        // create state & desc of the clone
+        ComputeDescription cloneDescription = createCloneDescription(vm.documentSelfLink);
+        ComputeState cloneVm = createVmState(cloneDescription);
+
+        provisionTask = createProvisionTask(cloneVm);
+        awaitTaskEnd(provisionTask);
     }
 
-    private void createSnapshot(ComputeState vm) throws Throwable {
-        SnapshotState snapshotState = createSnapshotState(vm);
+    private ComputeDescription createCloneDescription(String templateComputeLink) throws Throwable {
+        ComputeDescription computeDesc = new ComputeDescription();
 
-        SnapshotTaskState sts = new SnapshotTaskState();
-        sts.isMockRequest = isMock();
-        sts.snapshotLink = snapshotState.documentSelfLink;
-        sts.snapshotAdapterReference = UriUtils
-                .buildUri(this.host, VSphereUriPaths.SNAPSHOT_SERVICE);
+        computeDesc.id = "cloned-" + UUID.randomUUID().toString();
+        computeDesc.documentSelfLink = computeDesc.id;
+        computeDesc.supportedChildren = new ArrayList<>();
+        computeDesc.instanceAdapterReference = UriUtils
+                .buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
+        computeDesc.authCredentialsLink = this.auth.documentSelfLink;
+        computeDesc.name = computeDesc.id;
+        computeDesc.dataStoreId = dataStoreId;
+        computeDesc.networkId = networkId;
 
-        SnapshotTaskState outSts = TestUtils.doPost(this.host,
-                sts,
-                SnapshotTaskState.class,
-                UriUtils.buildUri(this.host,
-                        SnapshotTaskService.FACTORY_LINK));
+        CustomProperties.of(computeDesc)
+                .put(CustomProperties.TEMPLATE_LINK, templateComputeLink)
+                .put(ComputeProperties.CUSTOM_DISPLAY_NAME, computeDesc.id);
 
-        ProvisioningUtils.waitForTaskCompletion(this.host, Collections.singletonList(
-                UriUtils.buildUri(this.host, outSts.documentSelfLink)),
-                SnapshotTaskState.class);
-
-        SnapshotState stateAfterTaskComplete = host.getServiceState(null, SnapshotState.class,
-                UriUtils.buildUri(host, snapshotState.documentSelfLink));
-
-        if (!isMock()) {
-            assertNotNull(CustomProperties.of(stateAfterTaskComplete)
-                    .getMoRef(CustomProperties.MOREF));
-
-        }
-    }
-
-    private SnapshotState createSnapshotState(ComputeState vm) throws Throwable {
-        SnapshotState state = new SnapshotState();
-        state.id = "snapshot" + UUID.randomUUID();
-        state.name = state.id;
-        state.computeLink = vm.documentSelfLink;
-        state.description = "description: " + state.name;
-
-        return TestUtils.doPost(this.host, state,
-                SnapshotState.class,
-                UriUtils.buildUri(this.host, SnapshotService.FACTORY_LINK));
-
+        return TestUtils.doPost(this.host, computeDesc,
+                ComputeDescription.class,
+                UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
     }
 
     private ComputeState createVmState(ComputeDescription vmDescription) throws Throwable {
@@ -177,14 +120,13 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
 
         computeState.diskLinks.add(createDisk("movies", DiskType.HDD, null).documentSelfLink);
         computeState.diskLinks.add(createDisk("A", DiskType.FLOPPY, null).documentSelfLink);
-        computeState.diskLinks.add(createDisk("cd", DiskType.CDROM, cdromUri).documentSelfLink);
 
         CustomProperties.of(computeState)
                 .put(ComputeProperties.RESOURCE_GROUP_NAME, vcFolder)
                 .put(ComputeProperties.CUSTOM_DISPLAY_NAME, vcFolder);
 
-        ComputeService.ComputeState returnState = TestUtils.doPost(this.host, computeState,
-                ComputeService.ComputeState.class,
+        ComputeState returnState = TestUtils.doPost(this.host, computeState,
+                ComputeState.class,
                 UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
         return returnState;
     }
@@ -224,7 +166,7 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
     /**
      * Create a compute host representing a vcenter server
      */
-    private ComputeService.ComputeState createComputeHost() throws Throwable {
+    private ComputeState createComputeHost() throws Throwable {
         ComputeState computeState = new ComputeState();
         computeState.id = UUID.randomUUID().toString();
         computeState.documentSelfLink = computeState.id;
@@ -232,8 +174,8 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
         computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
         computeState.adapterManagementReference = UriUtils.buildUri(vcUrl);
 
-        ComputeService.ComputeState returnState = TestUtils.doPost(this.host, computeState,
-                ComputeService.ComputeState.class,
+        ComputeState returnState = TestUtils.doPost(this.host, computeState,
+                ComputeState.class,
                 UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
         return returnState;
     }

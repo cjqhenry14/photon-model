@@ -16,15 +16,24 @@ package com.vmware.photon.controller.model.adapters.vsphere;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.junit.After;
 import org.junit.Before;
 
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BasicConnection;
+import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
+import com.vmware.photon.controller.model.resources.ResourcePoolService;
+import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
+import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
+import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.services.common.AuthCredentialsService;
+import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
 
@@ -37,6 +46,8 @@ public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
     public String zoneId = System.getProperty(TestProperties.VC_ZONE_ID);
     public String dataStoreId = System.getProperty(TestProperties.VC_DATASTORE_ID);
     public String networkId = System.getProperty(TestProperties.VC_NETWORK_ID);
+
+    public String vcFolder = System.getProperty("vc.folder");
 
     @Before
     public void setUp() throws Throwable {
@@ -104,5 +115,61 @@ public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
         connection.setURI(URI.create(vcUrl));
         connection.connect();
         return connection;
+    }
+
+    protected ProvisionComputeTaskState createProvisionTask(ComputeState vm) throws Throwable {
+        ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskState();
+
+        provisionTask.computeLink = vm.documentSelfLink;
+        provisionTask.isMockRequest = isMock();
+        provisionTask.taskSubStage = ProvisionComputeTaskState.SubStage.CREATING_HOST;
+
+        ProvisionComputeTaskState outTask = TestUtils.doPost(this.host,
+                provisionTask,
+                ProvisionComputeTaskState.class,
+                UriUtils.buildUri(this.host,
+                        ProvisionComputeTaskService.FACTORY_LINK));
+
+        return outTask;
+    }
+
+    protected ComputeState getComputeState(ComputeState vm) throws Throwable {
+        return host.getServiceState(null, ComputeState.class,
+                UriUtils.buildUri(host, vm.documentSelfLink));
+    }
+
+    protected ResourcePoolState createResourcePool()
+            throws Throwable {
+        ResourcePoolState inPool = new ResourcePoolState();
+        inPool.name = "resourcePool-" + UUID.randomUUID().toString();
+        inPool.id = inPool.name;
+
+        inPool.minCpuCount = 1;
+        inPool.minMemoryBytes = 1024;
+
+        ResourcePoolState returnPool =
+                TestUtils.doPost(this.host, inPool, ResourcePoolState.class,
+                        UriUtils.buildUri(this.host, ResourcePoolService.FACTORY_LINK));
+
+        return returnPool;
+    }
+
+    protected void awaitTaskEnd(ProvisionComputeTaskState outTask) throws Throwable {
+        List<URI> uris = new ArrayList<>();
+        uris.add(UriUtils.buildUri(this.host, outTask.documentSelfLink));
+        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ProvisionComputeTaskState.class);
+    }
+
+    protected AuthCredentialsServiceState createAuth() throws Throwable {
+        AuthCredentialsServiceState auth = new AuthCredentialsServiceState();
+        auth.type = DEFAULT_AUTH_TYPE;
+        auth.privateKeyId = vcUsername;
+        auth.privateKey = vcPassword;
+        auth.documentSelfLink = UUID.randomUUID().toString();
+
+        AuthCredentialsServiceState result = TestUtils
+                .doPost(this.host, auth, AuthCredentialsServiceState.class,
+                        UriUtils.buildUri(this.host, AuthCredentialsService.FACTORY_LINK));
+        return result;
     }
 }
