@@ -31,14 +31,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
+import com.vmware.photon.controller.model.PhotonModelServices;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.photon.controller.model.tasks.TaskUtils;
 
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.test.VerificationHost;
-
 
 public class TestAWSNetworkService {
     /*
@@ -75,7 +75,8 @@ public class TestAWSNetworkService {
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
-            ProvisioningUtils.startProvisioningServices(this.host);
+            PhotonModelServices.startServices(host);
+            PhotonModelTaskServices.startServices(host);
 
             this.netSvc = new AWSNetworkService();
             host.startService(
@@ -200,7 +201,6 @@ public class TestAWSNetworkService {
         this.netSvc.deleteSubnet(subnetID, this.aws.amazonEC2Client);
         this.netSvc.deleteVPC(vpcID, this.aws.amazonEC2Client);
     }
-
 
     @Test
     public void TestGetInvalidVPC() throws Throwable {

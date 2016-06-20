@@ -119,7 +119,7 @@ public class ResourceEnumerationTaskServiceTest extends Suite {
     }
 
     private static void startFactoryServices(BaseModelTest test) throws Throwable {
-        TaskServices.startFactories(test);
+        PhotonModelTaskServices.startServices(test.getHost());
         MockAdapter.startFactories(test);
     }
 

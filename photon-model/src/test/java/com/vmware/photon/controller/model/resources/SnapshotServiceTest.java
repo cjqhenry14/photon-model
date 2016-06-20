@@ -13,6 +13,11 @@
 
 package com.vmware.photon.controller.model.resources;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -20,11 +25,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -90,7 +90,8 @@ public class SnapshotServiceTest extends Suite {
                     Service.ServiceOption.CONCURRENT_GET_HANDLING,
                     Service.ServiceOption.PERSISTENCE,
                     Service.ServiceOption.REPLICATION,
-                    Service.ServiceOption.OWNER_SELECTION);
+                    Service.ServiceOption.OWNER_SELECTION,
+                    Service.ServiceOption.IDEMPOTENT_POST);
 
             assertThat(this.snapshotService.getOptions(), is(expected));
         }

@@ -13,8 +13,6 @@
 
 package com.vmware.photon.controller.model;
 
-import java.util.function.Consumer;
-
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.DiskService;
@@ -22,10 +20,10 @@ import com.vmware.photon.controller.model.resources.FirewallService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
+import com.vmware.photon.controller.model.resources.ResourceGroupService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
-import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.Service;
+import com.vmware.photon.controller.model.resources.StorageDescriptionService;
 import com.vmware.xenon.common.ServiceHost;
 
 /**
@@ -33,55 +31,31 @@ import com.vmware.xenon.common.ServiceHost;
  */
 public class PhotonModelServices {
 
-    public static void startServices(ServiceHost host,
-            Consumer<Class<? extends Service>> addPrivilegedService) throws Throwable {
-        host.startService(
-                Operation.createPost(host,
-                        ComputeDescriptionService.FACTORY_LINK),
-                ComputeDescriptionService.createFactory());
+    public static final String[] LINKS = {
+            ComputeDescriptionService.FACTORY_LINK,
+            ComputeService.FACTORY_LINK,
+            ResourcePoolService.FACTORY_LINK,
+            ResourceDescriptionService.FACTORY_LINK,
+            DiskService.FACTORY_LINK,
+            SnapshotService.FACTORY_LINK,
+            NetworkInterfaceService.FACTORY_LINK,
+            ResourceGroupService.FACTORY_LINK,
+            NetworkService.FACTORY_LINK,
+            FirewallService.FACTORY_LINK,
+            StorageDescriptionService.FACTORY_LINK };
 
-        host.startService(
-                Operation.createPost(host, ComputeService.FACTORY_LINK),
-                ComputeService.createFactory());
+    public static void startServices(ServiceHost host) throws Throwable {
 
-        host.startService(
-                Operation.createPost(host, ResourcePoolService.FACTORY_LINK),
-                ResourcePoolService.createFactory());
-
-        host.startService(
-                Operation.createPost(host,
-                        ResourceDescriptionService.FACTORY_LINK),
-                ResourceDescriptionService.createFactory());
-
-        host.startService(
-                Operation.createPost(host,
-                        DiskService.FACTORY_LINK),
-                DiskService.createFactory());
-
-        host.startService(
-                Operation.createPost(host,
-                        SnapshotService.FACTORY_LINK),
-                SnapshotService.createFactory());
-
-        host.startService(
-                Operation.createPost(host,
-                        NetworkInterfaceService.FACTORY_LINK),
-                NetworkInterfaceService.createFactory());
-
-        host.startService(
-                Operation.createPost(host,
-                        ResourceDescriptionService.FACTORY_LINK),
-                ResourceDescriptionService.createFactory());
-
-        host.startService(
-                Operation.createPost(host,
-                        NetworkService.FACTORY_LINK),
-                NetworkService.createFactory());
-
-        host.startService(
-                Operation.createPost(host,
-                        FirewallService.FACTORY_LINK),
-                FirewallService.createFactory());
-
+        host.startFactory(new ComputeDescriptionService());
+        host.startFactory(new ComputeService());
+        host.startFactory(new ResourcePoolService());
+        host.startFactory(new ResourceDescriptionService());
+        host.startFactory(new DiskService());
+        host.startFactory(new SnapshotService());
+        host.startFactory(new NetworkInterfaceService());
+        host.startFactory(new ResourceGroupService());
+        host.startFactory(new NetworkService());
+        host.startFactory(new FirewallService());
+        host.startFactory(new StorageDescriptionService());
     }
 }

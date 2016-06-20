@@ -23,7 +23,6 @@ import org.apache.commons.validator.routines.InetAddressValidator;
 import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
@@ -37,10 +36,6 @@ import com.vmware.xenon.common.Utils;
 public class ComputeService extends StatefulService {
 
     public static final String FACTORY_LINK = UriPaths.RESOURCES + "/compute";
-
-    public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ComputeService.class);
-    }
 
     /**
      * Power State.
@@ -177,6 +172,7 @@ public class ComputeService extends StatefulService {
         super.toggleOption(ServiceOption.PERSISTENCE, true);
         super.toggleOption(ServiceOption.REPLICATION, true);
         super.toggleOption(ServiceOption.OWNER_SELECTION, true);
+        super.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
     }
 
     @Override

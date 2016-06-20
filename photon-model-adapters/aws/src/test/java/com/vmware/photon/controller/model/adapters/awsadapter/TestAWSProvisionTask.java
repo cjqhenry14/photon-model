@@ -29,12 +29,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
@@ -43,6 +43,7 @@ import com.vmware.photon.controller.model.constants.PhotonModelConstants;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
@@ -66,7 +67,7 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  * Minimally the accessKey and secretKey for AWS must be specified.
  *
  */
-public class TestAWSProvisionTask  {
+public class TestAWSProvisionTask {
 
     private static final String INSTANCEID_PREFIX = "i-";
     private VerificationHost host;
@@ -84,24 +85,15 @@ public class TestAWSProvisionTask  {
         try {
             this.host.setMaintenanceIntervalMicros(TimeUnit.MILLISECONDS.toMicros(250));
             this.host.start();
-            ProvisioningUtils.startProvisioningServices(this.host);
+            PhotonModelServices.startServices(host);
+            PhotonModelTaskServices.startServices(host);
+            AWSAdapters.startServices(host);
+
             this.host.setTimeoutSeconds(600);
-            List<String> serviceSelfLinks = new ArrayList<String>();
 
-            this.host.startService(
-                    Operation.createPost(UriUtils.buildUri(host,
-                            AWSInstanceService.class)),
-                    new AWSInstanceService());
-            serviceSelfLinks.add(AWSInstanceService.SELF_LINK);
-
-            this.host.startService(
-                    Operation.createPost(UriUtils.buildUri(this.host,
-                            AWSStatsService.class)),
-                    new AWSStatsService());
-            serviceSelfLinks.add(AWSStatsService.SELF_LINK);
-
-            ProvisioningUtils.waitForServiceStart(this.host,
-                    serviceSelfLinks.toArray(new String[] {}));
+            host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            host.waitForServiceAvailable(AWSAdapters.LINKS);
         } catch (Throwable e) {
             throw new Exception(e);
         }
@@ -222,6 +214,7 @@ public class TestAWSProvisionTask  {
     private void issueStatsRequest(ComputeState vm) throws Throwable {
         // spin up a stateless service that acts as the parent link to patch back to
         StatelessService parentService = new StatelessService() {
+            @Override
             public void handleRequest(Operation op) {
                 if (op.getAction() == Action.PATCH) {
                     if (!isMock) {

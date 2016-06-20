@@ -19,8 +19,6 @@ import java.util.Map;
 
 import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription;
@@ -34,10 +32,6 @@ import com.vmware.xenon.services.common.TaskService.TaskServiceState;
  */
 public class ScheduledTaskService extends TaskService<ScheduledTaskService.ScheduledTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/scheduled-tasks";
-
-    public static FactoryService createFactory() {
-        return FactoryService.create(ScheduledTaskService.class);
-    }
 
     public static class ScheduledTaskState extends TaskServiceState {
         /**

@@ -13,11 +13,11 @@
 
 package com.vmware.photon.controller.model.tasks;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
 
 import org.junit.Before;
 import org.junit.Ignore;
@@ -50,7 +50,7 @@ public class SshCommandTaskServiceTest extends Suite {
     }
 
     private static void startFactoryServices(BaseModelTest test) throws Throwable {
-        TaskServices.startFactories(test);
+        PhotonModelTaskServices.startServices(test.getHost());
         MockAdapter.startFactories(test);
     }
 

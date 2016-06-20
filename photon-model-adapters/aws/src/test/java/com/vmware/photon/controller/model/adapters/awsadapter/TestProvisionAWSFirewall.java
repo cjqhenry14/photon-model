@@ -25,20 +25,19 @@ import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState.Allow;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionFirewallTaskService.ProvisionFirewallTaskState;
-import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
-
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceHost;
@@ -77,7 +76,8 @@ public class TestProvisionAWSFirewall {
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
-            ProvisioningUtils.startProvisioningServices(this.host);
+            PhotonModelServices.startServices(host);
+            PhotonModelTaskServices.startServices(host);
             // start the aws fw service
             this.host.startService(
                     Operation.createPost(UriUtils.buildUri(host, AWSFirewallService.class)),

@@ -41,16 +41,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.BaseLineState;
-import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
-import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.CommandLineArgumentParser;
-import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 
 /**
@@ -101,23 +99,18 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
         creds.privateKeyId = accessKey;
         client = AWSUtils.getAsyncClient(creds, TestAWSSetupUtils.zoneId,
                 isMock, getExecutor());
-        List<String> serviceSelfLinks = new ArrayList<String>();
         try {
-            ProvisioningUtils.startProvisioningServices(this.host);
-            this.host.setTimeoutSeconds(200);
-            this.host.startService(
-                    Operation.createPost(UriUtils.buildUri(this.host,
-                            AWSInstanceService.class)),
-                    new AWSInstanceService());
-            serviceSelfLinks.add(AWSInstanceService.SELF_LINK);
+            PhotonModelServices.startServices(host);
+            PhotonModelTaskServices.startServices(host);
+            AWSAdapters.startServices(host);
 
-            this.host.startService(
-                    Operation.createPost(UriUtils.buildUri(this.host,
-                            AWSEnumerationAdapterService.class)),
-                    new AWSEnumerationAdapterService());
-            serviceSelfLinks.add(AWSEnumerationAdapterService.SELF_LINK);
+            host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            host.waitForServiceAvailable(AWSAdapters.LINKS);
 
-            ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
+            // TODO: VSYM-992 - improve test/remove arbitrary timeout
+            host.setTimeoutSeconds(200);
+
             // create the compute host, resource pool and the VM state to be used in the test.
             createResourcePoolComputeHost();
         } catch (Throwable e) {

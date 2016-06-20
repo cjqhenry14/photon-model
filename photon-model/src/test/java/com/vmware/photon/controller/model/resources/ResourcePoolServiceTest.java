@@ -13,16 +13,16 @@
 
 package com.vmware.photon.controller.model.resources;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.UUID;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -96,7 +96,8 @@ public class ResourcePoolServiceTest extends Suite {
                     Service.ServiceOption.OWNER_SELECTION,
                     Service.ServiceOption.PERSISTENCE,
                     Service.ServiceOption.REPLICATION,
-                    Service.ServiceOption.HTML_USER_INTERFACE);
+                    Service.ServiceOption.HTML_USER_INTERFACE,
+                    Service.ServiceOption.IDEMPOTENT_POST);
 
             assertThat(this.resourcePoolService.getOptions(), is(expected));
         }

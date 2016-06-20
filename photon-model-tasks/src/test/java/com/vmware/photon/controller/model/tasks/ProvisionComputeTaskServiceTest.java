@@ -13,11 +13,11 @@
 
 package com.vmware.photon.controller.model.tasks;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -32,7 +32,6 @@ import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionServiceTest;
 import com.vmware.photon.controller.model.resources.ComputeService;
-
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.TaskState;
 
@@ -52,7 +51,7 @@ public class ProvisionComputeTaskServiceTest extends Suite {
     }
 
     private static void startFactoryServices(BaseModelTest test) throws Throwable {
-        TaskServices.startFactories(test);
+        PhotonModelTaskServices.startServices(test.getHost());
         MockAdapter.startFactories(test);
     }
 

@@ -27,9 +27,8 @@ import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
-import com.vmware.photon.controller.model.tasks.TaskServices;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.photon.controller.model.tasks.monitoring.StatsCollectionTaskSchedulerService.StatsCollectionTaskServiceSchedulerState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.ServiceHost;
@@ -43,22 +42,10 @@ public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
 
     @Override
     protected void startRequiredServices() throws Throwable {
-        TaskServices.startFactories(this);
         super.startRequiredServices();
         // set the monitoring interval to 250 ms
         System.setProperty(StatsCollectionTaskSchedulerService.STATS_MONITORING_INTERVAL, "250");
-        this.host.startService(
-                Operation.createPost(UriUtils.buildFactoryUri(this.host,
-                        StatsCollectionTaskSchedulerService.class)),
-                StatsCollectionTaskSchedulerService.createFactory());
-        this.host.startService(
-                Operation.createPost(UriUtils.buildFactoryUri(this.host,
-                        StatsCollectionTaskService.class)),
-                StatsCollectionTaskService.createFactory());
-        this.host.startService(
-                Operation.createPost(UriUtils.buildFactoryUri(this.host,
-                        SingleResourceStatsCollectionTaskService.class)),
-                SingleResourceStatsCollectionTaskService.createFactory());
+        PhotonModelTaskServices.startServices(this.getHost());
         host.startService(
                 Operation.createPost(UriUtils.buildUri(host,
                         MockStatsAdapter.class)),
@@ -110,7 +97,7 @@ public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
             this.host.waitFor("Error waiting for stats", () -> {
                 ServiceStats resStats = getServiceSynchronously(statsUriPath, ServiceStats.class);
                 boolean returnStatus = true;
-                for (ServiceStat stat: resStats.entries.values()) {
+                for (ServiceStat stat : resStats.entries.values()) {
                     if (stat.latestValue < numResources ||
                             stat.timeSeriesStats.dataPoints.size() == 0) {
                         returnStatus = false;

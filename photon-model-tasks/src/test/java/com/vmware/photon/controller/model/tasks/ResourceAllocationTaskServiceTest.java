@@ -13,6 +13,9 @@
 
 package com.vmware.photon.controller.model.tasks;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -20,9 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -223,7 +223,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
     }
 
     private static void startFactoryServices(BaseModelTest test) throws Throwable {
-        TaskServices.startFactories(test);
+        PhotonModelTaskServices.startServices(test.getHost());
         MockAdapter.startFactories(test);
     }
 

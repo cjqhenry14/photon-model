@@ -19,8 +19,6 @@ import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.FirewallInstanceRequest.InstanceRequestType;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState;
-
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
@@ -32,10 +30,6 @@ import com.vmware.xenon.services.common.TaskService;
  */
 public class ProvisionFirewallTaskService extends TaskService<ProvisionFirewallTaskService.ProvisionFirewallTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/firewall-allocation-tasks";
-
-    public static FactoryService createFactory() {
-        return FactoryService.create(ProvisionFirewallTaskService.class);
-    }
 
     /**
      * Substages of the tasks.

@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.vmware.photon.controller.model.UriPaths;
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
@@ -31,10 +30,6 @@ import com.vmware.xenon.common.Utils;
 public class DiskService extends StatefulService {
 
     public static final String FACTORY_LINK = UriPaths.RESOURCES + "/disks";
-
-    public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(DiskService.class);
-    }
 
     /**
      * Status of disk.
@@ -206,6 +201,7 @@ public class DiskService extends StatefulService {
         super.toggleOption(ServiceOption.PERSISTENCE, true);
         super.toggleOption(ServiceOption.REPLICATION, true);
         super.toggleOption(ServiceOption.OWNER_SELECTION, true);
+        super.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
     }
 
     @Override

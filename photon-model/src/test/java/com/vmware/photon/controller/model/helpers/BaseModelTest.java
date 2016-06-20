@@ -22,25 +22,15 @@ import java.util.function.Predicate;
 
 import org.junit.Before;
 
+import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
-import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
-import com.vmware.photon.controller.model.resources.DiskService;
-import com.vmware.photon.controller.model.resources.FirewallService;
-import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
-import com.vmware.photon.controller.model.resources.NetworkService;
-import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
-import com.vmware.photon.controller.model.resources.ResourceGroupService;
-import com.vmware.photon.controller.model.resources.ResourcePoolService;
-import com.vmware.photon.controller.model.resources.SnapshotService;
-import com.vmware.photon.controller.model.resources.StorageDescriptionService;
-
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.ServiceDocument;
-import com.vmware.xenon.common.ServiceHost;
 import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.common.test.VerificationHost;
 import com.vmware.xenon.services.common.QueryTask;
 import com.vmware.xenon.services.common.ServiceUriPaths;
 
@@ -54,13 +44,10 @@ public abstract class BaseModelTest extends BasicReusableHostTestCase {
         if (test.getHost().getServiceStage(ComputeService.FACTORY_LINK) != null) {
             return;
         }
-        test.getHost().startFactoryServicesSynchronously(ComputeService.createFactory(),
-                ComputeDescriptionService.createFactory(), DiskService.createFactory(),
-                FirewallService.createFactory(), NetworkService.createFactory(),
-                NetworkInterfaceService.createFactory(),
-                ResourceDescriptionService.createFactory(), ResourceGroupService.createFactory(),
-                ResourcePoolService.createFactory(), SnapshotService.createFactory(),
-                StorageDescriptionService.createFactory());
+
+        PhotonModelServices.startServices(test.getHost());
+        test.getHost().waitForServiceAvailable(PhotonModelServices.LINKS);
+
     }
 
     protected void startRequiredServices() throws Throwable {
@@ -284,7 +271,7 @@ public abstract class BaseModelTest extends BasicReusableHostTestCase {
                 queryTask, QueryTask.class);
     }
 
-    public ServiceHost getHost() {
+    public VerificationHost getHost() {
         return this.host;
     }
 }

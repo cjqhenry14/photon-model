@@ -42,8 +42,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.resources.FirewallService.FirewallState.Allow;
-import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
@@ -88,7 +89,8 @@ public class TestAWSFirewallService {
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
-            ProvisioningUtils.startProvisioningServices(this.host);
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
             this.svc = new AWSFirewallService();
             host.startService(
                     Operation.createPost(UriUtils.buildUri(host,

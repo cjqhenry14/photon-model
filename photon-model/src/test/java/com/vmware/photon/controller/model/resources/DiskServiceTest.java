@@ -87,7 +87,8 @@ public class DiskServiceTest extends Suite {
                     Service.ServiceOption.CONCURRENT_GET_HANDLING,
                     Service.ServiceOption.OWNER_SELECTION,
                     Service.ServiceOption.PERSISTENCE,
-                    Service.ServiceOption.REPLICATION);
+                    Service.ServiceOption.REPLICATION,
+                    Service.ServiceOption.IDEMPOTENT_POST);
 
             assertThat(this.diskService.getOptions(), is(expected));
         }

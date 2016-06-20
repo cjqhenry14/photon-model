@@ -27,8 +27,6 @@ import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.Inst
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.BootDevice;
-
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.ServiceDocument;
@@ -52,10 +50,6 @@ import com.vmware.xenon.services.common.TaskService;
  */
 public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTaskService.ProvisionComputeTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/compute-tasks";
-
-    public static FactoryService createFactory() {
-        return FactoryService.create(ProvisionComputeTaskService.class);
-    }
 
     /**
      * Represent state of a provision task.

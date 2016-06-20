@@ -16,7 +16,6 @@ package com.vmware.photon.controller.model.resources;
 import java.util.EnumSet;
 
 import com.vmware.photon.controller.model.UriPaths;
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
@@ -32,10 +31,6 @@ import com.vmware.xenon.services.common.QueryTask;
 public class ResourcePoolService extends StatefulService {
 
     public static final String FACTORY_LINK = UriPaths.RESOURCES + "/pools";
-
-    public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ResourcePoolService.class);
-    }
 
     /**
      * This class represents the document state associated with a
@@ -143,6 +138,7 @@ public class ResourcePoolService extends StatefulService {
         super.toggleOption(ServiceOption.REPLICATION, true);
         super.toggleOption(ServiceOption.OWNER_SELECTION, true);
         super.toggleOption(ServiceOption.HTML_USER_INTERFACE, true);
+        super.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
     }
 
     @Override

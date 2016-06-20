@@ -22,15 +22,14 @@ import java.util.List;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
 import com.amazonaws.services.ec2.model.TagDescription;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
-
+import com.vmware.photon.controller.model.PhotonModelServices;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.test.VerificationHost;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
@@ -70,7 +69,8 @@ public class TestAWSUtils {
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
-            ProvisioningUtils.startProvisioningServices(this.host);
+            PhotonModelServices.startServices(host);
+            PhotonModelTaskServices.startServices(host);
         } catch (Throwable e) {
             throw new Exception(e);
         }

@@ -18,9 +18,7 @@ import java.util.logging.Level;
 import com.vmware.photon.controller.model.adapters.azure.enumeration.AzureEnumerationAdapterService;
 import com.vmware.photon.controller.model.adapters.azure.instance.AzureInstanceService;
 import com.vmware.photon.controller.model.adapters.azure.stats.AzureStatsService;
-import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceHost;
-import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 
 /**
@@ -28,20 +26,16 @@ import com.vmware.xenon.common.Utils;
  */
 public class AzureAdapters {
 
+    public static final String[] LINKS = {
+            AzureEnumerationAdapterService.SELF_LINK,
+            AzureInstanceService.SELF_LINK,
+            AzureStatsService.SELF_LINK };
+
     public static void startServices(ServiceHost host) throws Throwable {
-
         try {
-            host.startService(
-                    Operation.createPost(
-                            UriUtils.buildUri(host, AzureEnumerationAdapterService.class)),
-                    new AzureEnumerationAdapterService());
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host, AzureInstanceService.class)),
-                    new AzureInstanceService());
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host, AzureStatsService.class)),
-                    new AzureStatsService());
-
+            host.startService(new AzureEnumerationAdapterService());
+            host.startService(new AzureInstanceService());
+            host.startService(new AzureStatsService());
         } catch (Exception e) {
             host.log(Level.WARNING, "Exception staring provisioning adapters: %s",
                     Utils.toString(e));

@@ -13,11 +13,11 @@
 
 package com.vmware.photon.controller.model.tasks;
 
-import java.util.EnumSet;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+
+import java.util.EnumSet;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -65,7 +65,7 @@ public class ResourceRemovalTaskServiceTest extends Suite {
     }
 
     private static void startFactoryServices(BaseModelTest test) throws Throwable {
-        TaskServices.startFactories(test);
+        PhotonModelTaskServices.startServices(test.getHost());
         MockAdapter.startFactories(test);
     }
 
@@ -214,8 +214,7 @@ public class ResourceRemovalTaskServiceTest extends Suite {
             this.stopServiceSynchronously(returnState.documentSelfLink);
 
             // restart and check service restart successfully.
-            this.getHost().startFactoryServicesSynchronously(
-                    ResourceRemovalTaskService.createFactory());
+            this.getHost().startFactory(new ResourceRemovalTaskService());
 
             // TODO work around until we move to Xenon 0.7.1 or later release. Factories started after
             // initial synch, will not have children restarted

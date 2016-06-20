@@ -23,10 +23,7 @@ import com.vmware.photon.controller.model.tasks.ComputeSubTaskService;
 import com.vmware.photon.controller.model.tasks.ComputeSubTaskService.ComputeSubTaskState;
 import com.vmware.photon.controller.model.tasks.TaskUtils;
 import com.vmware.photon.controller.model.tasks.monitoring.SingleResourceStatsCollectionTaskService.SingleResourceStatsCollectionTaskState;
-
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.TaskState.TaskStage;
 import com.vmware.xenon.common.UriUtils;
@@ -50,12 +47,6 @@ public class StatsCollectionTaskService extends TaskService<StatsCollectionTaskS
     public static final String STATS_QUERY_RESULT_LIMIT = UriPaths.PROPERTY_PREFIX + "StatsCollectionTaskService.query.resultLimit";
     private static final String QUERY_RESULT_LIMIT = System.getProperty(STATS_QUERY_RESULT_LIMIT);
     private static final int DEFAULT_QUERY_RESULT_LIMIT = 100;
-
-    public static Service createFactory() {
-        Service fs = FactoryService.create(StatsCollectionTaskService.class,
-                StatsCollectionTaskState.class);
-        return fs;
-    }
 
     public enum StatsCollectionStage {
         INIT, GET_RESOURCES

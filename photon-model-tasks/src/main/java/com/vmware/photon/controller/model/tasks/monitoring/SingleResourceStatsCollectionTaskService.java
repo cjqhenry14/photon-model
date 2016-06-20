@@ -25,11 +25,8 @@ import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.tasks.TaskUtils;
-
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
-import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.ServiceStats;
 import com.vmware.xenon.common.ServiceStats.ServiceStat;
@@ -63,12 +60,6 @@ public class SingleResourceStatsCollectionTaskService extends TaskService<Single
 
     private static String HOUR_SUFFIX = "(Hourly)";
     private static String MIN_SUFFIX = "(Minutes)";
-
-    public static Service createFactory() {
-        Service fs = FactoryService.create(SingleResourceStatsCollectionTaskService.class,
-                SingleResourceStatsCollectionTaskState.class);
-        return fs;
-    }
 
     public enum SingleResourceTaskCollectionStage {
         GET_DESCRIPTIONS, UPDATE_STATS

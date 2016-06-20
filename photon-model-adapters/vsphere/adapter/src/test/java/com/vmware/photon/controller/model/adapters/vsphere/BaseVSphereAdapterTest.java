@@ -21,10 +21,12 @@ import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 
+import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapters.vsphere.util.connection.BasicConnection;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
@@ -51,9 +53,10 @@ public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
 
     @Before
     public void setUp() throws Throwable {
-        ProvisioningUtils.startProvisioningServices(this.host);
+        PhotonModelServices.startServices(this.host);
+        PhotonModelTaskServices.startServices(this.host);
+        // TODO: VSYM-992 - improve test/fix arbitrary timeout
         this.host.setTimeoutSeconds(600);
-        List<String> serviceSelfLinks = new ArrayList<>();
 
         host.startService(
                 Operation.createPost(UriUtils.buildUri(host,
@@ -75,12 +78,13 @@ public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
                         VSphereAdapterResourceEnumerationService.class)),
                 new VSphereAdapterResourceEnumerationService());
 
-        serviceSelfLinks.add(VSphereAdapterInstanceService.SELF_LINK);
-        serviceSelfLinks.add(VSphereAdapterPowerService.SELF_LINK);
-        serviceSelfLinks.add(VSphereAdapterSnapshotService.SELF_LINK);
-        serviceSelfLinks.add(VSphereAdapterResourceEnumerationService.SELF_LINK);
+        host.waitForServiceAvailable(PhotonModelServices.LINKS);
+        host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
 
-        ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
+        host.waitForServiceAvailable(VSphereAdapterInstanceService.SELF_LINK,
+                VSphereAdapterPowerService.SELF_LINK,
+                VSphereAdapterSnapshotService.SELF_LINK,
+                VSphereAdapterResourceEnumerationService.SELF_LINK);
 
         vcUrl = System.getProperty("vc.url");
         if (vcUrl == null) {

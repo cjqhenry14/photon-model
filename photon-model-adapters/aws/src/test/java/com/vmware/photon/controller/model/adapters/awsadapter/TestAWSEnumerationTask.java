@@ -44,8 +44,6 @@ import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.g
 import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryComputeDescriptions;
 import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryComputeInstances;
 import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryNetworkStates;
-import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.startProvisioningServices;
-import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.waitForServiceStart;
 import static com.vmware.xenon.common.UriUtils.buildUri;
 import static com.vmware.xenon.common.UriUtils.extendUri;
 
@@ -63,20 +61,20 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.BaseLineState;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeStateCreationAdapterService.AWSTags;
-import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
 import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.CommandLineArgumentParser;
-import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
@@ -139,25 +137,20 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         creds.privateKeyId = accessKey;
         client = AWSUtils.getAsyncClient(creds, TestAWSSetupUtils.zoneId,
                 isMock, getExecutor());
-        List<String> serviceSelfLinks = new ArrayList<String>();
         try {
-            startProvisioningServices(this.host);
-            this.host.setTimeoutSeconds(200);
-            this.host.startService(
-                    Operation.createPost(UriUtils.buildUri(this.host,
-                            AWSInstanceService.class)),
-                    new AWSInstanceService());
-            serviceSelfLinks.add(AWSInstanceService.SELF_LINK);
+            PhotonModelServices.startServices(host);
+            PhotonModelTaskServices.startServices(host);
+            AWSAdapters.startServices(host);
 
-            this.host.startService(
-                    Operation.createPost(UriUtils.buildUri(this.host,
-                            AWSEnumerationAdapterService.class)),
-                    new AWSEnumerationAdapterService());
-            serviceSelfLinks.add(AWSEnumerationAdapterService.SELF_LINK);
+            // TODO: VSYM-992 - improve test/fix arbitrary timeout
+            this.host.setTimeoutSeconds(200);
 
             // create the compute host, resource pool and the VM state to be used in the test.
             createResourcePoolComputeHostAndVMState();
-            waitForServiceStart(this.host, serviceSelfLinks.toArray(new String[] {}));
+
+            host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            host.waitForServiceAvailable(AWSAdapters.LINKS);
         } catch (Throwable e) {
             this.host.log("Error starting up services for the test %s", e.getMessage());
             throw new Exception(e);

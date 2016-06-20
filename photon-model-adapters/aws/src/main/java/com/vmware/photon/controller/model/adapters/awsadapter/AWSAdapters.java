@@ -16,9 +16,7 @@ package com.vmware.photon.controller.model.adapters.awsadapter;
 import java.util.logging.Level;
 
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSEnumerationAdapterService;
-import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceHost;
-import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 
 /**
@@ -26,22 +24,19 @@ import com.vmware.xenon.common.Utils;
  */
 public class AWSAdapters {
 
+    public static final String[] LINKS = {
+            AWSInstanceService.SELF_LINK,
+            AWSNetworkService.SELF_LINK,
+            AWSStatsService.SELF_LINK,
+            AWSEnumerationAdapterService.SELF_LINK };
+
     public static void startServices(ServiceHost host) throws Throwable {
 
         try {
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host, AWSInstanceService.class)),
-                    new AWSInstanceService());
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host, AWSNetworkService.class)),
-                    new AWSNetworkService());
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host, AWSStatsService.class)),
-                    new AWSStatsService());
-            host.startService(
-                    Operation.createPost(
-                            UriUtils.buildUri(host, AWSEnumerationAdapterService.class)),
-                    new AWSEnumerationAdapterService());
+            host.startService(new AWSInstanceService());
+            host.startService(new AWSNetworkService());
+            host.startService(new AWSStatsService());
+            host.startService(new AWSEnumerationAdapterService());
 
         } catch (Exception e) {
             host.log(Level.WARNING, "Exception staring provisioning adapters: %s",

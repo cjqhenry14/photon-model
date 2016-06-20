@@ -36,11 +36,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
-import com.vmware.photon.controller.model.adapters.azure.enumeration.AzureEnumerationAdapterService;
-import com.vmware.photon.controller.model.adapters.azure.instance.AzureInstanceService;
+import com.vmware.photon.controller.model.adapters.azure.AzureAdapters;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState.SubStage;
@@ -49,7 +50,6 @@ import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService.ResourceEnumerationTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.xenon.common.BasicReusableHostTestCase;
-import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.UriUtils;
 
 /**
@@ -83,20 +83,15 @@ public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
     public void setUp() throws Exception {
         try {
             azureVMName = azureVMName == null ? generateName(azureVMNamePrefix) : azureVMName;
-            ProvisioningUtils.startProvisioningServices(this.host);
+            PhotonModelServices.startServices(host);
+            PhotonModelTaskServices.startServices(host);
+            AzureAdapters.startServices(host);
+            // TODO: VSYM-992 - improve test/fix arbitrary timeout
             this.host.setTimeoutSeconds(1200);
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host,
-                            AzureInstanceService.class)),
-                    new AzureInstanceService());
 
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host,
-                            AzureEnumerationAdapterService.class)),
-                    new AzureEnumerationAdapterService());
-
-            ProvisioningUtils.waitForServiceStart(host, AzureInstanceService.SELF_LINK,
-                    AzureEnumerationAdapterService.SELF_LINK);
+            host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            host.waitForServiceAvailable(AzureAdapters.LINKS);
 
             ApplicationTokenCredentials credentials = new ApplicationTokenCredentials(clientID,
                     tenantId, clientKey, AzureEnvironment.AZURE);

@@ -19,8 +19,6 @@ import com.vmware.photon.controller.model.UriPaths;
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest;
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest.InstanceRequestType;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
-
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
@@ -32,10 +30,6 @@ import com.vmware.xenon.services.common.TaskService;
  */
 public class ProvisionNetworkTaskService extends TaskService<ProvisionNetworkTaskService.ProvisionNetworkTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/network-allocation-tasks";
-
-    public static FactoryService createFactory() {
-        return FactoryService.create(ProvisionNetworkTaskService.class);
-    }
 
     /**
      * SubStage.

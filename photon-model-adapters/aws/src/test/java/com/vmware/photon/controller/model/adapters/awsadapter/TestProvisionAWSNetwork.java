@@ -27,17 +27,17 @@ import java.util.Date;
 import java.util.concurrent.TimeoutException;
 
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapterapi.NetworkInstanceRequest;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskService.ProvisionNetworkTaskState;
-import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 
 import com.vmware.xenon.common.CommandLineArgumentParser;
 import com.vmware.xenon.common.Operation;
@@ -47,7 +47,6 @@ import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.common.test.VerificationHost;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
-
 
 public class TestProvisionAWSNetwork {
 
@@ -79,12 +78,14 @@ public class TestProvisionAWSNetwork {
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
-            ProvisioningUtils.startProvisioningServices(this.host);
+            PhotonModelServices.startServices(host);
+            PhotonModelTaskServices.startServices(host);
             // start the aws network service
             this.host.startService(
                     Operation.createPost(UriUtils.buildUri(host, AWSNetworkService.class)),
                     new AWSNetworkService());
-            this.provisionNetworkFactory = UriUtils.buildUri(this.host,ProvisionNetworkTaskService.FACTORY_LINK);
+            this.provisionNetworkFactory = UriUtils.buildUri(this.host,
+                    ProvisionNetworkTaskService.FACTORY_LINK);
         } catch (Throwable e) {
             throw new Exception(e);
         }
@@ -280,4 +281,3 @@ public class TestProvisionAWSNetwork {
     }
 
 }
-

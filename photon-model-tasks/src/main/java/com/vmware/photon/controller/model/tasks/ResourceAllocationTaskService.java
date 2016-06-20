@@ -30,7 +30,6 @@ import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.DiskService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.ServiceDocument;
@@ -49,10 +48,6 @@ import com.vmware.xenon.services.common.TaskService;
  */
 public class ResourceAllocationTaskService extends TaskService<ResourceAllocationTaskService.ResourceAllocationTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/resource-allocation-tasks";
-
-    public static FactoryService createFactory() {
-        return FactoryService.create(ResourceAllocationTaskService.class);
-    }
 
     public static final String ID_DELIMITER_CHAR = "-";
 

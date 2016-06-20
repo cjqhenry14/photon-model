@@ -20,7 +20,6 @@ import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSCli
 import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManagerFactory.getEc2ClientReferenceCount;
 import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManagerFactory.getStatsClientReferenceCount;
 import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManagerFactory.returnClientManager;
-import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.waitForServiceStart;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,6 +63,7 @@ public class TestAWSClientManagement extends BasicReusableHostTestCase {
         CommandLineArgumentParser.parseFromProperties(this);
         List<String> serviceSelfLinks = new ArrayList<String>();
         try {
+            // TODO: VSYM-992 - improve test/remove arbitrary timeout
             this.instanceService = new AWSInstanceService();
             this.host.startService(
                     Operation.createPost(UriUtils.buildUri(this.host,
@@ -78,7 +78,8 @@ public class TestAWSClientManagement extends BasicReusableHostTestCase {
                     statsService);
             serviceSelfLinks.add(AWSStatsService.SELF_LINK);
 
-            waitForServiceStart(this.host, serviceSelfLinks.toArray(new String[] {}));
+            host.waitForServiceAvailable(AWSStatsService.SELF_LINK);
+            host.waitForServiceAvailable(AWSInstanceService.SELF_LINK);
         } catch (Throwable e) {
             this.host.log("Error starting up services for the test %s", e.getMessage());
             throw new Exception(e);

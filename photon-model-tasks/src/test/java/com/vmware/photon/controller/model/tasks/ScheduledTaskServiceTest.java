@@ -35,12 +35,8 @@ import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
-import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService.ResourceEnumerationTaskState;
-import com.vmware.photon.controller.model.tasks.ScheduledTaskService;
 import com.vmware.photon.controller.model.tasks.ScheduledTaskService.ScheduledTaskState;
-import com.vmware.photon.controller.model.tasks.TestUtils;
-
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
@@ -64,6 +60,7 @@ public class ScheduledTaskServiceTest extends Suite {
         state.intervalMicros = 100L;
         return state;
     }
+
     /**
      * This class implements tests for the constructor.
      */
@@ -97,7 +94,7 @@ public class ScheduledTaskServiceTest extends Suite {
     public static class HandleStartTest extends BaseModelTest {
         @Override
         protected void startRequiredServices() throws Throwable {
-            TaskServices.startFactories(this);
+            PhotonModelTaskServices.startServices(this.getHost());
             super.startRequiredServices();
         }
 
@@ -145,7 +142,7 @@ public class ScheduledTaskServiceTest extends Suite {
     public static class EndToEndTest extends BaseModelTest {
         @Override
         protected void startRequiredServices() throws Throwable {
-            TaskServices.startFactories(this);
+            PhotonModelTaskServices.startServices(this.getHost());
             MockAdapter.startFactories(this);
             super.startRequiredServices();
         }

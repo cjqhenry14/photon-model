@@ -22,7 +22,6 @@ import java.util.UUID;
 import com.esotericsoftware.kryo.serializers.VersionFieldSerializer.Since;
 
 import com.vmware.photon.controller.model.UriPaths;
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyIndexingOption;
@@ -39,15 +38,11 @@ public class ComputeDescriptionService extends StatefulService {
     public static final String FACTORY_LINK = UriPaths.RESOURCES
             + "/compute-descriptions";
 
-    public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ComputeDescriptionService.class);
-    }
-
     /**
      * This class represents the document state associated with a
      * {@link ComputeDescriptionService} task.
      */
-    public static class     ComputeDescription extends ResourceState {
+    public static class ComputeDescription extends ResourceState {
 
         public static final String CUSTOM_PROPERTY_KEY_TEMPLATE = "Template";
         public static final String FIELD_NAME_RESOURCE_POOL_ID = "resourcePoolId";
@@ -200,6 +195,7 @@ public class ComputeDescriptionService extends StatefulService {
         super.toggleOption(ServiceOption.PERSISTENCE, true);
         super.toggleOption(ServiceOption.REPLICATION, true);
         super.toggleOption(ServiceOption.OWNER_SELECTION, true);
+        super.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
     }
 
     @Override

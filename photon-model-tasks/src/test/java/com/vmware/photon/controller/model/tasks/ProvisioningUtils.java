@@ -23,16 +23,7 @@ import java.util.concurrent.TimeoutException;
 
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
-import com.vmware.photon.controller.model.resources.DiskService;
-import com.vmware.photon.controller.model.resources.FirewallService;
-import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkService;
-import com.vmware.photon.controller.model.resources.ResourceDescriptionService;
-import com.vmware.photon.controller.model.resources.ResourcePoolService;
-import com.vmware.photon.controller.model.resources.SnapshotService;
-import com.vmware.photon.controller.model.tasks.monitoring.StatsCollectionTaskSchedulerService;
-
-import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.TaskState;
 import com.vmware.xenon.common.UriUtils;
@@ -45,127 +36,6 @@ import com.vmware.xenon.services.common.TaskService.TaskServiceState;
  *
  */
 public class ProvisioningUtils {
-
-    public static void startProvisioningServices(VerificationHost host) throws Throwable {
-        List<String> serviceSelfLinks = new ArrayList<String>();
-
-        host.setSystemAuthorizationContext();
-
-        host.startService(
-                Operation.createPost(host, ComputeService.FACTORY_LINK),
-                ComputeService.createFactory());
-        serviceSelfLinks.add(ComputeService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host, NetworkService.FACTORY_LINK),
-                NetworkService.createFactory());
-        serviceSelfLinks.add(NetworkService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host, FirewallService.FACTORY_LINK),
-                FirewallService.createFactory());
-        serviceSelfLinks.add(FirewallService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host, ResourcePoolService.FACTORY_LINK),
-                ResourcePoolService.createFactory());
-        serviceSelfLinks.add(ResourcePoolService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host, SnapshotService.FACTORY_LINK),
-                SnapshotService.createFactory());
-        serviceSelfLinks.add(SnapshotService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        ResourceAllocationTaskService.FACTORY_LINK),
-                ResourceAllocationTaskService.createFactory());
-        serviceSelfLinks.add(ResourceAllocationTaskService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        ResourceEnumerationTaskService.FACTORY_LINK),
-                ResourceEnumerationTaskService.createFactory());
-        serviceSelfLinks.add(ResourceEnumerationTaskService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        ResourceRemovalTaskService.FACTORY_LINK),
-                ResourceRemovalTaskService.createFactory());
-        serviceSelfLinks.add(ResourceRemovalTaskService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        ScheduledTaskService.FACTORY_LINK),
-                ScheduledTaskService.createFactory());
-        serviceSelfLinks.add(ScheduledTaskService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        ComputeDescriptionService.FACTORY_LINK),
-                ComputeDescriptionService.createFactory());
-        serviceSelfLinks.add(ComputeDescriptionService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        DiskService.FACTORY_LINK),
-                DiskService.createFactory());
-        serviceSelfLinks.add(DiskService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        ProvisionComputeTaskService.FACTORY_LINK),
-                ProvisionComputeTaskService.createFactory());
-        serviceSelfLinks.add(ProvisionComputeTaskService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        NetworkInterfaceService.FACTORY_LINK),
-                NetworkInterfaceService.createFactory());
-        serviceSelfLinks.add(NetworkInterfaceService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        ProvisionNetworkTaskService.FACTORY_LINK),
-                ProvisionNetworkTaskService.createFactory());
-        serviceSelfLinks.add(ProvisionNetworkTaskService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        SnapshotTaskService.FACTORY_LINK),
-                SnapshotTaskService.createFactory());
-        serviceSelfLinks.add(SnapshotTaskService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        ResourceDescriptionService.FACTORY_LINK),
-                ResourceDescriptionService.createFactory());
-        serviceSelfLinks.add(ResourceDescriptionService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        ProvisionFirewallTaskService.FACTORY_LINK),
-                ProvisionFirewallTaskService.createFactory());
-        serviceSelfLinks.add(ProvisionFirewallTaskService.FACTORY_LINK);
-
-        host.startService(
-                Operation.createPost(host,
-                        StatsCollectionTaskSchedulerService.FACTORY_LINK),
-                StatsCollectionTaskSchedulerService.createFactory());
-        serviceSelfLinks.add(StatsCollectionTaskSchedulerService.FACTORY_LINK);
-
-        waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
-
-        host.resetSystemAuthorizationContext();
-    }
-
-    public static void waitForServiceStart(VerificationHost host, String... selfLinks)
-            throws Throwable {
-        host.testStart(selfLinks.length);
-        host.registerForServiceAvailability(host.getCompletion(),
-                selfLinks);
-        host.testWait();
-    }
 
     public static int getVMCount(VerificationHost host) throws Throwable {
         ServiceDocumentQueryResult res;

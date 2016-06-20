@@ -16,7 +16,6 @@ package com.vmware.photon.controller.model.resources;
 import org.apache.commons.validator.routines.InetAddressValidator;
 
 import com.vmware.photon.controller.model.UriPaths;
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
@@ -29,10 +28,6 @@ public class NetworkInterfaceService extends StatefulService {
 
     public static final String FACTORY_LINK = UriPaths.RESOURCES_NETWORKS
             + "/interfaces";
-
-    public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(NetworkInterfaceService.class);
-    }
 
     /**
      * Represents the state of a network interface.
@@ -75,6 +70,7 @@ public class NetworkInterfaceService extends StatefulService {
         super.toggleOption(ServiceOption.PERSISTENCE, true);
         super.toggleOption(ServiceOption.REPLICATION, true);
         super.toggleOption(ServiceOption.OWNER_SELECTION, true);
+        super.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
     }
 
     @Override

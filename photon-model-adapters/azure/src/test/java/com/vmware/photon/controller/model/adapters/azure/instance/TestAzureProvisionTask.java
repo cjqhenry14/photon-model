@@ -29,13 +29,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
+import com.vmware.photon.controller.model.adapters.azure.AzureAdapters;
 import com.vmware.photon.controller.model.adapters.azure.AzureUriPaths;
-import com.vmware.photon.controller.model.adapters.azure.instance.AzureInstanceService;
-import com.vmware.photon.controller.model.adapters.azure.stats.AzureStatsService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
+import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
@@ -64,20 +65,16 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     public void setUp() throws Exception {
         try {
             azureVMName = azureVMName == null ? generateName(azureVMNamePrefix) : azureVMName;
-            ProvisioningUtils.startProvisioningServices(this.host);
+            PhotonModelServices.startServices(host);
+            PhotonModelTaskServices.startServices(host);
+            AzureAdapters.startServices(host);
+
+            host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            host.waitForServiceAvailable(AzureAdapters.LINKS);
+
+            // TODO: VSYM-992 - improve test/fix arbitrary timeout
             this.host.setTimeoutSeconds(1200);
-            List<String> serviceSelfLinks = new ArrayList<String>();
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host,
-                            AzureInstanceService.class)),
-                    new AzureInstanceService());
-            serviceSelfLinks.add(AzureInstanceService.SELF_LINK);
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host,
-                            AzureStatsService.class)),
-                    new AzureStatsService());
-            serviceSelfLinks.add(AzureStatsService.SELF_LINK);
-            ProvisioningUtils.waitForServiceStart(host, serviceSelfLinks.toArray(new String[] {}));
         } catch (Throwable e) {
             throw new Exception(e);
         }

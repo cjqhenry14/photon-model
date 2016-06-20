@@ -16,10 +16,7 @@ package com.vmware.photon.controller.model.tasks.monitoring;
 import java.util.concurrent.TimeUnit;
 
 import com.vmware.photon.controller.model.UriPaths;
-
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
-import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.StatefulService;
 import com.vmware.xenon.common.UriUtils;
@@ -35,12 +32,6 @@ public class StatsCollectionTaskSchedulerService extends StatefulService {
 
     public static final String STATS_MONITORING_INTERVAL = UriPaths.PROPERTY_PREFIX + "StatsCollectionTaskSchedulerService.monitoringInterval";
     private static final String MONITORING_INTERVAL = System.getProperty(STATS_MONITORING_INTERVAL);
-
-    public static Service createFactory() {
-        Service fs = FactoryService.create(StatsCollectionTaskSchedulerService.class,
-                StatsCollectionTaskServiceSchedulerState.class);
-        return fs;
-    }
 
     /**
      * This class defines the document state associated with a single

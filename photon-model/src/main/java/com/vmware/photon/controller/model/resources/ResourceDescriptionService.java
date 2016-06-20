@@ -17,7 +17,6 @@ import java.net.URI;
 import java.util.List;
 
 import com.vmware.photon.controller.model.UriPaths;
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
@@ -32,10 +31,6 @@ public class ResourceDescriptionService extends StatefulService {
 
     public static final String FACTORY_LINK = UriPaths.RESOURCES
             + "/resource-descriptions";
-
-    public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(ResourceDescriptionService.class);
-    }
 
     /**
      * This class represents the document state associated with a
@@ -85,6 +80,7 @@ public class ResourceDescriptionService extends StatefulService {
         super.toggleOption(Service.ServiceOption.PERSISTENCE, true);
         super.toggleOption(Service.ServiceOption.REPLICATION, true);
         super.toggleOption(Service.ServiceOption.OWNER_SELECTION, true);
+        super.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
     }
 
     @Override

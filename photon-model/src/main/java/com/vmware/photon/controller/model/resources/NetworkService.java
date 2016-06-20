@@ -19,7 +19,6 @@ import java.util.UUID;
 import org.apache.commons.net.util.SubnetUtils;
 
 import com.vmware.photon.controller.model.UriPaths;
-import com.vmware.xenon.common.FactoryService;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
@@ -32,10 +31,6 @@ import com.vmware.xenon.common.Utils;
 public class NetworkService extends StatefulService {
 
     public static final String FACTORY_LINK = UriPaths.RESOURCES + "/networks";
-
-    public static FactoryService createFactory() {
-        return FactoryService.createIdempotent(NetworkService.class);
-    }
 
     /**
      * Network State document.
@@ -92,6 +87,7 @@ public class NetworkService extends StatefulService {
         super.toggleOption(ServiceOption.PERSISTENCE, true);
         super.toggleOption(ServiceOption.REPLICATION, true);
         super.toggleOption(ServiceOption.OWNER_SELECTION, true);
+        super.toggleOption(ServiceOption.IDEMPOTENT_POST, true);
     }
 
     @Override
