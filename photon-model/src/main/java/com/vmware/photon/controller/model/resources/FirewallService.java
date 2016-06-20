@@ -94,14 +94,12 @@ public class FirewallService extends StatefulService {
          *  incoming rules
          */
         @UsageOption(option = PropertyUsageOption.REQUIRED)
-        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public List<Allow> ingress;
 
         /**
          *  outgoing rules
          */
         @UsageOption(option = PropertyUsageOption.REQUIRED)
-        @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
         public List<Allow> egress;
 
         /**
@@ -286,6 +284,18 @@ public class FirewallService extends StatefulService {
 
         boolean hasStateChanged = ResourceUtils.mergeWithState(getStateDescription(),
                 currentState, patchBody);
+        // allow rules are overwritten -- it's not a merge
+        // will result in a new version of the service on every call
+        // as ingress & egress are never null
+        if (patchBody.ingress != null) {
+            currentState.ingress = patchBody.ingress;
+            hasStateChanged = true;
+        }
+
+        if (patchBody.egress != null) {
+            currentState.egress = patchBody.egress;
+            hasStateChanged = true;
+        }
         ResourceUtils.complePatchOperation(patch, hasStateChanged);
 
     }

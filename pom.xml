@@ -63,13 +63,13 @@
     <module>photon-model-adapters/util</module>
     <module>photon-model-adapters/aws</module>
     <module>photon-model-adapters/azure</module>
-    <module>photon-model-adapters/vsphere</module>
+    <!--<module>photon-model-adapters/vsphere</module>-->
   </modules>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <xenon.version>0.8.2-SNAPSHOT</xenon.version>
+    <xenon.version>0.9.0-SNAPSHOT</xenon.version>
     <xenon.common.version>${xenon.version}</xenon.common.version>
     <xenon.ui.version>${xenon.version}</xenon.ui.version>
   </properties>
