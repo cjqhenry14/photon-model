@@ -13,6 +13,7 @@
 
 package com.vmware.photon.controller.model;
 
+import com.vmware.photon.controller.model.monitoring.ResourceMetricService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.DiskService;
@@ -24,6 +25,7 @@ import com.vmware.photon.controller.model.resources.ResourceGroupService;
 import com.vmware.photon.controller.model.resources.ResourcePoolService;
 import com.vmware.photon.controller.model.resources.SnapshotService;
 import com.vmware.photon.controller.model.resources.StorageDescriptionService;
+
 import com.vmware.xenon.common.ServiceHost;
 
 /**
@@ -42,7 +44,8 @@ public class PhotonModelServices {
             ResourceGroupService.FACTORY_LINK,
             NetworkService.FACTORY_LINK,
             FirewallService.FACTORY_LINK,
-            StorageDescriptionService.FACTORY_LINK };
+            StorageDescriptionService.FACTORY_LINK,
+            ResourceMetricService.FACTORY_LINK };
 
     public static void startServices(ServiceHost host) throws Throwable {
 
@@ -57,5 +60,6 @@ public class PhotonModelServices {
         host.startFactory(new NetworkService());
         host.startFactory(new FirewallService());
         host.startFactory(new StorageDescriptionService());
+        host.startFactory(new ResourceMetricService());
     }
 }

@@ -25,6 +25,7 @@ import org.junit.Before;
 import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
 import com.vmware.photon.controller.model.resources.ComputeService;
+
 import com.vmware.xenon.common.BasicReusableHostTestCase;
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
@@ -44,10 +45,8 @@ public abstract class BaseModelTest extends BasicReusableHostTestCase {
         if (test.getHost().getServiceStage(ComputeService.FACTORY_LINK) != null) {
             return;
         }
-
         PhotonModelServices.startServices(test.getHost());
         test.getHost().waitForServiceAvailable(PhotonModelServices.LINKS);
-
     }
 
     protected void startRequiredServices() throws Throwable {

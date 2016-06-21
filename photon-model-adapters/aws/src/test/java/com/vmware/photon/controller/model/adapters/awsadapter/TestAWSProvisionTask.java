@@ -209,7 +209,6 @@ public class TestAWSProvisionTask {
         this.vmState  = null;
     }
 
-
     private void issueStatsRequest(ComputeState vm) throws Throwable {
         // spin up a stateless service that acts as the parent link to patch back to
         StatelessService parentService = new StatelessService() {

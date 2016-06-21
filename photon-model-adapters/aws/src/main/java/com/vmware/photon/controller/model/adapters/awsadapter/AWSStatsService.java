@@ -40,6 +40,7 @@ import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientMana
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSStatsNormalizer;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.constants.PhotonModelConstants;
+import com.vmware.photon.controller.model.monitoring.ResourceMetricService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
@@ -84,7 +85,7 @@ public class AWSStatsService extends StatelessService {
     private static final String[] STATISTICS = { "Average", "SampleCount" };
     private static final String NAMESPACE = "AWS/EC2";
     private static final String DIMENSION_INSTANCE_ID = "InstanceId";
-    private static final int METRIC_COLLECTION_WINDOW_IN_MINUTES = 10;
+    private static final int METRIC_COLLECTION_WINDOW_IN_MINUTES = 1;
     private static final int METRIC_COLLECTION_PERIOD_IN_SECONDS = 60;
 
     // Cost
@@ -104,9 +105,11 @@ public class AWSStatsService extends StatelessService {
         public AtomicInteger numResponses = new AtomicInteger(0);
         public AmazonCloudWatchAsyncClient statsClient;
         public AmazonCloudWatchAsyncClient billingClient;
+        public URI persistStatsUri;
         public boolean isComputeHost;
 
         public AWSStatsDataHolder() {
+            this.persistStatsUri = UriUtils.buildUri(getHost(), ResourceMetricService.FACTORY_LINK);
             this.statsResponse = new ComputeStats();
             // create a thread safe map to hold stats values for resource
             this.statsResponse.statValues = new ConcurrentSkipListMap<>();
@@ -286,7 +289,6 @@ public class AWSStatsService extends StatelessService {
                 statsData.parentAuth,
                 COST_ZONE_ID, this, parentURI,
                 statsData.statsRequest.isMockRequest);
-
     }
 
     /**
@@ -340,6 +342,9 @@ public class AWSStatsService extends StatelessService {
                     burnRate = (timeDifference == 0 ? 0
                             : ((dp.getAverage() - latestAverage) / timeDifference));
                     latestAverage = dp.getAverage();
+                    persistStat(this.service, dp,
+                            AWSStatsNormalizer.getNormalizedStatKeyValue(result.getLabel()),
+                            this.statsData);
                 }
                 ServiceStat stat = new ServiceStat();
                 stat.latestValue = latestAverage;
@@ -402,6 +407,9 @@ public class AWSStatsService extends StatelessService {
                     averageSum += dp.getAverage();
                     sampleCount += dp.getSampleCount();
                     unit = dp.getUnit();
+                    persistStat(this.service, dp,
+                            AWSStatsNormalizer.getNormalizedStatKeyValue(result.getLabel()),
+                            this.statsData);
                 }
                 ServiceStat stat = new ServiceStat();
                 stat.latestValue = averageSum / sampleCount;
@@ -432,6 +440,22 @@ public class AWSStatsService extends StatelessService {
                         .setBody(respBody));
             }
         }
+    }
+
+    private void persistStat(StatelessService service, Datapoint datapoint, String metricName,
+            AWSStatsDataHolder statsData) {
+        ResourceMetricService.ResourceMetric stat = new ResourceMetricService.ResourceMetric();
+        // Set the documentSelfLink to <computeId>-<metricName>
+        stat.documentSelfLink = UriUtils.getLastPathSegment(statsData.computeDesc.documentSelfLink)
+                + "-" + metricName;
+        stat.value = datapoint.getAverage();
+        stat.timestampMicrosUtc = TimeUnit.MILLISECONDS
+                .toMicros(datapoint.getTimestamp().getTime());
+        service.getHost()
+                .sendRequest(Operation
+                        .createPost(statsData.persistStatsUri)
+                        .setReferer(ResourceMetricService.FACTORY_LINK)
+                        .setBodyNoCloning(stat));
     }
 
     /**
