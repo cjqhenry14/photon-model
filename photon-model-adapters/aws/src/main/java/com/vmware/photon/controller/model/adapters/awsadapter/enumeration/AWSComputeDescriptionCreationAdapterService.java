@@ -13,17 +13,22 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.TILDA;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getRegionId;
-import static com.vmware.xenon.common.UriUtils.URI_PATH_CHAR;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.getCDsRepresentingVMsInLocalSystemCreatedByEnumerationQuery;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.getInstanceTypeFromComputeDescriptionKey;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.getKeyForComputeDescriptionFromCD;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.getNetworkIdFromComputeDescriptionKey;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.getRegionIdFromComputeDescriptionKey;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.getRepresentativeListOfCDsFromInstanceList;
+import static com.vmware.photon.controller.model.constants.PhotonModelConstants.SOURCE_TASK_LINK;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 import com.amazonaws.services.ec2.model.Instance;
 
@@ -33,6 +38,7 @@ import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
+import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService;
 
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
@@ -40,8 +46,6 @@ import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.QueryTask;
-import com.vmware.xenon.services.common.QueryTask.Query;
-import com.vmware.xenon.services.common.QueryTask.Query.Occurance;
 import com.vmware.xenon.services.common.ServiceUriPaths;
 
 /**
@@ -66,6 +70,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
      */
     public static class AWSComputeDescriptionCreationState {
         public List<Instance> instancesToBeCreated;
+        public String regionId;
         public URI parentTaskLink;
         public String authCredentiaslLink;
         public boolean isMock;
@@ -78,7 +83,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
      */
     public static class AWSComputeDescriptionCreationServiceContext {
         public List<Operation> createOperations;
-        public Set<String> localComputeDescriptionSet;
+        public Map<String, String> localComputeDescriptionMap;
         public Set<String> representativeComputeDescriptionSet;
         public int instanceToBeCreatedCounter = 0;
         public List<String> computeDescriptionsToBeCreatedList;
@@ -91,7 +96,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         public AWSComputeDescriptionCreationServiceContext(AWSComputeDescriptionCreationState cdState,
                 Operation op) {
             this.cdState = cdState;
-            this.localComputeDescriptionSet = new HashSet<String>();
+            this.localComputeDescriptionMap = new HashMap<String, String>();
             this.representativeComputeDescriptionSet = new HashSet<String>();
             this.computeDescriptionsToBeCreatedList = new ArrayList<String>();
             this.createOperations = new ArrayList<Operation>();
@@ -163,16 +168,26 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
     /**
      * From the list of instances that are received from AWS arrive at the minimal set of compute descriptions that need
      * to be created locally to represent them.
+     *
+     * This logic basically tries to map n number of discovered instances to m compute descriptions.
+     * The attributes of the instance considered to map to compute descriptions are the statically known template type
+     * attributes that are expected to be fixed for the life of a virtual machine.
+     *
+     * These include
+     * 1) Region Id
+     * 2) Instance Type
+     * 3) Network Id.
+     *
+     * Once the instances are mapped to these limited set of compute descriptions. Checks are performed to see if such compute descriptions
+     * exist in the system. Else they are created.
+     *
      * @param context
      * @param next
      */
     private void getRepresentativeListOfComputeDescriptions(
             AWSComputeDescriptionCreationServiceContext context, AWSComputeDescCreationStage next) {
-        for (Instance instance : context.cdState.instancesToBeCreated) {
-            context.representativeComputeDescriptionSet.add(getKeyForComputeDescription(instance));
-        }
-        logInfo("The instances received from AWS are represented by %d additional compute descriptions. ",
-                context.representativeComputeDescriptionSet.size());
+        context.representativeComputeDescriptionSet = getRepresentativeListOfCDsFromInstanceList(
+                context.cdState.instancesToBeCreated);
         context.creationStage = next;
         handleComputeDescriptionCreation(context);
     }
@@ -187,65 +202,42 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
      */
     private void getLocalComputeDescriptions(AWSComputeDescriptionCreationServiceContext context,
             AWSComputeDescCreationStage next) {
-        // Region Id will be common to all the instances as the EC2 client has this value set during
-        // each invocation.
-        String instanceKey = context.representativeComputeDescriptionSet.iterator().next();
-        String zoneId = instanceKey.substring(0, instanceKey.indexOf(TILDA));
-        QueryTask.Query supportedChildrenClause = new QueryTask.Query()
-                .setTermPropertyName(
-                        QueryTask.QuerySpecification
-                                .buildCollectionItemName(
-                                        ComputeDescriptionService.ComputeDescription.FIELD_NAME_SUPPORTED_CHILDREN))
-                .setTermMatchValue(ComputeType.DOCKER_CONTAINER.toString());
+        QueryTask q = getCDsRepresentingVMsInLocalSystemCreatedByEnumerationQuery(
+                context.representativeComputeDescriptionSet, context.cdState.tenantLinks,
+                this, context.cdState.parentTaskLink, context.cdState.regionId);
 
-        QueryTask q = new QueryTask();
-        q.setDirect(true);
-        q.querySpec = new QueryTask.QuerySpecification();
-        q.querySpec.query = Query.Builder.create()
-                .addKindFieldClause(ComputeDescription.class)
-                .addFieldClause(ComputeDescription.FIELD_NAME_ENVIRONMENT_NAME,
-                        AWSInstanceService.AWS_ENVIRONMENT_NAME)
-                .addFieldClause(ComputeDescription.FIELD_NAME_ZONE_ID, zoneId)
-                .build().addBooleanClause(supportedChildrenClause);
-
-        // Instance type should fall in one of the passed in values
-        QueryTask.Query instanceTypeFilterParentQuery = new QueryTask.Query();
-        instanceTypeFilterParentQuery.occurance = Occurance.MUST_OCCUR;
-        for (String key : context.representativeComputeDescriptionSet) {
-            QueryTask.Query instanceTypeFilter = new QueryTask.Query()
-                    .setTermPropertyName(ComputeDescription.FIELD_NAME_ID)
-                    .setTermMatchValue(key.substring(key.indexOf(TILDA) + 1));
-            instanceTypeFilter.occurance = QueryTask.Query.Occurance.SHOULD_OCCUR;
-            instanceTypeFilterParentQuery.addBooleanClause(instanceTypeFilter);
-        }
-        q.querySpec.query.addBooleanClause(instanceTypeFilterParentQuery);
-
-        q.documentSelfLink = UUID.randomUUID().toString();
-        q.tenantLinks = context.cdState.tenantLinks;
         // create the query to find an existing compute description
-        this.sendRequest(Operation
+        sendRequest(Operation
                 .createPost(this, ServiceUriPaths.CORE_QUERY_TASKS)
                 .setBody(q)
+                .setConnectionSharing(true)
                 .setCompletion((o, e) -> {
                     if (e != null) {
-                        this.logWarning("Failure retrieving query results: %s",
+                        logWarning("Failure retrieving query results: %s",
                                 e.toString());
                         AdapterUtils.sendFailurePatchToEnumerationTask(this,
                                 context.cdState.parentTaskLink, e);
                     }
                     QueryTask responseTask = o.getBody(QueryTask.class);
                     if (responseTask != null && responseTask.results.documentCount > 0) {
-                        for (String docLink : responseTask.results.documentLinks) {
-                            context.localComputeDescriptionSet.add(getIdFromDocumentLink(docLink));
+                        for (Object s : responseTask.results.documents.values()) {
+                            ComputeDescription localComputeDescription = Utils.fromJson(s,
+                                    ComputeDescription.class);
+                            context.localComputeDescriptionMap.put(
+                                    getKeyForComputeDescriptionFromCD(localComputeDescription),
+                                    localComputeDescription.documentSelfLink);
                         }
-                        logInfo("%d compute descriptions already exist in the system that match the supplied criteria. ",
-                                context.localComputeDescriptionSet.size());
+                        logInfo(
+                                "%d compute descriptions already exist in the system that match the supplied criteria. ",
+                                context.localComputeDescriptionMap.size());
+
                     } else {
                         logInfo("No matching compute descriptions exist in the system.");
                     }
                     context.creationStage = next;
                     handleComputeDescriptionCreation(context);
                 }));
+
     }
 
     /**
@@ -261,8 +253,8 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         if (context.representativeComputeDescriptionSet == null
                 || context.representativeComputeDescriptionSet.size() == 0) {
             logInfo("No new compute descriptions discovered on the remote system");
-        } else if (context.localComputeDescriptionSet == null
-                || context.localComputeDescriptionSet.size() == 0) {
+        } else if (context.localComputeDescriptionMap == null
+                || context.localComputeDescriptionMap.size() == 0) {
             logInfo("No compute descriptions found in the local system. Need to create all of them");
             Iterator<String> iterator = context.representativeComputeDescriptionSet.iterator();
             while (iterator.hasNext()) {
@@ -273,8 +265,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
             Iterator<String> i = context.representativeComputeDescriptionSet.iterator();
             while (i.hasNext()) {
                 String key = i.next();
-                String instanceType = key.substring(key.indexOf(TILDA) + 1);
-                if (!context.localComputeDescriptionSet.contains(instanceType)) {
+                if (!context.localComputeDescriptionMap.containsKey(key)) {
                     context.computeDescriptionsToBeCreatedList.add(key);
                 }
             }
@@ -295,7 +286,7 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         if (context.computeDescriptionsToBeCreatedList == null
                 || context.computeDescriptionsToBeCreatedList.size() == 0) {
             logInfo("No compute descriptions needed to be created in the local system");
-            context.creationStage = next;
+            context.creationStage = AWSComputeDescCreationStage.SIGNAL_COMPLETION;
             handleComputeDescriptionCreation(context);
             return;
         }
@@ -328,11 +319,19 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         computeDescription.supportedChildren = new ArrayList<>();
         computeDescription.supportedChildren.add(ComputeType.DOCKER_CONTAINER.toString());
         computeDescription.environmentName = AWSInstanceService.AWS_ENVIRONMENT_NAME;
-        computeDescription.zoneId = key.substring(0, key.indexOf(TILDA));
-        computeDescription.id = key.substring(key.indexOf(TILDA) + 1);
-        computeDescription.documentSelfLink = computeDescription.id;
+        // Change this once we make the overarching change to correctly use zoneId and regionId from
+        // AWS.
+        computeDescription.zoneId = getRegionIdFromComputeDescriptionKey(key);
+        computeDescription.regionId = getRegionIdFromComputeDescriptionKey(key);
+        computeDescription.id = getInstanceTypeFromComputeDescriptionKey(key);
+        computeDescription.instanceType = computeDescription.id;
+        computeDescription.networkId = getNetworkIdFromComputeDescriptionKey(key);
         computeDescription.name = computeDescription.id;
         computeDescription.tenantLinks = cd.cdState.tenantLinks;
+        // Book keeping information about the creation of the compute description in the system.
+        computeDescription.customProperties = new HashMap<String, String>();
+        computeDescription.customProperties.put(SOURCE_TASK_LINK,
+                ResourceEnumerationTaskService.FACTORY_LINK);
 
         // security group is not being returned currently in the VM. Add additional logic VSYM-326.
 
@@ -371,23 +370,5 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         OperationJoin joinOp = OperationJoin.create(context.createOperations);
         joinOp.setCompletion(joinCompletion);
         joinOp.sendWith(getHost());
-    }
-
-    /**
-     * Gets the key to uniquely represent a compute description that needs to be created in the system.
-     * Currently uses regionId and instanceType. TODO harden key as more logic is realized in this service.
-     */
-    private String getKeyForComputeDescription(Instance i) {
-        // Representing the compute-description as a key regionId~instanceType
-        return getRegionId(i).concat(TILDA).concat(i.getInstanceType());
-    }
-
-    /**
-     * Extracts the id from the document link. This is the unique identifier of the document returned as part of the result.
-     * @param documentLink
-     * @return
-     */
-    private String getIdFromDocumentLink(String documentLink) {
-        return documentLink.substring(documentLink.lastIndexOf(URI_PATH_CHAR) + 1);
     }
 }

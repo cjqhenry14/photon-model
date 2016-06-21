@@ -13,11 +13,10 @@
 
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.HYPHEN;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PRIVATE_INTERFACE;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PUBLIC_INTERFACE;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.allocateSecurityGroup;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getSecurityGroup;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSNetworkUtils.mapInstanceIPAddressToNICCreationOperations;
+import static com.vmware.photon.controller.model.constants.PhotonModelConstants.SOURCE_TASK_LINK;
 import static com.vmware.xenon.common.Operation.STATUS_CODE_UNAUTHORIZED;
 
 import java.io.UnsupportedEncodingException;
@@ -49,9 +48,9 @@ import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
 import com.vmware.photon.controller.model.resources.DiskService.DiskState;
 import com.vmware.photon.controller.model.resources.DiskService.DiskType;
-import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
-import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
+import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.OperationContext;
@@ -452,57 +451,22 @@ public class AWSInstanceService extends StatelessService {
                 } else {
                     resultDesc.customProperties = this.computeDesc.customProperties;
                 }
+                resultDesc.customProperties.put(SOURCE_TASK_LINK,
+                        ProvisionComputeTaskService.FACTORY_LINK);
                 resultDesc.id = instance.getInstanceId();
                 resultDesc.customProperties.put(AWSConstants.AWS_VPC_ID,
                         instance.getVpcId());
-
-                // NIC - Private
-                NetworkInterfaceState privateNICState = new NetworkInterfaceState();
-                privateNICState.address = instance.getPrivateIpAddress();
-                privateNICState.id = instance.getInstanceId() + HYPHEN + PRIVATE_INTERFACE;
-                privateNICState.documentSelfLink = privateNICState.id;
-                privateNICState.tenantLinks = this.computeDesc.tenantLinks;
-
-                // Compute State Network Links
-                resultDesc.networkLinks = new ArrayList<String>();
-                resultDesc.networkLinks.add(UriUtils.buildUriPath(
-                        NetworkInterfaceService.FACTORY_LINK,
-                        privateNICState.id));
-
-                // NIC - Public
-                if (instance.getPublicIpAddress() != null) {
-                    NetworkInterfaceState publicNICState = new NetworkInterfaceState();
-                    publicNICState.address = instance.getPublicIpAddress();
-                    publicNICState.id = instance.getInstanceId() + HYPHEN + PUBLIC_INTERFACE;
-                    publicNICState.documentSelfLink = publicNICState.id;
-                    publicNICState.tenantLinks = this.computeDesc.tenantLinks;
-
-                    Operation postPublicNetworkInterface = Operation
-                            .createPost(this.service,
-                                    NetworkInterfaceService.FACTORY_LINK)
-                            .setBody(publicNICState)
-                            .setReferer(this.service.getHost().getUri());
-                    createOperations.add(postPublicNetworkInterface);
-
-                    resultDesc.networkLinks.add(UriUtils.buildUriPath(
-                            NetworkInterfaceService.FACTORY_LINK,
-                            publicNICState.id));
-                }
                 // Create operations
+                List<Operation> networkOperations = mapInstanceIPAddressToNICCreationOperations(
+                        instance, resultDesc, this.computeDesc.tenantLinks, this.service);
+                if (networkOperations != null && !networkOperations.isEmpty()) {
+                    createOperations.addAll(networkOperations);
+                }
                 Operation patchState = Operation
                         .createPatch(this.computeReq.computeReference)
                         .setBody(resultDesc)
                         .setReferer(this.service.getHost().getUri());
                 createOperations.add(patchState);
-
-                Operation postPrivateNetworkInterface = Operation
-                        .createPost(
-                                UriUtils.buildUri(
-                                        this.service.getHost(),
-                                        NetworkInterfaceService.FACTORY_LINK))
-                        .setBody(privateNICState)
-                        .setReferer(this.service.getHost().getUri());
-                createOperations.add(postPrivateNetworkInterface);
 
                 OperationJoin.JoinedCompletionHandler joinCompletion = (ox,
                         exc) -> {
@@ -527,6 +491,7 @@ public class AWSInstanceService extends StatelessService {
                     AWSInstanceService.AWS_RUNNING_NAME, consumer, this.computeReq,
                     this.service, this.taskExpirationTimeMicros).start();
         }
+
     }
 
     // callback to be invoked when a VM creation operation returns
@@ -608,12 +573,15 @@ public class AWSInstanceService extends StatelessService {
                 public void accept(Instance instance) {
                     OperationContext.restoreOperationContext(AWSTerminateHandler.this.opContext);
                     if (instance == null) {
-                        AdapterUtils.sendFailurePatchToProvisioningTask(AWSTerminateHandler.this.service,
+                        AdapterUtils.sendFailurePatchToProvisioningTask(
+                                AWSTerminateHandler.this.service,
                                 AWSTerminateHandler.this.computeReq.provisioningTaskReference,
                                 new IllegalStateException("Error getting instance"));
                         return;
                     }
-                    deleteComputeResource(AWSTerminateHandler.this.service, AWSTerminateHandler.this.computeDesc, AWSTerminateHandler.this.computeReq);
+                    deleteComputeResource(AWSTerminateHandler.this.service,
+                            AWSTerminateHandler.this.computeDesc,
+                            AWSTerminateHandler.this.computeReq);
                 }
             };
             AWSTaskStatusChecker.create(this.amazonEC2Client, this.instanceId,

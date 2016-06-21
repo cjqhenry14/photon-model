@@ -41,11 +41,10 @@ import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetu
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.waitForProvisioningToComplete;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.zoneId;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.getExecutor;
+import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.getNetworkStates;
 import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryComputeDescriptions;
 import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryComputeInstances;
 import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryNetworkStates;
-import static com.vmware.xenon.common.UriUtils.buildUri;
-import static com.vmware.xenon.common.UriUtils.extendUri;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -67,7 +66,6 @@ import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSCom
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
-import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
@@ -99,6 +97,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public static final int count8 = 8;
     public int instanceCountAtScale = 10;
     public ComputeService.ComputeState vmState;
+    public String computeDescriptionLink;
     public ResourcePoolState outPool;
     public ComputeService.ComputeState outComputeHost;
     public AuthCredentialsServiceState creds;
@@ -106,6 +105,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public static final String T2_NANO_INSTANCE_TYPE = "t2.nano";
     public static final String DEFAULT_SECURITY_GROUP_NAME = "cell-manager-security-group";
     public static final String VM_NAME = "aws-test-vm";
+    public static final String VM_UPDATED_NAME = "aws-test-vm-updated";
     public static List<String> instancesToCleanUp = new ArrayList<String>();
     public static List<String> instanceIds = new ArrayList<String>();
     public List<String> instanceIdsToDeleteFirstTime = new ArrayList<String>();
@@ -117,6 +117,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public BaseLineState baseLineState;
     public static final String TEST_CASE_INITIAL = "Initial Run ";
     public static final String TEST_CASE_ADDITIONAL_VM = "Additional VM ";
+    public static final String TEST_CASE_PURE_UPDATE = "Only Update to existing VM.";
     public static final String TEST_CASE_DELETE_VM = "Delete VM ";
     public static final String TEST_CASE_DELETE_VMS = "Delete multiple VMs ";
     public static final String TEST_CASE_MOCK_MODE = "Mock Mode ";
@@ -198,8 +199,11 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             queryComputeDescriptions(this.host, count2);
 
             // CREATION directly on AWS
-            this.instanceIdsToDeleteFirstTime = provisionAWSVMWithEC2Client(this.client, this.host, count5,
-                    T2_NANO_INSTANCE_TYPE);
+            this.instanceIdsToDeleteFirstTime = provisionAWSVMWithEC2Client(this.client, this.host,
+                    count4, T2_NANO_INSTANCE_TYPE);
+            List<String> instanceIds = provisionAWSVMWithEC2Client(this.client, this.host, count1,
+                    instanceType_t2_micro);
+            this.instanceIdsToDeleteFirstTime.addAll(instanceIds);
             instancesToCleanUp.addAll(this.instanceIdsToDeleteFirstTime);
             waitForProvisioningToComplete(this.instanceIdsToDeleteFirstTime, this.host, this.client, ZERO);
             // Tag the first VM with a name
@@ -211,23 +215,35 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
                     this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_INITIAL);
-            // 5 new resources should be discovered. Mapping to 1 new compute description and 5 new
+            // 5 new resources should be discovered. Mapping to 2 new compute description and 5 new
             // compute states.
+            // Even though the "t2.micro" is common to the VM provisioned from Xenon
+            // service and the one directly provisioned on EC2, there is no Compute description
+            // linking of discovered resources to user defined compute descriptions. So a new system
+            // generated compute description will be created for "t2.micro"
             queryComputeDescriptions(this.host,
-                    count3 + this.baseLineState.baselineComputeDescriptionCount);
+                    count4 + this.baseLineState.baselineComputeDescriptionCount);
             queryComputeInstances(this.host,
                     count7 + this.baseLineState.baselineVMCount);
 
             // Update Scenario : Check that the tag information is present for the VM tagged above.
-            String vpCId = validateTagAndNetworkInformation();
+            String vpCId = validateTagAndNetworkAndComputeDescriptionInformation();
             validateVPCInformation(vpCId);
             // Total network states is a combination of NICs and network state
             // Count should be 2 NICs per discovered VM + 1 Network State for the VPC
             int totalNetworkStateCount = (count6 + this.baseLineState.baselineVMCount) * 2 + 1;
             queryNetworkStates(this.host, totalNetworkStateCount);
 
-            // Provision an additional VM that has a compute description already present in the
-            // system.
+            // Pure UPDATE scenario with no new resources to discover
+            // Update the tag on the VM already known to the system
+            tagProvisionedVM(this.vmState.id, VM_UPDATED_NAME, this.client);
+            enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
+                    this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
+                    TEST_CASE_PURE_UPDATE);
+            validateTagInformation(VM_UPDATED_NAME);
+
+            // Provision an additional VM with a different instance type. It should re-use the
+            // existing compute description created by the enumeration task above.
             this.instanceIdsToDeleteSecondTime = provisionAWSVMWithEC2Client(this.client, this.host,
                     count1, TestAWSSetupUtils.instanceType_t2_micro);
             instancesToCleanUp.addAll(this.instanceIdsToDeleteSecondTime);
@@ -235,9 +251,11 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
                     this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_ADDITIONAL_VM);
-            // One additional compute state and no new compute descriptions should be created.
+            // One additional compute state and and one additional compute description should be
+            // created. 1) compute host CD 2) t2.nano-system generated 3) t2.micro-system generated
+            // 4) t2.micro-created from test code.
             queryComputeDescriptions(this.host,
-                    count3 + this.baseLineState.baselineComputeDescriptionCount);
+                    count4 + this.baseLineState.baselineComputeDescriptionCount);
             queryComputeInstances(this.host,
                     count8 + this.baseLineState.baselineVMCount);
 
@@ -281,27 +299,20 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         Map<URI, ComputeState> computeStateMap = this.host
                 .getServiceState(null, ComputeState.class, computeStateURIs);
         ComputeState computeStateToTag = computeStateMap.get(computeStateURIs[0]);
-        setResourceName(computeStateToTag.id, VM_NAME, this.client);
+        setResourceName(computeStateToTag.id, vmName, this.client);
     }
 
     /**
      * Verifies if the tag information exists for a given resource. And that private and public IP addresses
-     * are mapped to separate NICs.
+     * are mapped to separate NICs.Also, checks that the compute description mapping is not changed in an updated scenario.
+     * Currently, this method is being invoked for a VM provisioned from Xenon, so the check is to make sure
+     * that during discovery it is not re-mapped to a system generated compute description.
      * @throws Throwable
      */
-    private String validateTagAndNetworkInformation() throws Throwable {
-        URI[] computeStateURIs = { UriUtils.buildUri(this.host, this.vmState.documentSelfLink) };
-        Map<URI, ComputeState> computeStateMap = this.host
-                .getServiceState(null, ComputeState.class, computeStateURIs);
-        ComputeState taggedComputeState = computeStateMap.get(computeStateURIs[0]);
-        assertTrue(taggedComputeState.customProperties.get(AWS_TAGS) != null);
-        String tagsJson = taggedComputeState.customProperties.get(AWS_TAGS);
-        AWSTags resultTags = Utils.fromJson(tagsJson, AWSTags.class);
-        assertTrue(resultTags != null);
-        Tag nameTag = resultTags.awsTags.get(0);
-        assertEquals(nameTag.getKey(), AWS_TAG_NAME);
-        assertEquals(nameTag.getValue(), VM_NAME);
+    private String validateTagAndNetworkAndComputeDescriptionInformation() throws Throwable {
+        ComputeState taggedComputeState = validateTagInformation(VM_NAME);
 
+        assertEquals(taggedComputeState.descriptionLink, this.computeDescriptionLink);
         assertTrue(taggedComputeState.networkLinks != null);
         assertTrue(taggedComputeState.networkLinks.size() == 2);
 
@@ -323,6 +334,24 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     }
 
     /**
+     * Validates the tag information on a compute state matches an expected virtual machine name.
+     */
+    private ComputeState validateTagInformation(String vmName) throws Throwable {
+        URI[] computeStateURIs = { UriUtils.buildUri(this.host, this.vmState.documentSelfLink) };
+        Map<URI, ComputeState> computeStateMap = this.host
+                .getServiceState(null, ComputeState.class, computeStateURIs);
+        ComputeState taggedComputeState = computeStateMap.get(computeStateURIs[0]);
+        assertTrue(taggedComputeState.customProperties.get(AWS_TAGS) != null);
+        String tagsJson = taggedComputeState.customProperties.get(AWS_TAGS);
+        AWSTags resultTags = Utils.fromJson(tagsJson, AWSTags.class);
+        assertTrue(resultTags != null);
+        Tag nameTag = resultTags.awsTags.get(0);
+        assertEquals(nameTag.getKey(), AWS_TAG_NAME);
+        assertEquals(vmName, nameTag.getValue());
+        return taggedComputeState;
+    }
+
+    /**
      * Validates that the VPC information discovered from AWS has all the desired set of fields and the association
      * between a compute state and a network state is established correctly.
      * @throws Throwable
@@ -330,10 +359,10 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     private void validateVPCInformation(String vpCId) throws Throwable {
         // Get the network state that maps to this VPCID. Right now the id field of the network
         // state is set to the VPC ID, so querying the network state based on that.
-        URI[] VPCIDs = { extendUri(buildUri(this.host, NetworkService.FACTORY_LINK), vpCId) };
-        Map<URI, NetworkState> networkStateMap = this.host
-                .getServiceState(null, NetworkState.class, VPCIDs);
-        NetworkState networkState = networkStateMap.get(VPCIDs[0]);
+
+        Map<String, NetworkState> networkStateMap = getNetworkStates(this.host);
+        assertNotNull(networkStateMap);
+        NetworkState networkState = networkStateMap.get(vpCId);
         // The network state for the VPC id of the VM should not be null
         assertNotNull(networkState);
         assertNotNull(networkState.subnetCIDR);
@@ -359,5 +388,6 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
         // create a AWS VM compute resource
         this.vmState = createAWSVMResource(this.host, this.outComputeHost.documentSelfLink,
                 this.outPool.documentSelfLink, TestAWSSetupUtils.class);
+        this.computeDescriptionLink = this.vmState.descriptionLink;
     }
 }

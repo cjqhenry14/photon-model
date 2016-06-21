@@ -46,10 +46,10 @@ import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsSe
  */
 public class AWSClientManager {
 
+    private static final Logger logger = Logger.getLogger(AWSClientManager.class.getName());
     // Flag for determining if the client manager needs to manage the EC2 client cache or the
     // CloudWatch cache. If the stats mode is set, the cloud watch client cache is maintained in
     // this class.
-    private static final Logger logger = Logger.getLogger(AWSClientManager.class.getName());
     private boolean statsFlag;
     private LRUCache<String, AmazonEC2AsyncClient> ec2ClientCache;
     private LRUCache<String, AmazonCloudWatchAsyncClient> cloudWatchClientCache;

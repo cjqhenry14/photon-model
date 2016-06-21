@@ -281,6 +281,8 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
                 .addKindFieldClause(ComputeService.ComputeState.class)
                 .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,
                         aws.computeEnumerationRequest.parentComputeLink)
+                .addFieldClause(ComputeState.FIELD_NAME_RESOURCE_POOL_LINK,
+                        aws.computeEnumerationRequest.resourcePoolLink)
                 .build();
         QueryTask.Builder queryTaskBuilder = QueryTask.Builder.createDirectTask()
                 .setQuery(query).setResultLimit(resultLimit);
@@ -403,7 +405,8 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
             this.service.logInfo("Successfully enumerated %d instances on the AWS host",
                     totalNumberOfInstances);
             this.aws.subStage = this.next;
-            ((AWSEnumerationAndDeletionAdapterService) this.service).deleteResourcesInLocalSystem(this.aws);
+            ((AWSEnumerationAndDeletionAdapterService) this.service)
+                    .deleteResourcesInLocalSystem(this.aws);
             return;
         }
     }

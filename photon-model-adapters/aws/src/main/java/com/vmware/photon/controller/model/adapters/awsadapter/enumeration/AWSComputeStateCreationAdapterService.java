@@ -16,18 +16,26 @@ package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_ATTACHMENT_VPC_FILTER;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_GATEWAY_ID;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_MAIN_ROUTE_ASSOCIATION;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_SUBNET_ID;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_TAGS;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_VPC_ID;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.AWS_VPC_ROUTE_TABLE_ID;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.HYPHEN;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PRIVATE_INTERFACE;
-import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PUBLIC_INTERFACE;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.AWS_FILTER_VPC_ID;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.getCDsRepresentingVMsInLocalSystemCreatedByEnumerationQuery;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.getKeyForComputeDescriptionFromCD;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.getKeyForComputeDescriptionFromInstance;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.getRepresentativeListOfCDsFromInstanceList;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSEnumerationUtils.mapInstanceToComputeState;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSNetworkUtils.createOperationToUpdateOrCreateNetworkInterface;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSNetworkUtils.createQueryToGetExistingNetworkStatesFilteredByDiscoveredVPCs;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSNetworkUtils.getExistingNetworkInterfaceLink;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSNetworkUtils.mapIPAddressToNetworkInterfaceState;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSNetworkUtils.mapInstanceIPAddressToNICCreationOperations;
+import static com.vmware.photon.controller.model.adapters.awsadapter.util.AWSNetworkUtils.mapVPCToNetworkState;
+import static com.vmware.photon.controller.model.adapters.util.AdapterUtils.createPatchOperation;
+import static com.vmware.photon.controller.model.adapters.util.AdapterUtils.createPostOperation;
 
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -52,8 +60,9 @@ import com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils;
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManager;
 import com.vmware.photon.controller.model.adapters.awsadapter.util.AWSClientManagerFactory;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
-import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
+import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
 import com.vmware.photon.controller.model.resources.NetworkService;
@@ -66,6 +75,8 @@ import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 import com.vmware.xenon.services.common.AuthCredentialsService;
+import com.vmware.xenon.services.common.QueryTask;
+import com.vmware.xenon.services.common.ServiceUriPaths;
 
 /**
  * Stateless service for the creation of compute states. It accepts a list of AWS instances that need to be created in the
@@ -78,11 +89,11 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
     private AWSClientManager clientManager;
 
     public static enum AWSComputeStateCreationStage {
-        POPULATE_COMPUTESTATES, CREATE_NETWORK_STATE, CREATE_COMPUTESTATES, SIGNAL_COMPLETION,
+        GET_RELATED_COMPUTE_DESCRIPTIONS, POPULATE_COMPUTESTATES, CREATE_NETWORK_STATE, CREATE_COMPUTESTATES, SIGNAL_COMPLETION,
     }
 
     public static enum AWSNetworkCreationStage {
-        CLIENT, GET_VPC, GET_INTERNET_GATEWAY, GET_MAIN_ROUTE_TABLE, CREATE_NETWORKSTATE
+        CLIENT, GET_REMOTE_VPC, GET_LOCAL_NETWORK_STATES, GET_INTERNET_GATEWAY, GET_MAIN_ROUTE_TABLE, CREATE_NETWORKSTATE
     }
 
     /**
@@ -108,6 +119,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
     public static class AWSComputeStateForCreation {
         public List<Instance> instancesToBeCreated;
         public Map<String, Instance> instancesToBeUpdated;
+        public Map<String, ComputeState> computeStatesToBeUpdated;
         public String resourcePoolLink;
         public String parentComputeLink;
         public AuthCredentialsService.AuthCredentialsServiceState parentAuth;
@@ -125,12 +137,17 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
     public static class AWSComputeServiceCreationContext {
         public AmazonEC2AsyncClient amazonEC2Client;
         public AWSComputeStateForCreation computeState;
-        public List<Operation> createorUpdateOperations;
+        public List<Operation> createOrUpdateOperations;
         public int instanceToBeCreatedCounter = 0;
         public AWSComputeStateCreationStage creationStage;
         public AWSNetworkCreationStage networkCreationStage;
+        // Holds the mapping between the instanceType (t2.micro etc) and the document self link to
+        // that compute description.
+        public Map<String, String> computeDescriptionMap;
         // Map for saving AWS VPC and network state associations for the discovered VPCs
-        public Map<String, NetworkState> vpcNetworkStateMap;
+        public Map<String, NetworkState> discoveredVpcNetworkStateMap;
+        // Map for local network states. The key is the vpc-id.
+        public Map<String, NetworkState> localNetworkStateMap;
         // Cached operation to signal completion to the AWS instance adapter once all the compute
         // states are successfully created.
         public Operation awsAdapterOperation;
@@ -138,9 +155,11 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         public AWSComputeServiceCreationContext(AWSComputeStateForCreation computeState,
                 Operation op) {
             this.computeState = computeState;
-            this.createorUpdateOperations = new ArrayList<Operation>();
-            this.vpcNetworkStateMap = new HashMap<String, NetworkState>();
-            this.creationStage = AWSComputeStateCreationStage.POPULATE_COMPUTESTATES;
+            this.createOrUpdateOperations = new ArrayList<Operation>();
+            this.discoveredVpcNetworkStateMap = new HashMap<String, NetworkState>();
+            this.localNetworkStateMap = new HashMap<String, NetworkState>();
+            this.computeDescriptionMap = new HashMap<String, String>();
+            this.creationStage = AWSComputeStateCreationStage.GET_RELATED_COMPUTE_DESCRIPTIONS;
             this.networkCreationStage = AWSNetworkCreationStage.CLIENT;
             this.awsAdapterOperation = op;
         }
@@ -174,8 +193,12 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      */
     private void handleComputeStateCreateOrUpdate(AWSComputeServiceCreationContext context) {
         switch (context.creationStage) {
+        case GET_RELATED_COMPUTE_DESCRIPTIONS:
+            getRelatedComputeDescriptions(context,
+                    AWSComputeStateCreationStage.POPULATE_COMPUTESTATES);
+            break;
         case POPULATE_COMPUTESTATES:
-            createOperations(context, AWSComputeStateCreationStage.CREATE_NETWORK_STATE);
+            populateOperations(context, AWSComputeStateCreationStage.CREATE_NETWORK_STATE);
             break;
         case CREATE_NETWORK_STATE:
             createorUpdateNetworkState(context, AWSComputeStateCreationStage.CREATE_COMPUTESTATES);
@@ -197,28 +220,82 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
     }
 
     /**
+     * Looks up the compute descriptions associated with the compute states to be created in the system.
+     */
+    private void getRelatedComputeDescriptions(AWSComputeServiceCreationContext context,
+            AWSComputeStateCreationStage next) {
+        // Get the related compute descriptions for all the compute states are to be updated and
+        // created.
+        HashSet<String> representativeCDSet = getRepresentativeListOfCDsFromInstanceList(
+                context.computeState.instancesToBeCreated);
+        representativeCDSet.addAll(getRepresentativeListOfCDsFromInstanceList(
+                context.computeState.instancesToBeUpdated.values()));
+
+        QueryTask q = getCDsRepresentingVMsInLocalSystemCreatedByEnumerationQuery(representativeCDSet,
+                context.computeState.tenantLinks,
+                this, context.computeState.parentTaskLink, context.computeState.regionId);
+
+        // create the query to find an existing compute description
+        sendRequest(Operation
+                .createPost(this, ServiceUriPaths.CORE_QUERY_TASKS)
+                .setBody(q)
+                .setConnectionSharing(true)
+                .setCompletion((o, e) -> {
+                    if (e != null) {
+                        logWarning("Failure retrieving query results: %s",
+                                e.toString());
+                        AdapterUtils.sendFailurePatchToEnumerationTask(this,
+                                context.computeState.parentTaskLink, e);
+                    }
+                    QueryTask responseTask = o.getBody(QueryTask.class);
+                    if (responseTask != null && responseTask.results.documentCount > 0) {
+                        for (Object s : responseTask.results.documents.values()) {
+                            ComputeDescription localComputeDescription = Utils.fromJson(s,
+                                    ComputeDescription.class);
+                            context.computeDescriptionMap.put(
+                                    getKeyForComputeDescriptionFromCD(localComputeDescription),
+                                    localComputeDescription.documentSelfLink);
+                        }
+                        logInfo(
+                                "%d compute descriptions already exist in the system that match the supplied criteria. ",
+                                context.computeDescriptionMap.size());
+                    } else {
+                        logInfo("No matching compute descriptions exist in the system.");
+                    }
+                    context.creationStage = next;
+                    handleComputeStateCreateOrUpdate(context);
+                }));
+
+    }
+
+    /**
      * Method to create Compute States associated with the instances received from the AWS host.
      */
-    private void createOperations(AWSComputeServiceCreationContext context,
+    private void populateOperations(AWSComputeServiceCreationContext context,
             AWSComputeStateCreationStage next) {
         if (context.computeState.instancesToBeCreated == null
                 || context.computeState.instancesToBeCreated.size() == 0) {
             logInfo("No instances need to be created in the local system");
-            context.creationStage = next;
-            handleComputeStateCreateOrUpdate(context);
-            return;
+        } else {
+            logInfo("Need to create %d compute states in the local system",
+                    context.computeState.instancesToBeCreated.size());
+            for (int i = 0; i < context.computeState.instancesToBeCreated.size(); i++) {
+                populateComputeStateAndNetworksForCreation(context,
+                        context.computeState.instancesToBeCreated.get(i));
+            }
         }
-        logInfo("Need to create %d compute states in the local system",
-                context.computeState.instancesToBeCreated.size());
-        for (int i = 0; i < context.computeState.instancesToBeCreated.size(); i++) {
-            populateComputeStateAndNetworks(context,
-                    context.computeState.instancesToBeCreated.get(i), null, true);
-        }
-        logInfo("Need to update %d compute states in the local system",
-                context.computeState.instancesToBeUpdated.size());
-        for (String key : context.computeState.instancesToBeUpdated.keySet()) {
-            populateComputeStateAndNetworks(context,
-                    context.computeState.instancesToBeUpdated.get(key), key, false);
+        if (context.computeState.instancesToBeUpdated == null
+                || context.computeState.instancesToBeUpdated.size() == 0) {
+            logInfo("No instances need to be updated in the local system");
+        } else {
+            logInfo("Need to update %d compute states in the local system",
+                    context.computeState.instancesToBeUpdated.size());
+            for (String instanceId : context.computeState.instancesToBeUpdated
+                    .keySet()) {
+                populateComputeStateAndNetworksForUpdates(context,
+                        context.computeState.instancesToBeUpdated.get(instanceId),
+                        context.computeState.computeStatesToBeUpdated.get(instanceId));
+            }
         }
         context.creationStage = next;
         handleComputeStateCreateOrUpdate(context);
@@ -226,112 +303,86 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
     }
 
     /**
-     * Populates the compute state / network link associated with an AWS VM instance and creates an
-     * operation for posting it.
+     * Populates the compute state / network link associated with an AWS VM instance and creates an operation for posting it.
      */
-    private void populateComputeStateAndNetworks(AWSComputeServiceCreationContext context,
-            Instance instance, String existingComputeStateDocumentLink,
-            boolean createFlag) {
-        ComputeService.ComputeState computeState = new ComputeService.ComputeState();
-        computeState.id = instance.getInstanceId();
-        computeState.parentLink = context.computeState.parentComputeLink;
-
-        computeState.resourcePoolLink = context.computeState.resourcePoolLink;
-        // Compute descriptions are created with well defined names and can be located using the
-        // instanceType
-        computeState.descriptionLink = UriUtils.buildUriPath(
-                ComputeDescriptionService.FACTORY_LINK, instance.getInstanceType());
-
-        // TODO VSYM-375 for adding disk information
-
-        computeState.address = instance.getPublicIpAddress();
-        computeState.powerState = AWSUtils.mapToPowerState(instance.getState());
-        computeState.customProperties = new HashMap<String, String>();
-        if (!instance.getTags().isEmpty()) {
-            computeState.customProperties.put(AWS_TAGS,
-                    Utils.toJson(new AWSTags(instance.getTags())));
-        }
-        computeState.tenantLinks = context.computeState.tenantLinks;
+    private void populateComputeStateAndNetworksForCreation(
+            AWSComputeServiceCreationContext context,
+            Instance instance) {
+        ComputeService.ComputeState computeState = mapInstanceToComputeState(instance,
+                context.computeState.parentComputeLink, context.computeState.resourcePoolLink,
+                context.computeDescriptionMap
+                        .get(getKeyForComputeDescriptionFromInstance(instance)),
+                context.computeState.tenantLinks);
 
         // Network State. Create one network state mapping to each VPC that is discovered during
         // enumeration.
-        computeState.customProperties.put(AWS_VPC_ID,
-                instance.getVpcId());
-        if (!context.vpcNetworkStateMap.containsKey(instance.getVpcId())) {
-            NetworkState networkState = new NetworkState();
-            networkState.id = instance.getVpcId();
-            networkState.documentSelfLink = networkState.id;
-            networkState.name = instance.getVpcId();
-            networkState.regionID = context.computeState.regionId;
-            networkState.resourcePoolLink = context.computeState.resourcePoolLink;
-            networkState.authCredentialsLink = context.computeState.parentAuth.documentSelfLink;
-            networkState.instanceAdapterReference = UriUtils
-                    .buildUri(AWSUriPaths.AWS_INSTANCE_ADAPTER);
-            networkState.tenantLinks = context.computeState.tenantLinks;
-            networkState.customProperties = new HashMap<String, String>();
-            networkState.customProperties.put(AWS_VPC_ID,
-                    instance.getVpcId());
-            networkState.customProperties.put(AWS_SUBNET_ID,
-                    instance.getSubnetId());
-            context.vpcNetworkStateMap.put(instance.getVpcId(), networkState);
-        }
-        // NIC - Private
-        NetworkInterfaceState privateNICState = new NetworkInterfaceState();
-        privateNICState.address = instance.getPrivateIpAddress();
-        privateNICState.id = instance.getInstanceId() + HYPHEN + PRIVATE_INTERFACE;
-        privateNICState.documentSelfLink = privateNICState.id;
-        privateNICState.tenantLinks = context.computeState.tenantLinks;
+        if (!context.discoveredVpcNetworkStateMap.containsKey(instance.getVpcId())) {
+            NetworkState networkState = mapVPCToNetworkState(instance,
+                    context.computeState.regionId,
+                    context.computeState.resourcePoolLink,
+                    context.computeState.parentAuth.documentSelfLink,
+                    context.computeState.tenantLinks);
 
-        // Compute State Network Links
+            context.discoveredVpcNetworkStateMap.put(instance.getVpcId(), networkState);
+        }
+
+        // Create operations
+        List<Operation> networkOperations = mapInstanceIPAddressToNICCreationOperations(
+                instance, computeState, context.computeState.tenantLinks, this);
+        if (networkOperations != null && !networkOperations.isEmpty()) {
+            context.createOrUpdateOperations.addAll(networkOperations);
+        }
+        // Create operation for compute state once all the
+        Operation postComputeState = createPostOperation(this, computeState,
+                ComputeService.FACTORY_LINK);
+        context.createOrUpdateOperations.add(postComputeState);
+    }
+
+    /**
+     * Populates the compute state / network link associated with an AWS VM instance and creates an operation for PATCHing existing
+     * compute and network interfaces .
+     */
+    private void populateComputeStateAndNetworksForUpdates(AWSComputeServiceCreationContext context,
+            Instance instance, ComputeState existingComputeState) {
+        // Operation for update to compute state.
+        ComputeService.ComputeState computeState = mapInstanceToComputeState(instance,
+                context.computeState.parentComputeLink, context.computeState.resourcePoolLink,
+                existingComputeState.descriptionLink,
+                context.computeState.tenantLinks);
+
+        // NIC - Private
+        String existingNICLink = getExistingNetworkInterfaceLink(existingComputeState, false);
+        NetworkInterfaceState privateNICState = mapIPAddressToNetworkInterfaceState(instance,
+                false, context.computeState.tenantLinks, existingNICLink);
+
+        Operation privateNICOperation = createOperationToUpdateOrCreateNetworkInterface(
+                existingComputeState, privateNICState,
+                context.computeState.tenantLinks, this, false);
+        context.createOrUpdateOperations.add(privateNICOperation);
         computeState.networkLinks = new ArrayList<String>();
         computeState.networkLinks.add(UriUtils.buildUriPath(
                 NetworkInterfaceService.FACTORY_LINK,
-                privateNICState.id));
+                privateNICState.documentSelfLink));
 
         // NIC - Public
         if (instance.getPublicIpAddress() != null) {
-            NetworkInterfaceState publicNICState = new NetworkInterfaceState();
-            publicNICState.address = instance.getPublicIpAddress();
-            publicNICState.id = instance.getInstanceId() + HYPHEN + PUBLIC_INTERFACE;
-            publicNICState.documentSelfLink = publicNICState.id;
-            publicNICState.tenantLinks = context.computeState.tenantLinks;
-
-            Operation postPublicNetworkInterface = Operation
-                    .createPost(this,
-                            NetworkInterfaceService.FACTORY_LINK)
-                    .setBody(publicNICState)
-                    .setReferer(getHost().getUri());
-
-            context.createorUpdateOperations.add(postPublicNetworkInterface);
-
+            existingNICLink = getExistingNetworkInterfaceLink(existingComputeState, true);
+            NetworkInterfaceState publicNICState = mapIPAddressToNetworkInterfaceState(instance,
+                    true, context.computeState.tenantLinks, existingNICLink);
+            Operation postPublicNetworkInterfaceOperation = createOperationToUpdateOrCreateNetworkInterface(
+                    existingComputeState, publicNICState,
+                    context.computeState.tenantLinks, this, true);
+            context.createOrUpdateOperations.add(postPublicNetworkInterfaceOperation);
             computeState.networkLinks.add(UriUtils.buildUriPath(
-                    NetworkInterfaceService.FACTORY_LINK,
-                    publicNICState.id));
+                    NetworkInterfaceService.FACTORY_LINK, publicNICState.documentSelfLink));
         }
-        Operation postPrivateNetworkInterface = Operation
-                .createPost(this,
-                        NetworkInterfaceService.FACTORY_LINK)
-                .setBody(privateNICState)
-                .setReferer(getHost().getUri());
 
-        context.createorUpdateOperations.add(postPrivateNetworkInterface);
+        // Create operation for compute state once all the associated network entities are accounted
+        // for.
+        Operation patchComputeState = createPatchOperation(this,
+                computeState, existingComputeState.documentSelfLink);
+        context.createOrUpdateOperations.add(patchComputeState);
 
-        if (createFlag) {
-            // Operations for creation of compute state.
-            Operation postComputeState = Operation
-                    .createPost(this, ComputeService.FACTORY_LINK)
-                    .setBody(computeState)
-                    .setReferer(this.getHost().getUri());
-            context.createorUpdateOperations.add(postComputeState);
-        } else { // Operations for update to compute state.
-            URI computeStateURI = UriUtils.buildUri(this.getHost(),
-                    existingComputeStateDocumentLink);
-            Operation patchComputeState = Operation
-                    .createPatch(computeStateURI)
-                    .setBody(computeState)
-                    .setReferer(this.getHost().getUri());
-            context.createorUpdateOperations.add(patchComputeState);
-        }
     }
 
     /**
@@ -341,8 +392,8 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      */
     private void kickOffComputeStateCreation(AWSComputeServiceCreationContext context,
             AWSComputeStateCreationStage next) {
-        if (context.createorUpdateOperations == null
-                || context.createorUpdateOperations.size() == 0) {
+        if (context.createOrUpdateOperations == null
+                || context.createOrUpdateOperations.size() == 0) {
             logInfo("There are no compute states or networks to be created");
             context.creationStage = next;
             handleComputeStateCreateOrUpdate(context);
@@ -363,7 +414,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
             handleComputeStateCreateOrUpdate(context);
             return;
         };
-        OperationJoin joinOp = OperationJoin.create(context.createorUpdateOperations);
+        OperationJoin joinOp = OperationJoin.create(context.createOrUpdateOperations);
         joinOp.setCompletion(joinCompletion);
         joinOp.sendWith(getHost());
 
@@ -374,7 +425,8 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      */
     private void createorUpdateNetworkState(AWSComputeServiceCreationContext context,
             AWSComputeStateCreationStage next) {
-        if (context.vpcNetworkStateMap == null || context.vpcNetworkStateMap.size() == 0) {
+        if (context.discoveredVpcNetworkStateMap == null
+                || context.discoveredVpcNetworkStateMap.size() == 0) {
             context.creationStage = next;
             handleComputeStateCreateOrUpdate(context);
             return;
@@ -394,9 +446,12 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
     private void handleNetworkStateChanges(AWSComputeServiceCreationContext context) {
         switch (context.networkCreationStage) {
         case CLIENT:
-            getAWSAsyncClient(context, AWSNetworkCreationStage.GET_VPC);
+            getAWSAsyncClient(context, AWSNetworkCreationStage.GET_LOCAL_NETWORK_STATES);
             break;
-        case GET_VPC:
+        case GET_LOCAL_NETWORK_STATES:
+            getLocalNetworkStates(context, AWSNetworkCreationStage.GET_REMOTE_VPC);
+            break;
+        case GET_REMOTE_VPC:
             getVPCInformation(context, AWSNetworkCreationStage.GET_INTERNET_GATEWAY);
             break;
         case GET_INTERNET_GATEWAY:
@@ -430,13 +485,50 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
     }
 
     /**
+     * Gets the VPC information from the local database to perform updates to existing network states.
+     */
+    private void getLocalNetworkStates(AWSComputeServiceCreationContext context,
+            AWSNetworkCreationStage next) {
+        QueryTask q = createQueryToGetExistingNetworkStatesFilteredByDiscoveredVPCs(
+                context.discoveredVpcNetworkStateMap.keySet(), context.computeState.tenantLinks);
+        // create the query to find resources
+
+        sendRequest(Operation
+                .createPost(this, ServiceUriPaths.CORE_QUERY_TASKS)
+                .setBody(q)
+                .setConnectionSharing(true)
+                .setCompletion((o, e) -> {
+                    if (e != null) {
+                        logSevere("Failure retrieving query results: %s",
+                                e.toString());
+                        AdapterUtils.sendFailurePatchToEnumerationTask(this,
+                                context.computeState.parentTaskLink, e);
+                        return;
+                    }
+                    QueryTask responseTask = o.getBody(QueryTask.class);
+                    for (Object s : responseTask.results.documents.values()) {
+                        NetworkState networkState = Utils.fromJson(s,
+                                NetworkState.class);
+                        context.localNetworkStateMap.put(networkState.id,
+                                networkState);
+                    }
+                    logInfo("Result of query to get local networks. There are %d network states known to the system.",
+                            responseTask.results.documentCount);
+                    context.networkCreationStage = next;
+                    handleNetworkStateChanges(context);
+                    return;
+                }));
+
+    }
+
+    /**
      * Gets the VPC information from AWS. The CIDR block information is persisted in the network state corresponding
      * to the VPC.
      */
     private void getVPCInformation(AWSComputeServiceCreationContext context,
             AWSNetworkCreationStage next) {
         DescribeVpcsRequest vpcRequest = new DescribeVpcsRequest();
-        vpcRequest.getVpcIds().addAll(context.vpcNetworkStateMap.keySet());
+        vpcRequest.getVpcIds().addAll(context.discoveredVpcNetworkStateMap.keySet());
         AWSVPCAsyncHandler asyncHandler = new AWSVPCAsyncHandler(this, next, context);
         context.amazonEC2Client.describeVpcsAsync(vpcRequest, asyncHandler);
     }
@@ -475,14 +567,15 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
             OperationContext.restoreOperationContext(this.opContext);
             // Update the CIDR blocks corresponding to the VPCs in the network state
             for (Vpc resultVPC : result.getVpcs()) {
-                NetworkState networkStateToUpdate = this.aws.vpcNetworkStateMap
+                NetworkState networkStateToUpdate = this.aws.discoveredVpcNetworkStateMap
                         .get(resultVPC.getVpcId());
                 networkStateToUpdate.subnetCIDR = resultVPC.getCidrBlock();
                 if (networkStateToUpdate.subnetCIDR == null) {
                     this.service.logWarning("AWS did not return CIDR information for VPC %s",
                             resultVPC.toString());
                 }
-                this.aws.vpcNetworkStateMap.put(resultVPC.getVpcId(), networkStateToUpdate);
+                this.aws.discoveredVpcNetworkStateMap.put(resultVPC.getVpcId(),
+                        networkStateToUpdate);
             }
             this.aws.networkCreationStage = this.next;
             this.service.handleNetworkStateChanges(this.aws);
@@ -495,7 +588,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
     private void getInternetGatewayInformation(AWSComputeServiceCreationContext context,
             AWSNetworkCreationStage next) {
         DescribeInternetGatewaysRequest internetGatewayRequest = new DescribeInternetGatewaysRequest();
-        List<String> vpcList = new ArrayList<String>(context.vpcNetworkStateMap.keySet());
+        List<String> vpcList = new ArrayList<String>(context.discoveredVpcNetworkStateMap.keySet());
         Filter filter = new Filter(AWS_ATTACHMENT_VPC_FILTER, vpcList);
         internetGatewayRequest.getFilters().add(filter);
         AWSInternetGatewayAsyncHandler asyncHandler = new AWSInternetGatewayAsyncHandler(this, next,
@@ -544,12 +637,13 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
             OperationContext.restoreOperationContext(this.opContext);
             for (InternetGateway resultGateway : result.getInternetGateways()) {
                 for (InternetGatewayAttachment attachment : resultGateway.getAttachments()) {
-                    if (this.aws.vpcNetworkStateMap.containsKey(attachment.getVpcId())) {
-                        NetworkState networkStateToUpdate = this.aws.vpcNetworkStateMap
+                    if (this.aws.discoveredVpcNetworkStateMap.containsKey(attachment.getVpcId())) {
+                        NetworkState networkStateToUpdate = this.aws.discoveredVpcNetworkStateMap
                                 .get(attachment.getVpcId());
                         networkStateToUpdate.customProperties.put(AWS_GATEWAY_ID,
                                 resultGateway.getInternetGatewayId());
-                        this.aws.vpcNetworkStateMap.put(attachment.getVpcId(), networkStateToUpdate);
+                        this.aws.discoveredVpcNetworkStateMap.put(attachment.getVpcId(),
+                                networkStateToUpdate);
                     }
                 }
             }
@@ -564,7 +658,7 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
     private void getMainRouteTableInformation(AWSComputeServiceCreationContext context,
             AWSNetworkCreationStage next) {
         DescribeRouteTablesRequest routeTablesRequest = new DescribeRouteTablesRequest();
-        List<String> vpcList = new ArrayList<String>(context.vpcNetworkStateMap.keySet());
+        List<String> vpcList = new ArrayList<String>(context.discoveredVpcNetworkStateMap.keySet());
 
         // build filter list
         List<Filter> filters = new ArrayList<>();
@@ -615,12 +709,13 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
                 DescribeRouteTablesResult result) {
             OperationContext.restoreOperationContext(this.opContext);
             for (RouteTable routeTable : result.getRouteTables()) {
-                if (this.aws.vpcNetworkStateMap.containsKey(routeTable.getVpcId())) {
-                    NetworkState networkStateToUpdate = this.aws.vpcNetworkStateMap
+                if (this.aws.discoveredVpcNetworkStateMap.containsKey(routeTable.getVpcId())) {
+                    NetworkState networkStateToUpdate = this.aws.discoveredVpcNetworkStateMap
                             .get(routeTable.getVpcId());
                     networkStateToUpdate.customProperties.put(AWS_VPC_ROUTE_TABLE_ID,
                             routeTable.getRouteTableId());
-                    this.aws.vpcNetworkStateMap.put(routeTable.getVpcId(), networkStateToUpdate);
+                    this.aws.discoveredVpcNetworkStateMap.put(routeTable.getVpcId(),
+                            networkStateToUpdate);
                 }
             }
             this.aws.networkCreationStage = this.next;
@@ -632,17 +727,24 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
      * Create the network state operations for all the VPCs that need to be created or updated in the system.
      */
     private void createNetworkStateOperations(AWSComputeServiceCreationContext context) {
-        if (context.vpcNetworkStateMap == null || context.vpcNetworkStateMap.size() == 0) {
+        if (context.discoveredVpcNetworkStateMap == null
+                || context.discoveredVpcNetworkStateMap.size() == 0) {
             logInfo("No new VPCs have been discovered.Nothing to do.");
-            // If there are no local VPCs , create all the discovered VPCs in the system.
         } else {
-            for (String remoteVPCId : context.vpcNetworkStateMap.keySet()) {
-                NetworkState networkState = context.vpcNetworkStateMap.get(remoteVPCId);
-                Operation postNetworkState = Operation
-                        .createPost(this, NetworkService.FACTORY_LINK)
-                        .setBody(networkState)
-                        .setReferer(this.getHost().getUri());
-                context.createorUpdateOperations.add(postNetworkState);
+            for (String remoteVPCId : context.discoveredVpcNetworkStateMap.keySet()) {
+                NetworkState networkState = context.discoveredVpcNetworkStateMap.get(remoteVPCId);
+                Operation networkStateOperation = null;
+                // If the local network state already exists for the VPC. Update it.
+                if (context.localNetworkStateMap.containsKey(remoteVPCId)) {
+                    networkStateOperation = createPatchOperation(this,
+                            networkState,
+                            context.localNetworkStateMap.get(remoteVPCId).documentSelfLink);
+                    context.createOrUpdateOperations.add(networkStateOperation);
+                    continue;
+                }
+                networkStateOperation = createPostOperation(this,
+                        networkState, NetworkService.FACTORY_LINK);
+                context.createOrUpdateOperations.add(networkStateOperation);
             }
         }
         handleComputeStateCreateOrUpdate(context);

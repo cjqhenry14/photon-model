@@ -16,6 +16,7 @@ package com.vmware.photon.controller.model.adapters.util;
 import java.net.URI;
 import java.util.function.Consumer;
 
+import com.vmware.photon.controller.model.resources.ResourceState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisionNetworkTaskService;
 import com.vmware.photon.controller.model.tasks.ResourceEnumerationTaskService.ResourceEnumerationTaskState;
@@ -152,5 +153,30 @@ public class AdapterUtils {
         pn.taskInfo = taskInfo;
         service.sendRequest(Operation.createPatch(taskLink).setBody(pn));
 
+    }
+
+    /**
+     * Creates a POST operation for the creation of a state.
+     */
+    public static Operation createPostOperation(StatelessService service,
+            ResourceState state, String factoryLink) {
+        return Operation
+                .createPost(service,
+                        factoryLink)
+                .setBody(state)
+                .setReferer(service.getHost().getUri());
+    }
+
+    /**
+     * Creates a PATCH operation for updating an existing state.
+     */
+    public static Operation createPatchOperation(StatelessService service,
+            ResourceState state, String existingStateLink) {
+        URI existingStateURI = UriUtils.buildUri(service.getHost(),
+                existingStateLink);
+        return Operation
+                .createPatch(existingStateURI)
+                .setBody(state)
+                .setReferer(service.getHost().getUri());
     }
 }

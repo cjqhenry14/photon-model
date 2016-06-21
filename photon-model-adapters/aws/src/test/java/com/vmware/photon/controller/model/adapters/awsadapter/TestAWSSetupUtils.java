@@ -14,6 +14,7 @@
 package com.vmware.photon.controller.model.adapters.awsadapter;
 
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getAWSNonTerminatedInstancesFilter;
+import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getRegionId;
 import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.getVMCount;
 
 import java.net.URI;
@@ -223,7 +224,6 @@ public class TestAWSSetupUtils {
 
         awsVMDesc.id = instanceType_t2_micro;
         awsVMDesc.name = instanceType_t2_micro;
-        awsVMDesc.documentSelfLink = awsVMDesc.id;
 
         awsVMDesc.supportedChildren = new ArrayList<String>();
         awsVMDesc.supportedChildren.add(ComputeType.DOCKER_CONTAINER.name());
@@ -409,6 +409,7 @@ public class TestAWSSetupUtils {
     public static void provisionMachine(VerificationHost host, ComputeState vmState, boolean isMock,
             List<String> instancesToCleanUp)
             throws Throwable, InterruptedException, TimeoutException {
+        host.log("Provisioning a single virtual machine on AWS.");
         // kick off a provision task to do the actual VM creation
         ComputeState computeStateToCleanup = null;
         ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskService.ProvisionComputeTaskState();
@@ -563,16 +564,6 @@ public class TestAWSSetupUtils {
             }
         }
         return (poweredOnCount >= passCount);
-    }
-    /**
-     * Returns the region ID for the given AWS instance.
-     * @return
-     */
-    public static String getRegionId(Instance i) {
-        // Drop the zone suffix "a" ,"b" etc to get the region Id.
-        String zoneId = i.getPlacement().getAvailabilityZone();
-        String regiondId = zoneId.substring(0, zoneId.length() - 1);
-        return regiondId;
     }
 
     /**
@@ -881,7 +872,8 @@ public class TestAWSSetupUtils {
                         // Do not add information about terminated instances to the local system.
                         if (i.getState().getCode() != AWS_TERMINATED_CODE) {
                             computeDescriptionSet
-                                    .add(getRegionId(i).concat("~").concat(i.getInstanceType()));
+                                    .add(getRegionId(i).concat("~")
+                                            .concat(i.getInstanceType()));
                             this.baseLineState.baselineVMCount++;
                         }
                     }

@@ -46,4 +46,5 @@ public class PhotonModelConstants {
 
     // Photon-Model specific constants
     public static final String API_CALL_COUNT = "APICallCount";
+    public static final String SOURCE_TASK_LINK = "SourceTaskLink";
 }

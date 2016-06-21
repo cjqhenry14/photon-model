@@ -16,6 +16,7 @@ package com.vmware.photon.controller.model.tasks;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -24,6 +25,7 @@ import java.util.concurrent.TimeoutException;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.NetworkService;
+import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 
 import com.vmware.xenon.common.ServiceDocumentQueryResult;
 import com.vmware.xenon.common.TaskState;
@@ -94,6 +96,23 @@ public class ProvisioningUtils {
         }
         throw new Exception("Desired number of network states not found. Expected "
                 + desiredCount + "Found " + res.documents.size());
+    }
+
+    public static Map<String, NetworkState> getNetworkStates(VerificationHost host)
+            throws Throwable {
+        Map<String, NetworkState> networkStateMap = new HashMap<String, NetworkState>();
+        ServiceDocumentQueryResult res;
+        res = host.getFactoryState(UriUtils
+                .buildExpandLinksQueryUri(UriUtils.buildUri(host.getUri(),
+                        NetworkService.FACTORY_LINK)));
+        if (res != null && res.documentCount > 0) {
+            for (Object s : res.documents.values()) {
+                NetworkState networkState = Utils.fromJson(s,
+                        NetworkState.class);
+                networkStateMap.put(networkState.id, networkState);
+            }
+        }
+        return networkStateMap;
     }
 
     public static void waitForTaskCompletion(VerificationHost host,
