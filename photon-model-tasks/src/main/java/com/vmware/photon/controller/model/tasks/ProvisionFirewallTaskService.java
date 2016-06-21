@@ -215,7 +215,6 @@ public class ProvisionFirewallTaskService extends TaskService<ProvisionFirewallT
                 .createGet(
                         UriUtils.buildUri(this.getHost(),
                                 taskState.firewallDescriptionLink))
-                .setTargetReplicated(true)
                 .setCompletion(
                         (o, e) -> {
                             if (e != null) {

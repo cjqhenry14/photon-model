@@ -216,7 +216,6 @@ public class ProvisionNetworkTaskService extends TaskService<ProvisionNetworkTas
                 .createGet(
                         UriUtils.buildUri(this.getHost(),
                                 taskState.networkDescriptionLink))
-                .setTargetReplicated(true)
                 .setCompletion(
                         (o, e) -> {
                             if (e != null) {

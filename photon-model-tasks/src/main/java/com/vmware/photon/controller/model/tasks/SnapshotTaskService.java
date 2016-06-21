@@ -87,7 +87,7 @@ public class SnapshotTaskService extends TaskService<SnapshotTaskService.Snapsho
 
             URI computeHost = buildSnapshotUri(state);
             sendRequest(Operation.createGet(computeHost)
-                    .setTargetReplicated(true).setCompletion((o, e) -> {
+                    .setCompletion((o, e) -> {
                         validateSnapshotAndStart(start, o, e, state);
                     }));
         } catch (Throwable e) {

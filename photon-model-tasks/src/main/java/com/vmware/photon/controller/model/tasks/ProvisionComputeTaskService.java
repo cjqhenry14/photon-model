@@ -44,9 +44,7 @@ import com.vmware.xenon.services.common.TaskService;
  * <p>
  * This is service is not replicated or partitioned since its created by a
  * higher level task, which is partitioned. So this task executes in isolation,
- * per node. It does however talk to replicated DCP services, so it sets the
- * operation.setTargetReplicated(true) to guard against services not yet
- * available on the current node.
+ * per node.
  */
 public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTaskService.ProvisionComputeTaskState> {
     public static final String FACTORY_LINK = UriPaths.PROVISIONING + "/compute-tasks";
@@ -387,7 +385,6 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
 
         sendRequest(Operation
                 .createGet(this, updatedState.computeLink)
-                .setTargetReplicated(true)
                 .setCompletion((o, e) -> {
                     if (e != null) {
                         // the compute host is co-located so it is unexpected

@@ -128,13 +128,12 @@ public class ResourceEnumerationTaskService extends TaskService<ResourceEnumerat
                         .getBody(ComputeDescriptionService.ComputeDescription.class);
                 sendRequest(Operation
                         .createPatch(description.enumerationAdapterReference)
-                        .setTargetReplicated(true).setBody(req));
+                        .setBody(req));
             };
 
             URI computeHost = UriUtils.buildUri(getHost(),
                     state.computeDescriptionLink);
             sendRequest(Operation.createGet(computeHost)
-                    .setTargetReplicated(true)
                     .setCompletion(descriptionCompletion));
         } catch (Throwable e) {
             start.fail(e);
