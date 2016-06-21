@@ -118,6 +118,15 @@
 
   <profiles>
     <profile>
+      <id>vsphere</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <modules>
+        <module>photon-model-adapters/vsphere</module>
+      </modules>
+    </profile>
+    <profile>
       <id>coverage</id>
       <build>
         <plugins>

@@ -61,7 +61,7 @@ public class Finder extends Recurser {
 
     public static List<String> toParts(String p) {
         p = Paths.get(p).normalize().toString();
-
+        p = p.replace('\\', '/');
         if (p.equals("/")) {
             return Collections.emptyList();
         }
