@@ -106,7 +106,7 @@ public class PowerStateClient extends BaseHelper {
         }
 
         // wait for guest to shutdown
-        WaitForValues wait = new WaitForValues(connection);
+        WaitForValues wait = new WaitForValues(this.connection);
 
         int timeout = (int) TimeUnit.MICROSECONDS
                 .toSeconds(politenessDeadlineMicros - Utils.getNowMicrosUtc());
@@ -134,7 +134,7 @@ public class PowerStateClient extends BaseHelper {
 
     public PowerState getPowerState(ManagedObjectReference vm) throws InvalidPropertyFaultMsg,
             RuntimeFaultFaultMsg {
-        VirtualMachinePowerState vmps = get.entityProp(vm, VimPath.vm_runtime_powerState);
+        VirtualMachinePowerState vmps = this.get.entityProp(vm, VimPath.vm_runtime_powerState);
         return VSphereToPhotonMapping.convertPowerState(vmps);
     }
 }

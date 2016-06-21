@@ -132,15 +132,15 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     public void setUp() throws Exception {
         CommandLineArgumentParser.parseFromProperties(this);
         // create credentials
-        creds = new AuthCredentialsServiceState();
-        creds.privateKey = secretKey;
-        creds.privateKeyId = accessKey;
-        client = AWSUtils.getAsyncClient(creds, TestAWSSetupUtils.zoneId,
-                isMock, getExecutor());
+        this.creds = new AuthCredentialsServiceState();
+        this.creds.privateKey = this.secretKey;
+        this.creds.privateKeyId = this.accessKey;
+        this.client = AWSUtils.getAsyncClient(this.creds, TestAWSSetupUtils.zoneId,
+                this.isMock, getExecutor());
         try {
-            PhotonModelServices.startServices(host);
-            PhotonModelTaskServices.startServices(host);
-            AWSAdapters.startServices(host);
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
+            AWSAdapters.startServices(this.host);
 
             // TODO: VSYM-992 - improve test/fix arbitrary timeout
             this.host.setTimeoutSeconds(200);
@@ -148,9 +148,9 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // create the compute host, resource pool and the VM state to be used in the test.
             createResourcePoolComputeHostAndVMState();
 
-            host.waitForServiceAvailable(PhotonModelServices.LINKS);
-            host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
-            host.waitForServiceAvailable(AWSAdapters.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            this.host.waitForServiceAvailable(AWSAdapters.LINKS);
         } catch (Throwable e) {
             this.host.log("Error starting up services for the test %s", e.getMessage());
             throw new Exception(e);
@@ -166,15 +166,15 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // Delete all vms from the endpoint that were provisioned from the test.
             this.host.log("Deleting %d instance created from the test ", instancesToCleanUp.size());
             if (instancesToCleanUp.size() == 0) {
-                cleanupEC2ClientResources(client);
+                cleanupEC2ClientResources(this.client);
                 return;
             }
-            deleteAllVMsOnThisEndpoint(this.host, isMock,
-                    outComputeHost.documentSelfLink, instancesToCleanUp);
+            deleteAllVMsOnThisEndpoint(this.host, this.isMock,
+                    this.outComputeHost.documentSelfLink, instancesToCleanUp);
             // Check that all the instances that are required to be deleted are in
             // terminated state on AWS
-            waitForInstancesToBeTerminated(client, this.host, instancesToCleanUp);
-            cleanupEC2ClientResources(client);
+            waitForInstancesToBeTerminated(this.client, this.host, instancesToCleanUp);
+            cleanupEC2ClientResources(this.client);
         } catch (Throwable deleteEx) {
             // just log and move on
             this.host.log(Level.WARNING, "Exception deleting VMs - %s", deleteEx.getMessage());
@@ -184,90 +184,90 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
     // Runs the enumeration task on the AWS endpoint to list all the instances on the endpoint.
     @Test
     public void testEnumeration() throws Throwable {
-        if (!isMock) {
+        if (!this.isMock) {
             this.host.setTimeoutSeconds(600);
             // Overriding the page size to test the pagination logic with limited instances on AWS.
             // This is a functional test
             // so the latency numbers maybe higher from this test due to low page size.
             setQueryPageSize(DEFAULT_TEST_PAGE_SIZE);
             setQueryResultLimit(DEFAULT_TEST_PAGE_SIZE);
-            baseLineState = getBaseLineInstanceCount(this.host, client, testComputeDescriptions);
-            this.host.log(baseLineState.toString());
+            this.baseLineState = getBaseLineInstanceCount(this.host, this.client, testComputeDescriptions);
+            this.host.log(this.baseLineState.toString());
             // Provision a single VM . Check initial state.
-            provisionMachine(this.host, vmState, isMock, instancesToCleanUp);
+            provisionMachine(this.host, this.vmState, this.isMock, instancesToCleanUp);
             queryComputeInstances(this.host, count2);
             queryComputeDescriptions(this.host, count2);
 
             // CREATION directly on AWS
-            instanceIdsToDeleteFirstTime = provisionAWSVMWithEC2Client(client, this.host, count5,
+            this.instanceIdsToDeleteFirstTime = provisionAWSVMWithEC2Client(this.client, this.host, count5,
                     T2_NANO_INSTANCE_TYPE);
-            instancesToCleanUp.addAll(instanceIdsToDeleteFirstTime);
-            waitForProvisioningToComplete(instanceIdsToDeleteFirstTime, this.host, client, ZERO);
+            instancesToCleanUp.addAll(this.instanceIdsToDeleteFirstTime);
+            waitForProvisioningToComplete(this.instanceIdsToDeleteFirstTime, this.host, this.client, ZERO);
             // Tag the first VM with a name
-            tagProvisionedVM(vmState.id, VM_NAME, client);
+            tagProvisionedVM(this.vmState.id, VM_NAME, this.client);
 
             // Xenon does not know about the new instances.
             ProvisioningUtils.queryComputeInstances(this.host, count2);
 
-            enumerateResources(this.host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+            enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
+                    this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_INITIAL);
             // 5 new resources should be discovered. Mapping to 1 new compute description and 5 new
             // compute states.
             queryComputeDescriptions(this.host,
-                    count3 + baseLineState.baselineComputeDescriptionCount);
+                    count3 + this.baseLineState.baselineComputeDescriptionCount);
             queryComputeInstances(this.host,
-                    count7 + baseLineState.baselineVMCount);
+                    count7 + this.baseLineState.baselineVMCount);
 
             // Update Scenario : Check that the tag information is present for the VM tagged above.
             String vpCId = validateTagAndNetworkInformation();
             validateVPCInformation(vpCId);
             // Total network states is a combination of NICs and network state
             // Count should be 2 NICs per discovered VM + 1 Network State for the VPC
-            int totalNetworkStateCount = (count6 + baseLineState.baselineVMCount) * 2 + 1;
+            int totalNetworkStateCount = (count6 + this.baseLineState.baselineVMCount) * 2 + 1;
             queryNetworkStates(this.host, totalNetworkStateCount);
 
             // Provision an additional VM that has a compute description already present in the
             // system.
-            instanceIdsToDeleteSecondTime = provisionAWSVMWithEC2Client(client, this.host,
+            this.instanceIdsToDeleteSecondTime = provisionAWSVMWithEC2Client(this.client, this.host,
                     count1, TestAWSSetupUtils.instanceType_t2_micro);
-            instancesToCleanUp.addAll(instanceIdsToDeleteSecondTime);
-            waitForProvisioningToComplete(instanceIdsToDeleteSecondTime, this.host, client, ZERO);
-            enumerateResources(this.host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+            instancesToCleanUp.addAll(this.instanceIdsToDeleteSecondTime);
+            waitForProvisioningToComplete(this.instanceIdsToDeleteSecondTime, this.host, this.client, ZERO);
+            enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
+                    this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_ADDITIONAL_VM);
             // One additional compute state and no new compute descriptions should be created.
             queryComputeDescriptions(this.host,
-                    count3 + baseLineState.baselineComputeDescriptionCount);
+                    count3 + this.baseLineState.baselineComputeDescriptionCount);
             queryComputeInstances(this.host,
-                    count8 + baseLineState.baselineVMCount);
+                    count8 + this.baseLineState.baselineVMCount);
 
             // Verify Deletion flow
             // Delete 5 VMs spawned above of type T2_NANO
-            deleteVMsUsingEC2Client(client, this.host, instanceIdsToDeleteFirstTime);
-            enumerateResources(this.host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+            deleteVMsUsingEC2Client(this.client, this.host, this.instanceIdsToDeleteFirstTime);
+            enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
+                    this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_DELETE_VMS);
             // Counts should go down 5 compute states.
             queryComputeInstances(this.host,
-                    count3 + baseLineState.baselineVMCount);
+                    count3 + this.baseLineState.baselineVMCount);
 
             // Delete 1 VMs spawned above of type T2_Micro
-            deleteVMsUsingEC2Client(client, this.host, instanceIdsToDeleteSecondTime);
-            enumerateResources(this.host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+            deleteVMsUsingEC2Client(this.client, this.host, this.instanceIdsToDeleteSecondTime);
+            enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
+                    this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_DELETE_VM);
             // Compute state count should go down by 1
             queryComputeInstances(this.host,
-                    count2 + baseLineState.baselineVMCount);
+                    count2 + this.baseLineState.baselineVMCount);
 
         } else {
             // Create basic state for kicking off enumeration
             createResourcePoolComputeHostAndVMState();
             // Just make a call to the enumeration service and make sure that the adapter patches
             // the parent with completion.
-            enumerateResources(this.host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+            enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
+                    this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_MOCK_MODE);
         }
     }
@@ -278,11 +278,11 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
      */
     private void tagProvisionedVM(String id, String vmName, AmazonEC2AsyncClient client2)
             throws Throwable {
-        URI[] computeStateURIs = { UriUtils.buildUri(this.host, vmState.documentSelfLink) };
+        URI[] computeStateURIs = { UriUtils.buildUri(this.host, this.vmState.documentSelfLink) };
         Map<URI, ComputeState> computeStateMap = this.host
                 .getServiceState(null, ComputeState.class, computeStateURIs);
         ComputeState computeStateToTag = computeStateMap.get(computeStateURIs[0]);
-        setResourceName(computeStateToTag.id, VM_NAME, client);
+        setResourceName(computeStateToTag.id, VM_NAME, this.client);
     }
 
     /**
@@ -291,7 +291,7 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
      * @throws Throwable
      */
     private String validateTagAndNetworkInformation() throws Throwable {
-        URI[] computeStateURIs = { UriUtils.buildUri(this.host, vmState.documentSelfLink) };
+        URI[] computeStateURIs = { UriUtils.buildUri(this.host, this.vmState.documentSelfLink) };
         Map<URI, ComputeState> computeStateMap = this.host
                 .getServiceState(null, ComputeState.class, computeStateURIs);
         ComputeState taggedComputeState = computeStateMap.get(computeStateURIs[0]);
@@ -352,13 +352,13 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
      */
     public void createResourcePoolComputeHostAndVMState() throws Throwable {
         // Create a resource pool where the VM will be housed
-        outPool = createAWSResourcePool(this.host);
+        this.outPool = createAWSResourcePool(this.host);
 
         // create a compute host for the AWS EC2 VM
-        outComputeHost = createAWSComputeHost(this.host, outPool.documentSelfLink, accessKey, secretKey);
+        this.outComputeHost = createAWSComputeHost(this.host, this.outPool.documentSelfLink, this.accessKey, this.secretKey);
 
         // create a AWS VM compute resource
-        vmState = createAWSVMResource(this.host, outComputeHost.documentSelfLink,
-                outPool.documentSelfLink, TestAWSSetupUtils.class);
+        this.vmState = createAWSVMResource(this.host, this.outComputeHost.documentSelfLink,
+                this.outPool.documentSelfLink, TestAWSSetupUtils.class);
     }
 }

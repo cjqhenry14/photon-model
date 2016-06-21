@@ -39,7 +39,7 @@ public class TaskManager implements CompletionHandler {
     public void patchTask(TaskStage stage) {
         Operation op = createTaskPatch(stage);
 
-        op.sendWith(service);
+        op.sendWith(this.service);
     }
 
     @Override
@@ -58,16 +58,16 @@ public class TaskManager implements CompletionHandler {
         body.taskInfo = taskInfo;
 
         return Operation
-                .createPatch(taskReference)
+                .createPatch(this.taskReference)
                 .setBody(body);
     }
 
     public void patchTaskToFailure(Throwable failure) {
-        createFailurePatch(null, failure).sendWith(service);
+        createFailurePatch(null, failure).sendWith(this.service);
     }
 
     public void patchTaskToFailure(String msg, Throwable failure) {
-        createFailurePatch(msg, failure).sendWith(service);
+        createFailurePatch(msg, failure).sendWith(this.service);
     }
 
     public Operation createFailurePatch(Throwable failure) {
@@ -82,7 +82,7 @@ public class TaskManager implements CompletionHandler {
         body.taskInfo.failure = Utils.toServiceErrorResponse(failure);
 
         return Operation
-                .createPatch(taskReference)
+                .createPatch(this.taskReference)
                 .setBody(body);
     }
 }

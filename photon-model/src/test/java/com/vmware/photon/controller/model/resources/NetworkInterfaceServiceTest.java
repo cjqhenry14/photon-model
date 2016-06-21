@@ -232,7 +232,7 @@ public class NetworkInterfaceServiceTest extends Suite {
         @Test
         public void testTenantLinksQuery() throws Throwable {
             NetworkInterfaceService.NetworkInterfaceState nic = buildValidStartState();
-            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(this.host, TenantService.class);
             nic.tenantLinks = new ArrayList<>();
             nic.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));

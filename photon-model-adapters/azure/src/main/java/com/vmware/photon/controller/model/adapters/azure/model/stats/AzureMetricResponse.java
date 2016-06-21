@@ -24,7 +24,7 @@ public class AzureMetricResponse {
     private List<Datapoint> datapoints;
 
     public String getLabel() {
-        return label;
+        return this.label;
     }
 
     public void setLabel(String label) {
@@ -32,7 +32,7 @@ public class AzureMetricResponse {
     }
 
     public List<Datapoint> getDatapoints() {
-        return datapoints;
+        return this.datapoints;
     }
 
     public void setDatapoints(List<Datapoint> datapoints) {

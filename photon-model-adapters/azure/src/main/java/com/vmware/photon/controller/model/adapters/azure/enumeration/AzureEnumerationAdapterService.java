@@ -122,8 +122,8 @@ public class AzureEnumerationAdapterService extends StatelessService {
         ApplicationTokenCredentials credentials;
 
         EnumerationContext(ComputeEnumerateResourceRequest request) {
-            enumRequest = request;
-            stage = EnumerationStages.HOSTDESC;
+            this.enumRequest = request;
+            this.stage = EnumerationStages.HOSTDESC;
         }
     }
 
@@ -174,11 +174,11 @@ public class AzureEnumerationAdapterService extends StatelessService {
             String enumKey = getEnumKey(ctx);
             switch (ctx.enumRequest.enumerationAction) {
             case START:
-                if (ongoingEnumerations.contains(enumKey)) {
+                if (this.ongoingEnumerations.contains(enumKey)) {
                     logInfo("Enumeration service has already been started for %s", enumKey);
                     return;
                 }
-                ongoingEnumerations.add(enumKey);
+                this.ongoingEnumerations.add(enumKey);
                 logInfo("Launching enumeration service for %s", enumKey);
                 ctx.enumerationStartTimeInMicros = Utils.getNowMicrosUtc();
                 ctx.enumRequest.enumerationAction = EnumerationAction.REFRESH;
@@ -189,9 +189,9 @@ public class AzureEnumerationAdapterService extends StatelessService {
                 handleSubStage(ctx);
                 break;
             case STOP:
-                if (ongoingEnumerations.contains(enumKey)) {
+                if (this.ongoingEnumerations.contains(enumKey)) {
                     logInfo("Enumeration service will be stopped for %s", enumKey);
-                    ongoingEnumerations.remove(enumKey);
+                    this.ongoingEnumerations.remove(enumKey);
                 } else {
                     logInfo("Enumeration service is not running or has already been stopped for %s",
                             enumKey);
@@ -208,7 +208,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
             break;
         case FINISHED:
             logInfo("Enumeration finished for %s", getEnumKey(ctx));
-            ongoingEnumerations.remove(getEnumKey(ctx));
+            this.ongoingEnumerations.remove(getEnumKey(ctx));
             AdapterUtils.sendPatchToEnumerationTask(this, ctx.enumRequest.enumerationTaskReference);
             break;
         case ERROR:
@@ -229,7 +229,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
      * Handle enumeration substages for VM data collection.
      */
     private void handleSubStage(EnumerationContext ctx) {
-        if (!ongoingEnumerations.contains(getEnumKey(ctx))) {
+        if (!this.ongoingEnumerations.contains(getEnumKey(ctx))) {
             ctx.stage = EnumerationStages.FINISHED;
             handleEnumerationRequest(ctx);
             return;

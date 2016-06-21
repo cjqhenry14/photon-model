@@ -76,11 +76,11 @@ public class TestProvisionAWSFirewall {
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
-            PhotonModelServices.startServices(host);
-            PhotonModelTaskServices.startServices(host);
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
             // start the aws fw service
             this.host.startService(
-                    Operation.createPost(UriUtils.buildUri(host, AWSFirewallService.class)),
+                    Operation.createPost(UriUtils.buildUri(this.host, AWSFirewallService.class)),
                     new AWSFirewallService());
 
             this.provisionFirewallFactory = UriUtils.buildUri(this.host,
@@ -242,42 +242,42 @@ public class TestProvisionAWSFirewall {
 
     private void provisionFirewall(ProvisionFirewallTaskState ps, Operation response)
             throws Throwable {
-        host.testStart(1);
+        this.host.testStart(1);
         Operation startPost = Operation.createPost(this.provisionFirewallFactory)
                 .setBody(ps)
                 .setCompletion((o, e) -> {
                     if (e != null) {
-                        host.failIteration(e);
+                        this.host.failIteration(e);
                         return;
                     }
                     response.setBody(o.getBody(ProvisionFirewallTaskState.class));
-                    host.completeIteration();
+                    this.host.completeIteration();
                 });
-        host.send(startPost);
-        host.testWait();
+        this.host.send(startPost);
+        this.host.testWait();
 
     }
 
     private void getFirewallState(String firewallLink, Operation response) throws Throwable {
 
-        host.testStart(1);
+        this.host.testStart(1);
         URI firewallURI = UriUtils.buildUri(this.host, firewallLink);
         Operation startGet = Operation.createGet(firewallURI)
                 .setCompletion((o, e) -> {
                     if (e != null) {
-                        host.failIteration(e);
+                        this.host.failIteration(e);
                         return;
                     }
                     response.setBody(o.getBody(FirewallState.class));
-                    host.completeIteration();
+                    this.host.completeIteration();
                 });
-        host.send(startGet);
-        host.testWait();
+        this.host.send(startGet);
+        this.host.testWait();
 
     }
 
     private FirewallState buildFirewallState() {
-        URI tenantFactoryURI = UriUtils.buildFactoryUri(host, TenantService.class);
+        URI tenantFactoryURI = UriUtils.buildFactoryUri(this.host, TenantService.class);
         FirewallState firewall = new FirewallState();
         firewall.id = UUID.randomUUID().toString();
 

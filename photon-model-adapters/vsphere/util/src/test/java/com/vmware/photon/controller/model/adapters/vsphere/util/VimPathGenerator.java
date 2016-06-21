@@ -84,9 +84,9 @@ public final class VimPathGenerator {
         int i = pkg.indexOf(anchor);
         if (i >= 0) {
             pkg = pkg.substring(i + anchor.length());
-            packageName = pkg.replace("/", ".");
+            this.packageName = pkg.replace("/", ".");
         } else {
-            packageName = null;
+            this.packageName = null;
         }
 
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -99,12 +99,12 @@ public final class VimPathGenerator {
     }
 
     private void configure() {
-        roots.put("vm:summary", "VirtualMachineSummary");
-        roots.put("vm:config", "VirtualMachineConfigInfo");
-        roots.put("vm:runtime", "VirtualMachineRuntimeInfo");
+        this.roots.put("vm:summary", "VirtualMachineSummary");
+        this.roots.put("vm:config", "VirtualMachineConfigInfo");
+        this.roots.put("vm:runtime", "VirtualMachineRuntimeInfo");
 
-        roots.put("host:summary", "HostListSummary");
-        roots.put("task:info", "TaskInfo");
+        this.roots.put("host:summary", "HostListSummary");
+        this.roots.put("task:info", "TaskInfo");
     }
 
     private static class FieldType {
@@ -117,19 +117,19 @@ public final class VimPathGenerator {
 
         print(HEADER, "" + Calendar.getInstance().get(Calendar.YEAR));
 
-        if (packageName != null) {
-            print("package %s;\n", packageName);
+        if (this.packageName != null) {
+            print("package %s;\n", this.packageName);
         }
 
         print("/** This class is generated, do not edit. */");
         print("public class VimPath {");
 
-        NodeList nodeList = doc.getElementsByTagName("simpleType");
+        NodeList nodeList = this.doc.getElementsByTagName("simpleType");
         for (int i = 0; i < nodeList.getLength(); i++) {
             this.enums.add(((Element) nodeList.item(i)).getAttribute("name"));
         }
 
-        nodeList = doc.getDocumentElement().getElementsByTagName("complexType");
+        nodeList = this.doc.getDocumentElement().getElementsByTagName("complexType");
         for (int i = 0; i < nodeList.getLength(); i++) {
             Element e = (Element) nodeList.item(i);
 
@@ -148,25 +148,25 @@ public final class VimPathGenerator {
             Element sequence = (Element) extension.getElementsByTagName("sequence").item(0);
 
             Map<String, FieldType> fields = extractFields(sequence);
-            types.put(className, fields);
+            this.types.put(className, fields);
         }
 
-        indent = 4;
-        for (Map.Entry<String, String> e : roots.entrySet()) {
+        this.indent = 4;
+        for (Map.Entry<String, String> e : this.roots.entrySet()) {
             String name = e.getKey();
             int i = name.indexOf(':');
 
             String prefix = name.substring(0, i) + "_";
             name = name.substring(i + 1);
 
-            Map<String, FieldType> fields = types.get(e.getValue());
+            Map<String, FieldType> fields = this.types.get(e.getValue());
             emitConstant(prefix, name, e.getValue(), false, fields);
         }
 
-        indent = 0;
+        this.indent = 0;
         print("}");
 
-        writer.close();
+        this.writer.close();
     }
 
     private void emitConstant(String prefix, String dottedPath, String type, boolean isArray,
@@ -190,7 +190,7 @@ public final class VimPathGenerator {
                         quote(dottedPath + "." + fieldName));
             } else {
                 emitConstant(prefix, dottedPath + "." + fieldName, fieldType.name, false,
-                        types.get(fieldType.name));
+                        this.types.get(fieldType.name));
             }
         }
     }
@@ -245,14 +245,14 @@ public final class VimPathGenerator {
 
     private void print(String fmt, Object... args) throws IOException {
         if (fmt != null) {
-            for (int i = 0; i < indent; i++) {
-                writer.append(" ");
+            for (int i = 0; i < this.indent; i++) {
+                this.writer.append(" ");
                 System.out.print(" ");
             }
 
             String line = String.format(fmt, args);
-            writer.append(line);
-            writer.append('\n');
+            this.writer.append(line);
+            this.writer.append('\n');
             System.out.println(line);
         }
     }

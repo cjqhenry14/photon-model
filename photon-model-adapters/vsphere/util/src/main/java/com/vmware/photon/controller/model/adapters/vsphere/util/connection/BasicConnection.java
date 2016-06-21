@@ -210,14 +210,14 @@ public class BasicConnection implements Connection {
 
     @Override
     public void setRequestTimeout(long time, TimeUnit unit) {
-        requestTimeoutMillis = TimeUnit.MILLISECONDS.convert(time, unit);
+        this.requestTimeoutMillis = TimeUnit.MILLISECONDS.convert(time, unit);
 
         updateRequestTimeout();
     }
 
     @Override
     public long getRequestTimeout(TimeUnit unit) {
-        return requestTimeoutMillis;
+        return this.requestTimeoutMillis;
     }
 
     public static class BasicConnectionException extends ConnectionException {

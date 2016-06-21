@@ -48,11 +48,11 @@ public class TestVSphereCloneTask extends BaseVSphereAdapterTest {
 
     @Test
     public void createInstanceFromTemplate() throws Throwable {
-        auth = createAuth();
-        resourcePool = createResourcePool();
+        this.auth = createAuth();
+        this.resourcePool = createResourcePool();
 
-        computeHostDescription = createComputeDescription();
-        computeHost = createComputeHost();
+        this.computeHostDescription = createComputeDescription();
+        this.computeHost = createComputeHost();
 
         ComputeDescription vmDescription = createVmDescription();
         ComputeState vm = createVmState(vmDescription);
@@ -91,8 +91,8 @@ public class TestVSphereCloneTask extends BaseVSphereAdapterTest {
                 .buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
         computeDesc.authCredentialsLink = this.auth.documentSelfLink;
         computeDesc.name = computeDesc.id;
-        computeDesc.dataStoreId = dataStoreId;
-        computeDesc.networkId = networkId;
+        computeDesc.dataStoreId = this.dataStoreId;
+        computeDesc.networkId = this.networkId;
 
         CustomProperties.of(computeDesc)
                 .put(CustomProperties.TEMPLATE_LINK, templateComputeLink)
@@ -109,11 +109,11 @@ public class TestVSphereCloneTask extends BaseVSphereAdapterTest {
         computeState.documentSelfLink = computeState.id;
         computeState.descriptionLink = vmDescription.documentSelfLink;
         computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
-        computeState.adapterManagementReference = UriUtils.buildUri(vcUrl);
+        computeState.adapterManagementReference = UriUtils.buildUri(this.vcUrl);
 
         computeState.powerState = PowerState.ON;
 
-        computeState.parentLink = computeHost.documentSelfLink;
+        computeState.parentLink = this.computeHost.documentSelfLink;
 
         computeState.diskLinks = new ArrayList<>(1);
         computeState.diskLinks.add(createDisk("boot", DiskType.HDD, getDiskUri()).documentSelfLink);
@@ -122,8 +122,8 @@ public class TestVSphereCloneTask extends BaseVSphereAdapterTest {
         computeState.diskLinks.add(createDisk("A", DiskType.FLOPPY, null).documentSelfLink);
 
         CustomProperties.of(computeState)
-                .put(ComputeProperties.RESOURCE_GROUP_NAME, vcFolder)
-                .put(ComputeProperties.CUSTOM_DISPLAY_NAME, vcFolder);
+                .put(ComputeProperties.RESOURCE_GROUP_NAME, this.vcFolder)
+                .put(ComputeProperties.CUSTOM_DISPLAY_NAME, this.vcFolder);
 
         ComputeState returnState = TestUtils.doPost(this.host, computeState,
                 ComputeState.class,
@@ -155,8 +155,8 @@ public class TestVSphereCloneTask extends BaseVSphereAdapterTest {
                 .buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
         computeDesc.authCredentialsLink = this.auth.documentSelfLink;
         computeDesc.name = computeDesc.id;
-        computeDesc.dataStoreId = dataStoreId;
-        computeDesc.networkId = networkId;
+        computeDesc.dataStoreId = this.dataStoreId;
+        computeDesc.networkId = this.networkId;
 
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,
@@ -170,9 +170,9 @@ public class TestVSphereCloneTask extends BaseVSphereAdapterTest {
         ComputeState computeState = new ComputeState();
         computeState.id = UUID.randomUUID().toString();
         computeState.documentSelfLink = computeState.id;
-        computeState.descriptionLink = computeHostDescription.documentSelfLink;
+        computeState.descriptionLink = this.computeHostDescription.documentSelfLink;
         computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
-        computeState.adapterManagementReference = UriUtils.buildUri(vcUrl);
+        computeState.adapterManagementReference = UriUtils.buildUri(this.vcUrl);
 
         ComputeState returnState = TestUtils.doPost(this.host, computeState,
                 ComputeState.class,
@@ -191,7 +191,7 @@ public class TestVSphereCloneTask extends BaseVSphereAdapterTest {
                 .buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
         computeDesc.authCredentialsLink = this.auth.documentSelfLink;
 
-        computeDesc.zoneId = zoneId;
+        computeDesc.zoneId = this.zoneId;
 
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,

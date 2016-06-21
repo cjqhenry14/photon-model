@@ -85,15 +85,15 @@ public class TestAWSProvisionTask {
         try {
             this.host.setMaintenanceIntervalMicros(TimeUnit.MILLISECONDS.toMicros(250));
             this.host.start();
-            PhotonModelServices.startServices(host);
-            PhotonModelTaskServices.startServices(host);
-            AWSAdapters.startServices(host);
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
+            AWSAdapters.startServices(this.host);
 
             this.host.setTimeoutSeconds(600);
 
-            host.waitForServiceAvailable(PhotonModelServices.LINKS);
-            host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
-            host.waitForServiceAvailable(AWSAdapters.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            this.host.waitForServiceAvailable(AWSAdapters.LINKS);
         } catch (Throwable e) {
             throw new Exception(e);
         }
@@ -105,9 +105,9 @@ public class TestAWSProvisionTask {
             return;
         }
         // try to delete the VMs
-        if (vmState != null && vmState.id.startsWith(INSTANCEID_PREFIX)) {
+        if (this.vmState != null && this.vmState.id.startsWith(INSTANCEID_PREFIX)) {
             try {
-                TestAWSSetupUtils.deleteVMs(vmState.documentSelfLink, isMock, this.host);
+                TestAWSSetupUtils.deleteVMs(this.vmState.documentSelfLink, this.isMock, this.host);
             } catch (Throwable deleteEx) {
                 // just log and move on
                 this.host.log(Level.WARNING, "Exception deleting VM - %s", deleteEx.getMessage());
@@ -128,17 +128,17 @@ public class TestAWSProvisionTask {
         // create a compute host for the AWS EC2 VM
         ComputeService.ComputeState outComputeHost = createAWSComputeHost(this.host,
                 outPool.documentSelfLink,
-                        accessKey, secretKey);
+                        this.accessKey, this.secretKey);
 
         // create a AWS VM compute resoruce
-        vmState = createAWSVMResource(this.host, outComputeHost.documentSelfLink,
+        this.vmState = createAWSVMResource(this.host, outComputeHost.documentSelfLink,
                 outPool.documentSelfLink, this.getClass());
 
         // kick off a provision task to do the actual VM creation
         ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskService.ProvisionComputeTaskState();
 
-        provisionTask.computeLink = vmState.documentSelfLink;
-        provisionTask.isMockRequest = isMock;
+        provisionTask.computeLink = this.vmState.documentSelfLink;
+        provisionTask.isMockRequest = this.isMock;
         provisionTask.taskSubStage =
                 ProvisionComputeTaskState.SubStage.CREATING_HOST;
         // Wait for default request timeout in minutes for the machine to be powered ON before
@@ -159,17 +159,17 @@ public class TestAWSProvisionTask {
         // check that the VM has been created
         ProvisioningUtils.queryComputeInstances(this.host, 2);
 
-        host.setTimeoutSeconds(600);
-        host.waitFor("Error waiting for stats", () -> {
+        this.host.setTimeoutSeconds(600);
+        this.host.waitFor("Error waiting for stats", () -> {
             try {
-                issueStatsRequest(vmState);
+                issueStatsRequest(this.vmState);
             } catch (Throwable t) {
                 return false;
             }
             return true;
         });
 
-        host.waitFor("Error waiting for host stats", () -> {
+        this.host.waitFor("Error waiting for host stats", () -> {
             try {
                 issueStatsRequest(outComputeHost);
             } catch (Throwable t) {
@@ -179,27 +179,27 @@ public class TestAWSProvisionTask {
         });
 
         // delete vm
-        TestAWSSetupUtils.deleteVMs(vmState.documentSelfLink, isMock, this.host);
+        TestAWSSetupUtils.deleteVMs(this.vmState.documentSelfLink, this.isMock, this.host);
 
         // create another AWS VM
         List<String> instanceIdList = new ArrayList<String>();
-        vmState = TestAWSSetupUtils.createAWSVMResource(this.host, outComputeHost.documentSelfLink,
+        this.vmState = TestAWSSetupUtils.createAWSVMResource(this.host, outComputeHost.documentSelfLink,
                 outPool.documentSelfLink, this.getClass());
-        TestAWSSetupUtils.provisionMachine(host, vmState, isMock, instanceIdList);
+        TestAWSSetupUtils.provisionMachine(this.host, this.vmState, this.isMock, instanceIdList);
         AmazonEC2AsyncClient client = null;
         BaseLineState remoteStateBefore = null;
-        if (!isMock) {
+        if (!this.isMock) {
             // reach out to AWS and get the current state
             AuthCredentialsServiceState creds = new AuthCredentialsServiceState();
-            creds.privateKey = secretKey;
-            creds.privateKeyId = accessKey;
+            creds.privateKey = this.secretKey;
+            creds.privateKeyId = this.accessKey;
             client = AWSUtils.getAsyncClient(creds, TestAWSSetupUtils.zoneId,
-                isMock, getExecutor());
+                this.isMock, getExecutor());
             remoteStateBefore = TestAWSSetupUtils.getBaseLineInstanceCount(this.host, client, null);
         }
         // delete just the local representation of the resource
-        TestAWSSetupUtils.deleteVMs(vmState.documentSelfLink, isMock, this.host, true);
-        if (!isMock) {
+        TestAWSSetupUtils.deleteVMs(this.vmState.documentSelfLink, this.isMock, this.host, true);
+        if (!this.isMock) {
             try {
                 BaseLineState remoteStateAfter = TestAWSSetupUtils.getBaseLineInstanceCount(this.host, client, null);
                 assertEquals(remoteStateBefore.baselineVMCount, remoteStateAfter.baselineVMCount);
@@ -207,7 +207,7 @@ public class TestAWSProvisionTask {
                 TestAWSSetupUtils.deleteVMsUsingEC2Client(client, this.host, instanceIdList);
             }
         }
-        vmState  = null;
+        this.vmState  = null;
     }
 
 
@@ -217,24 +217,24 @@ public class TestAWSProvisionTask {
             @Override
             public void handleRequest(Operation op) {
                 if (op.getAction() == Action.PATCH) {
-                    if (!isMock) {
+                    if (!TestAWSProvisionTask.this.isMock) {
                         ComputeStatsResponse resp = op.getBody(ComputeStatsResponse.class);
                         if (resp.statsList.size() != 1) {
-                            host.failIteration(new IllegalStateException("response size was incorrect."));
+                            TestAWSProvisionTask.this.host.failIteration(new IllegalStateException("response size was incorrect."));
                             return;
                         }
                         // Size == 1, because APICallCount is always added.
                         if (resp.statsList.get(0).statValues.size() == 1) {
-                            host.failIteration(new IllegalStateException("incorrect number of metrics received."));
+                            TestAWSProvisionTask.this.host.failIteration(new IllegalStateException("incorrect number of metrics received."));
                             return;
                         }
                         if (!resp.statsList.get(0).computeLink.equals(vm.documentSelfLink)) {
-                            host.failIteration(new IllegalStateException("Incorrect computeLink returned."));
+                            TestAWSProvisionTask.this.host.failIteration(new IllegalStateException("Incorrect computeLink returned."));
                             return;
                         }
                         verifyCollectedStats(resp);
                     }
-                    host.completeIteration();
+                    TestAWSProvisionTask.this.host.completeIteration();
                 }
             }
         };
@@ -243,7 +243,7 @@ public class TestAWSProvisionTask {
         this.host.startService(startOp, parentService);
         ComputeStatsRequest statsRequest = new ComputeStatsRequest();
         statsRequest.computeLink = vm.documentSelfLink;
-        statsRequest.isMockRequest = isMock;
+        statsRequest.isMockRequest = this.isMock;
         statsRequest.parentTaskLink = servicePath;
         this.host.sendAndWait(Operation.createPatch(UriUtils.buildUri(
                 this.host, AWSUriPaths.AWS_STATS_ADAPTER))

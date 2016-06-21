@@ -30,7 +30,7 @@ public class Datapoint {
     private String counterName;
 
     public Double getLast() {
-        return last;
+        return this.last;
     }
 
     public void setLast(Double last) {
@@ -38,7 +38,7 @@ public class Datapoint {
     }
 
     public Double getMaximum() {
-        return maximum;
+        return this.maximum;
     }
 
     public void setMaximum(Double maximum) {
@@ -46,7 +46,7 @@ public class Datapoint {
     }
 
     public Double getMinimum() {
-        return minimum;
+        return this.minimum;
     }
 
     public void setMinimum(Double minimum) {
@@ -54,7 +54,7 @@ public class Datapoint {
     }
 
     public Double getAverage() {
-        return average;
+        return this.average;
     }
 
     public void setAverage(Double average) {
@@ -62,7 +62,7 @@ public class Datapoint {
     }
 
     public Double getTotal() {
-        return total;
+        return this.total;
     }
 
     public void setTotal(Double total) {
@@ -70,7 +70,7 @@ public class Datapoint {
     }
 
     public Integer getCount() {
-        return count;
+        return this.count;
     }
 
     public void setCount(Integer count) {
@@ -78,7 +78,7 @@ public class Datapoint {
     }
 
     public Date getTimestamp() {
-        return timestamp;
+        return this.timestamp;
     }
 
     public void setTimestamp(Date timestamp) {
@@ -86,7 +86,7 @@ public class Datapoint {
     }
 
     public String getCounterName() {
-        return counterName;
+        return this.counterName;
     }
 
     public void setCounterName(String counterName) {

@@ -73,7 +73,7 @@ public class EnumerationClient extends BaseHelper {
     }
 
     private ManagedObjectReference createPropertyCollector() throws RuntimeFaultFaultMsg {
-        ManagedObjectReference pc = connection.getServiceContent().getPropertyCollector();
+        ManagedObjectReference pc = this.connection.getServiceContent().getPropertyCollector();
         return getVimPort().createPropertyCollector(pc);
     }
 
@@ -206,7 +206,7 @@ public class EnumerationClient extends BaseHelper {
 
     public PropertyFilterSpec createFullFilterSpec() {
         ObjectSpec ospec = new ObjectSpec();
-        ospec.setObj(finder.getDatacenter().object);
+        ospec.setObj(this.finder.getDatacenter().object);
         ospec.setSkip(false);
 
         ospec.getSelectSet().addAll(buildFullTraversal());
@@ -282,48 +282,48 @@ public class EnumerationClient extends BaseHelper {
             this.pc = pc;
             this.spec = spec;
 
-            opts = new RetrieveOptions();
-            opts.setMaxObjects(DEFAULT_FETCH_PAGE_SIZE);
+            this.opts = new RetrieveOptions();
+            this.opts.setMaxObjects(DEFAULT_FETCH_PAGE_SIZE);
         }
 
         @Override
         public boolean hasNext() {
-            if (result == null) {
+            if (this.result == null) {
                 // has to check, may still return an empty first page
                 return true;
             }
 
-            return result.getToken() != null;
+            return this.result.getToken() != null;
         }
 
         @Override
         public List<ObjectContent> next() {
-            if (result == null) {
+            if (this.result == null) {
                 try {
-                    result = getVimPort()
-                            .retrievePropertiesEx(pc, Collections.singletonList(spec), opts);
+                    this.result = getVimPort()
+                            .retrievePropertiesEx(this.pc, Collections.singletonList(this.spec), this.opts);
                 } catch (RuntimeException e) {
-                    destroyCollectorQuietly(pc);
+                    destroyCollectorQuietly(this.pc);
                     throw e;
                 } catch (Exception e) {
-                    destroyCollectorQuietly(pc);
+                    destroyCollectorQuietly(this.pc);
                     throw new RuntimeException(e);
                 }
 
-                return result.getObjects();
+                return this.result.getObjects();
             }
 
             try {
-                result = getVimPort().continueRetrievePropertiesEx(pc, result.getToken());
+                this.result = getVimPort().continueRetrievePropertiesEx(this.pc, this.result.getToken());
             } catch (RuntimeException e) {
-                destroyCollectorQuietly(pc);
+                destroyCollectorQuietly(this.pc);
                 throw e;
             } catch (Exception e) {
-                destroyCollectorQuietly(pc);
+                destroyCollectorQuietly(this.pc);
                 throw new RuntimeException(e);
             }
 
-            return result.getObjects();
+            return this.result.getObjects();
         }
     }
 
@@ -338,9 +338,9 @@ public class EnumerationClient extends BaseHelper {
             this.pc = pc;
 
             // don't fetch too much data or block for too long
-            opts = new WaitOptions();
-            opts.setMaxWaitSeconds(10);
-            opts.setMaxObjectUpdates(DEFAULT_FETCH_PAGE_SIZE);
+            this.opts = new WaitOptions();
+            this.opts.setMaxWaitSeconds(10);
+            this.opts.setMaxObjectUpdates(DEFAULT_FETCH_PAGE_SIZE);
         }
 
         @Override
@@ -352,11 +352,11 @@ public class EnumerationClient extends BaseHelper {
         @Override
         public UpdateSet next() {
             try {
-                UpdateSet result = getVimPort().waitForUpdatesEx(pc, since, opts);
-                since = result.getVersion();
+                UpdateSet result = getVimPort().waitForUpdatesEx(this.pc, this.since, this.opts);
+                this.since = result.getVersion();
                 return result;
             } catch (Exception e) {
-                destroyCollectorQuietly(pc);
+                destroyCollectorQuietly(this.pc);
                 throw new RuntimeException(e);
             }
         }

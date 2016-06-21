@@ -66,11 +66,11 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
     @Test
     public void createInstanceSnapshotItAndDeleteIt() throws Throwable {
         // Create a resource pool where the VM will be housed
-        resourcePool = createResourcePool();
-        auth = createAuth();
+        this.resourcePool = createResourcePool();
+        this.auth = createAuth();
 
-        computeHostDescription = createComputeDescription();
-        computeHost = createComputeHost();
+        this.computeHostDescription = createComputeDescription();
+        this.computeHost = createComputeHost();
 
         ComputeDescription vmDescription = createVmDescription();
         ComputeState vm = createVmState(vmDescription);
@@ -137,8 +137,8 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
                 UriUtils.buildUri(this.host, outSts.documentSelfLink)),
                 SnapshotTaskState.class);
 
-        SnapshotState stateAfterTaskComplete = host.getServiceState(null, SnapshotState.class,
-                UriUtils.buildUri(host, snapshotState.documentSelfLink));
+        SnapshotState stateAfterTaskComplete = this.host.getServiceState(null, SnapshotState.class,
+                UriUtils.buildUri(this.host, snapshotState.documentSelfLink));
 
         if (!isMock()) {
             assertNotNull(CustomProperties.of(stateAfterTaskComplete)
@@ -166,22 +166,22 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
         computeState.documentSelfLink = computeState.id;
         computeState.descriptionLink = vmDescription.documentSelfLink;
         computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
-        computeState.adapterManagementReference = UriUtils.buildUri(vcUrl);
+        computeState.adapterManagementReference = UriUtils.buildUri(this.vcUrl);
 
         computeState.powerState = PowerState.ON;
 
-        computeState.parentLink = computeHost.documentSelfLink;
+        computeState.parentLink = this.computeHost.documentSelfLink;
 
         computeState.diskLinks = new ArrayList<>(1);
         computeState.diskLinks.add(createDisk("boot", DiskType.HDD, getDiskUri()).documentSelfLink);
 
         computeState.diskLinks.add(createDisk("movies", DiskType.HDD, null).documentSelfLink);
         computeState.diskLinks.add(createDisk("A", DiskType.FLOPPY, null).documentSelfLink);
-        computeState.diskLinks.add(createDisk("cd", DiskType.CDROM, cdromUri).documentSelfLink);
+        computeState.diskLinks.add(createDisk("cd", DiskType.CDROM, this.cdromUri).documentSelfLink);
 
         CustomProperties.of(computeState)
-                .put(ComputeProperties.RESOURCE_GROUP_NAME, vcFolder)
-                .put(ComputeProperties.CUSTOM_DISPLAY_NAME, vcFolder);
+                .put(ComputeProperties.RESOURCE_GROUP_NAME, this.vcFolder)
+                .put(ComputeProperties.CUSTOM_DISPLAY_NAME, this.vcFolder);
 
         ComputeService.ComputeState returnState = TestUtils.doPost(this.host, computeState,
                 ComputeService.ComputeState.class,
@@ -213,8 +213,8 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
                 .buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
         computeDesc.authCredentialsLink = this.auth.documentSelfLink;
         computeDesc.name = computeDesc.id;
-        computeDesc.dataStoreId = dataStoreId;
-        computeDesc.networkId = networkId;
+        computeDesc.dataStoreId = this.dataStoreId;
+        computeDesc.networkId = this.networkId;
 
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,
@@ -228,9 +228,9 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
         ComputeState computeState = new ComputeState();
         computeState.id = UUID.randomUUID().toString();
         computeState.documentSelfLink = computeState.id;
-        computeState.descriptionLink = computeHostDescription.documentSelfLink;
+        computeState.descriptionLink = this.computeHostDescription.documentSelfLink;
         computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
-        computeState.adapterManagementReference = UriUtils.buildUri(vcUrl);
+        computeState.adapterManagementReference = UriUtils.buildUri(this.vcUrl);
 
         ComputeService.ComputeState returnState = TestUtils.doPost(this.host, computeState,
                 ComputeService.ComputeState.class,
@@ -249,7 +249,7 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
                 .buildUri(this.host, VSphereUriPaths.INSTANCE_SERVICE);
         computeDesc.authCredentialsLink = this.auth.documentSelfLink;
 
-        computeDesc.zoneId = zoneId;
+        computeDesc.zoneId = this.zoneId;
 
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,

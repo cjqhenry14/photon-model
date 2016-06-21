@@ -256,7 +256,7 @@ public class ComputeDescriptionServiceTest extends Suite {
         public void testTenantLinksQuery() throws Throwable {
             ComputeDescriptionService.ComputeDescription disk = buildValidStartState();
 
-            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(this.host, TenantService.class);
             disk.tenantLinks = new ArrayList<>();
             disk.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));

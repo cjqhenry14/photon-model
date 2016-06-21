@@ -228,8 +228,8 @@ public class Finder extends Recurser {
         filter.getObjectSet().add(ospec);
         filter.getPropSet().add(pspec);
 
-        return connection.getVimPort()
-                .retrieveProperties(connection.getServiceContent().getPropertyCollector(),
+        return this.connection.getVimPort()
+                .retrieveProperties(this.connection.getServiceContent().getPropertyCollector(),
                         Collections.singletonList(filter));
 
     }
@@ -377,7 +377,7 @@ public class Finder extends Recurser {
         if (this.networkFolder == null) {
             loadFolders();
         }
-        return networkFolder;
+        return this.networkFolder;
     }
 
     private Element hostFolder() throws
@@ -387,7 +387,7 @@ public class Finder extends Recurser {
         if (this.hostFolder == null) {
             loadFolders();
         }
-        return hostFolder;
+        return this.hostFolder;
     }
 
     private Element datastoreFolder() throws
@@ -397,7 +397,7 @@ public class Finder extends Recurser {
         if (this.datastoreFolder == null) {
             loadFolders();
         }
-        return datastoreFolder;
+        return this.datastoreFolder;
     }
 
     public Element vmFolder() throws
@@ -407,7 +407,7 @@ public class Finder extends Recurser {
         if (this.vmFolder == null) {
             loadFolders();
         }
-        return vmFolder;
+        return this.vmFolder;
     }
 
     /**
@@ -466,13 +466,13 @@ public class Finder extends Recurser {
 
             MoRef moRef = (MoRef) o;
 
-            return type.equals(moRef.type) && value.equals(moRef.value);
+            return this.type.equals(moRef.type) && this.value.equals(moRef.value);
         }
 
         @Override
         public int hashCode() {
-            int result = type.hashCode();
-            result = 31 * result + value.hashCode();
+            int result = this.type.hashCode();
+            result = 31 * result + this.value.hashCode();
             return result;
         }
     }

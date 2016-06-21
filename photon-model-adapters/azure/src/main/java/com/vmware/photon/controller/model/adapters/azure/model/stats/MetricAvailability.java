@@ -23,10 +23,10 @@ public class MetricAvailability {
     private Location location;
 
     public String getTimeGrain() {
-        return timeGrain;
+        return this.timeGrain;
     }
 
     public Location getLocation() {
-        return location;
+        return this.location;
     }
 }

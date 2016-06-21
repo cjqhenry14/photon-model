@@ -189,7 +189,7 @@ public class ResourceDescriptionServiceTest extends Suite {
         public void testTenantLinksQuery() throws Throwable {
             ResourceDescriptionService.ResourceDescription rd = buildValidStartState();
 
-            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(this.host, TenantService.class);
             rd.tenantLinks = new ArrayList<>();
             rd.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));

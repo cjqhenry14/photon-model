@@ -348,7 +348,7 @@ public class ComputeServiceTest extends Suite {
                     .createComputeDescription(this);
             ComputeService.ComputeState cs = buildValidStartState(cd);
 
-            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(this.host, TenantService.class);
             cs.tenantLinks = new ArrayList<>();
             cs.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));

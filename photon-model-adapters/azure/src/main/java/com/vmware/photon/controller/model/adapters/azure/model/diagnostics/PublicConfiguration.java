@@ -23,7 +23,7 @@ public class PublicConfiguration {
     private String storageAccount;
 
     public DiagnosticMonitorConfiguration getDiagnosticMonitorConfiguration() {
-        return diagnosticMonitorConfiguration;
+        return this.diagnosticMonitorConfiguration;
     }
 
     public void setStorageAccount(String storageAccount) {

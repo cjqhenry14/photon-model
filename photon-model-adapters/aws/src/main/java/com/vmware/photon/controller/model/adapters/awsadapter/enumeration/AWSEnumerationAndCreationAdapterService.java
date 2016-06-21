@@ -115,18 +115,18 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         public Operation awsAdapterOperation;
 
         public EnumerationCreationContext(AWSEnumerationRequest request, Operation op) {
-            awsAdapterOperation = op;
-            computeEnumerationRequest = request.computeEnumerateResourceRequest;
-            parentAuth = request.parentAuth;
-            computeHostDescription = request.computeHostDescription;
-            enumerationHostMap = new ConcurrentSkipListMap<String, Boolean>();
-            localAWSInstanceIds = new ConcurrentSkipListMap<String, String>();
-            instancesToBeUpdated = new ConcurrentSkipListMap<String, Instance>();
-            remoteAWSInstances = new ConcurrentSkipListMap<String, Instance>();
-            instancesToBeCreated = new ArrayList<Instance>();
-            stage = AWSEnumerationCreationStages.CLIENT;
-            subStage = AWSEnumerationCreationSubStage.QUERY_LOCAL_RESOURCES;
-            pageNo = 1;
+            this.awsAdapterOperation = op;
+            this.computeEnumerationRequest = request.computeEnumerateResourceRequest;
+            this.parentAuth = request.parentAuth;
+            this.computeHostDescription = request.computeHostDescription;
+            this.enumerationHostMap = new ConcurrentSkipListMap<String, Boolean>();
+            this.localAWSInstanceIds = new ConcurrentSkipListMap<String, String>();
+            this.instancesToBeUpdated = new ConcurrentSkipListMap<String, Instance>();
+            this.remoteAWSInstances = new ConcurrentSkipListMap<String, Instance>();
+            this.instancesToBeCreated = new ArrayList<Instance>();
+            this.stage = AWSEnumerationCreationStages.CLIENT;
+            this.subStage = AWSEnumerationCreationSubStage.QUERY_LOCAL_RESOURCES;
+            this.pageNo = 1;
         }
     }
 
@@ -268,7 +268,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
      */
     private void getAWSAsyncClient(EnumerationCreationContext aws,
             AWSEnumerationCreationStages next) {
-        aws.amazonEC2Client = clientManager.getOrCreateEC2Client(aws.parentAuth,
+        aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
                 aws.computeHostDescription.zoneId, this,
                 aws.computeEnumerationRequest.enumerationTaskReference,
                 aws.computeEnumerationRequest.isMockRequest, true);
@@ -324,9 +324,9 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToEnumerationTask(service,
-                    aws.computeEnumerationRequest.enumerationTaskReference,
+            OperationContext.restoreOperationContext(this.opContext);
+            AdapterUtils.sendFailurePatchToEnumerationTask(this.service,
+                    this.aws.computeEnumerationRequest.enumerationTaskReference,
                     exception);
 
         }
@@ -334,29 +334,29 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         @Override
         public void onSuccess(DescribeInstancesRequest request,
                 DescribeInstancesResult result) {
-            OperationContext.restoreOperationContext(opContext);
+            OperationContext.restoreOperationContext(this.opContext);
             int totalNumberOfInstances = 0;
             // Print the details of the instances discovered on the AWS endpoint
             for (Reservation r : result.getReservations()) {
                 for (Instance i : r.getInstances()) {
-                    service.logInfo("%d=====Instance details %s =====",
+                    this.service.logInfo("%d=====Instance details %s =====",
                             ++totalNumberOfInstances,
                             i.getInstanceId());
-                    aws.remoteAWSInstances.put(i.getInstanceId(), i);
+                    this.aws.remoteAWSInstances.put(i.getInstanceId(), i);
                 }
             }
-            service.logInfo("Successfully enumerated %d instances on the AWS host",
+            this.service.logInfo("Successfully enumerated %d instances on the AWS host",
                     totalNumberOfInstances);
             // Save the reference to the next token that will be used to retrieve the next page of
             // results from AWS.
-            aws.nextToken = result.getNextToken();
+            this.aws.nextToken = result.getNextToken();
             // Since there is filtering of resources at source, there can be a case when no
             // resources are returned from AWS.
-            if (aws.remoteAWSInstances.size() == 0) {
-                if (aws.nextToken != null) {
-                    aws.subStage = AWSEnumerationCreationSubStage.GET_NEXT_PAGE;
+            if (this.aws.remoteAWSInstances.size() == 0) {
+                if (this.aws.nextToken != null) {
+                    this.aws.subStage = AWSEnumerationCreationSubStage.GET_NEXT_PAGE;
                 } else {
-                    aws.subStage = AWSEnumerationCreationSubStage.ENUMERATION_STOP;
+                    this.aws.subStage = AWSEnumerationCreationSubStage.ENUMERATION_STOP;
                 }
             }
             handleReceivedEnumerationData();
@@ -373,7 +373,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
          * 5) Create compute states to represent each and every VM that was discovered on the AWS endpoint.
          */
         private void handleReceivedEnumerationData() {
-            switch (aws.subStage) {
+            switch (this.aws.subStage) {
             case QUERY_LOCAL_RESOURCES:
                 getLocalResources(AWSEnumerationCreationSubStage.COMPARE);
                 break;
@@ -382,20 +382,20 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
                         AWSEnumerationCreationSubStage.CREATE_COMPUTE_DESCRIPTIONS);
                 break;
             case CREATE_COMPUTE_DESCRIPTIONS:
-                if (aws.instancesToBeCreated.size() > 0) {
+                if (this.aws.instancesToBeCreated.size() > 0) {
                     createComputeDescriptions(AWSEnumerationCreationSubStage.CREATE_COMPUTE_STATES);
                 } else {
-                    if (aws.nextToken == null) {
-                        aws.subStage = AWSEnumerationCreationSubStage.ENUMERATION_STOP;
+                    if (this.aws.nextToken == null) {
+                        this.aws.subStage = AWSEnumerationCreationSubStage.ENUMERATION_STOP;
                     } else {
-                        aws.subStage = AWSEnumerationCreationSubStage.GET_NEXT_PAGE;
+                        this.aws.subStage = AWSEnumerationCreationSubStage.GET_NEXT_PAGE;
                     }
                     handleReceivedEnumerationData();
                 }
                 break;
             case CREATE_COMPUTE_STATES:
                 AWSEnumerationCreationSubStage next;
-                if (aws.nextToken == null) {
+                if (this.aws.nextToken == null) {
                     next = AWSEnumerationCreationSubStage.ENUMERATION_STOP;
                 } else {
                     next = AWSEnumerationCreationSubStage.GET_NEXT_PAGE;
@@ -429,12 +429,12 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             q.querySpec.query = Query.Builder.create()
                     .addKindFieldClause(ComputeService.ComputeState.class)
                     .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,
-                            aws.computeEnumerationRequest.parentComputeLink)
+                            this.aws.computeEnumerationRequest.parentComputeLink)
                     .build();
 
             QueryTask.Query instanceIdFilterParentQuery = new QueryTask.Query();
             instanceIdFilterParentQuery.occurance = Occurance.MUST_OCCUR;
-            for (String instanceId : aws.remoteAWSInstances.keySet()) {
+            for (String instanceId : this.aws.remoteAWSInstances.keySet()) {
                 QueryTask.Query instanceIdFilter = new QueryTask.Query()
                         .setTermPropertyName(ComputeState.FIELD_NAME_ID)
                         .setTermMatchValue(instanceId);
@@ -443,14 +443,14 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             }
             q.querySpec.query.addBooleanClause(instanceIdFilterParentQuery);
             q.documentSelfLink = UUID.randomUUID().toString();
-            q.tenantLinks = aws.computeHostDescription.tenantLinks;
+            q.tenantLinks = this.aws.computeHostDescription.tenantLinks;
             // create the query to find resources
-            service.sendRequest(Operation
-                    .createPost(service, ServiceUriPaths.CORE_QUERY_TASKS)
+            this.service.sendRequest(Operation
+                    .createPost(this.service, ServiceUriPaths.CORE_QUERY_TASKS)
                     .setBody(q)
                     .setCompletion((o, e) -> {
                         if (e != null) {
-                            service.logSevere("Failure retrieving query results: %s",
+                            this.service.logSevere("Failure retrieving query results: %s",
                                     e.toString());
                             signalErrorToEnumerationAdapter(e);
                             return;
@@ -459,13 +459,13 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
                         for (Object s : responseTask.results.documents.values()) {
                             ComputeState localInstance = Utils.fromJson(s,
                                     ComputeService.ComputeState.class);
-                            aws.localAWSInstanceIds.put(localInstance.id,
+                            this.aws.localAWSInstanceIds.put(localInstance.id,
                                     localInstance.documentSelfLink);
                         }
-                        service.logInfo(
+                        this.service.logInfo(
                                 "Got result of the query to get local resources. There are %d instances known to the system.",
                                 responseTask.results.documentCount);
-                        aws.subStage = next;
+                        this.aws.subStage = next;
                         handleReceivedEnumerationData();
                         return;
                     }));
@@ -477,29 +477,29 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
          */
         private void compareLocalStateWithEnumerationData(AWSEnumerationCreationSubStage next) {
             // No remote instances
-            if (aws.remoteAWSInstances == null || aws.remoteAWSInstances.size() == 0) {
-                service.logInfo(
+            if (this.aws.remoteAWSInstances == null || this.aws.remoteAWSInstances.size() == 0) {
+                this.service.logInfo(
                         "No resources discovered on the remote system. Nothing to be created locally");
                 // no local instances
-            } else if (aws.localAWSInstanceIds == null || aws.localAWSInstanceIds.size() == 0) {
-                for (String key : aws.remoteAWSInstances.keySet()) {
-                    aws.instancesToBeCreated.add(aws.remoteAWSInstances.get(key));
+            } else if (this.aws.localAWSInstanceIds == null || this.aws.localAWSInstanceIds.size() == 0) {
+                for (String key : this.aws.remoteAWSInstances.keySet()) {
+                    this.aws.instancesToBeCreated.add(this.aws.remoteAWSInstances.get(key));
                 }
                 // compare and add the ones that do not exist locally for creation. Mark others
                 // for updates.
             } else {
-                for (String key : aws.remoteAWSInstances.keySet()) {
-                    if (!aws.localAWSInstanceIds.containsKey(key)) {
-                        aws.instancesToBeCreated.add(aws.remoteAWSInstances.get(key));
+                for (String key : this.aws.remoteAWSInstances.keySet()) {
+                    if (!this.aws.localAWSInstanceIds.containsKey(key)) {
+                        this.aws.instancesToBeCreated.add(this.aws.remoteAWSInstances.get(key));
                         // A map of the local compute state id and the corresponding latest
                         // state on AWS
                     } else {
-                        aws.instancesToBeUpdated.put(aws.localAWSInstanceIds.get(key),
-                                aws.remoteAWSInstances.get(key));
+                        this.aws.instancesToBeUpdated.put(this.aws.localAWSInstanceIds.get(key),
+                                this.aws.remoteAWSInstances.get(key));
                     }
                 }
             }
-            aws.subStage = next;
+            this.aws.subStage = next;
             handleReceivedEnumerationData();
         }
 
@@ -509,25 +509,25 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
          */
         private void createComputeDescriptions(AWSEnumerationCreationSubStage next) {
             AWSComputeDescriptionCreationState cd = new AWSComputeDescriptionCreationState();
-            cd.instancesToBeCreated = aws.instancesToBeCreated;
-            cd.parentTaskLink = aws.computeEnumerationRequest.enumerationTaskReference;
-            cd.authCredentiaslLink = aws.parentAuth.documentSelfLink;
-            cd.tenantLinks = aws.computeHostDescription.tenantLinks;
+            cd.instancesToBeCreated = this.aws.instancesToBeCreated;
+            cd.parentTaskLink = this.aws.computeEnumerationRequest.enumerationTaskReference;
+            cd.authCredentiaslLink = this.aws.parentAuth.documentSelfLink;
+            cd.tenantLinks = this.aws.computeHostDescription.tenantLinks;
 
-            service.sendRequest(Operation
-                    .createPatch(service, AWSComputeDescriptionCreationAdapterService.SELF_LINK)
+            this.service.sendRequest(Operation
+                    .createPatch(this.service, AWSComputeDescriptionCreationAdapterService.SELF_LINK)
                     .setBody(cd)
                     .setCompletion((o, e) -> {
                         if (e != null) {
-                            service.logSevere(
+                            this.service.logSevere(
                                     "Failure creating compute descriptions %s",
                                     Utils.toString(e));
                             signalErrorToEnumerationAdapter(e);
                             return;
                         } else {
-                            service.logInfo(
+                            this.service.logInfo(
                                     "Successfully created compute descriptions. Proceeding to next state.");
-                            aws.subStage = next;
+                            this.aws.subStage = next;
                             handleReceivedEnumerationData();
                             return;
                         }
@@ -540,29 +540,29 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
          */
         private void createComputeStates(AWSEnumerationCreationSubStage next) {
             AWSComputeStateForCreation awsComputeState = new AWSComputeStateForCreation();
-            awsComputeState.instancesToBeCreated = aws.instancesToBeCreated;
-            awsComputeState.instancesToBeUpdated = aws.instancesToBeUpdated;
-            awsComputeState.parentComputeLink = aws.computeEnumerationRequest.parentComputeLink;
-            awsComputeState.resourcePoolLink = aws.computeEnumerationRequest.resourcePoolLink;
-            awsComputeState.parentTaskLink = aws.computeEnumerationRequest.enumerationTaskReference;
-            awsComputeState.tenantLinks = aws.computeHostDescription.tenantLinks;
-            awsComputeState.parentAuth = aws.parentAuth;
-            awsComputeState.regionId = aws.computeHostDescription.zoneId;
+            awsComputeState.instancesToBeCreated = this.aws.instancesToBeCreated;
+            awsComputeState.instancesToBeUpdated = this.aws.instancesToBeUpdated;
+            awsComputeState.parentComputeLink = this.aws.computeEnumerationRequest.parentComputeLink;
+            awsComputeState.resourcePoolLink = this.aws.computeEnumerationRequest.resourcePoolLink;
+            awsComputeState.parentTaskLink = this.aws.computeEnumerationRequest.enumerationTaskReference;
+            awsComputeState.tenantLinks = this.aws.computeHostDescription.tenantLinks;
+            awsComputeState.parentAuth = this.aws.parentAuth;
+            awsComputeState.regionId = this.aws.computeHostDescription.zoneId;
 
-            service.sendRequest(Operation
-                    .createPatch(service, AWSComputeStateCreationAdapterService.SELF_LINK)
+            this.service.sendRequest(Operation
+                    .createPatch(this.service, AWSComputeStateCreationAdapterService.SELF_LINK)
                     .setBody(awsComputeState)
                     .setCompletion((o, e) -> {
                         if (e != null) {
-                            service.logSevere(
+                            this.service.logSevere(
                                     "Failure creating compute states %s",
                                     Utils.toString(e));
                             signalErrorToEnumerationAdapter(e);
                             return;
                         } else {
-                            service.logInfo(
+                            this.service.logInfo(
                                     "Successfully created compute states. Proceeding to next state.");
-                            aws.subStage = next;
+                            this.aws.subStage = next;
                             handleReceivedEnumerationData();
                             return;
                         }
@@ -574,17 +574,17 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
          * parent task to indicate completion.
          */
         private void signalStopToEnumerationAdapter() {
-            aws.computeEnumerationRequest.enumerationAction = EnumerationAction.STOP;
-            service.handleEnumerationRequest(aws);
+            this.aws.computeEnumerationRequest.enumerationAction = EnumerationAction.STOP;
+            this.service.handleEnumerationRequest(this.aws);
         }
 
         /**
          * Signals error to the AWS enumeration adapter. The adapter will in turn clean up resources and signal error to the parent task.
          */
         private void signalErrorToEnumerationAdapter(Throwable t) {
-            aws.error = t;
-            aws.stage = AWSEnumerationCreationStages.ERROR;
-            service.handleEnumerationRequest(aws);
+            this.aws.error = t;
+            this.aws.stage = AWSEnumerationCreationStages.ERROR;
+            this.service.handleEnumerationRequest(this.aws);
         }
 
         /**
@@ -593,12 +593,12 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
          */
         private void getNextPageFromEnumerationAdapter(AWSEnumerationCreationSubStage next) {
             // Reset all the results from the last page that was processed.
-            aws.remoteAWSInstances.clear();
-            aws.instancesToBeCreated.clear();
-            aws.localAWSInstanceIds.clear();
-            aws.describeInstancesRequest.setNextToken(aws.nextToken);
-            aws.subStage = next;
-            service.handleEnumerationRequest(aws);
+            this.aws.remoteAWSInstances.clear();
+            this.aws.instancesToBeCreated.clear();
+            this.aws.localAWSInstanceIds.clear();
+            this.aws.describeInstancesRequest.setNextToken(this.aws.nextToken);
+            this.aws.subStage = next;
+            this.service.handleEnumerationRequest(this.aws);
         }
     }
 }

@@ -39,6 +39,6 @@ public class LRUCache<K, V> extends LinkedHashMap<K, V> {
      *has grown to its maximum size and then evicts entries based on the set algorithm (access order or insertion order).
      */
     protected synchronized boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-        return this.size() > maxSize;
+        return this.size() > this.maxSize;
     }
 }

@@ -73,16 +73,16 @@ public class TestProvisionAWSNetwork {
         CommandLineArgumentParser.parseFromProperties(this);
 
         // ignore if any of the required properties are missing
-        org.junit.Assume.assumeTrue(TestUtils.isNull(privateKey, privateKeyId, region, subnet));
+        org.junit.Assume.assumeTrue(TestUtils.isNull(this.privateKey, this.privateKeyId, this.region, this.subnet));
 
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
-            PhotonModelServices.startServices(host);
-            PhotonModelTaskServices.startServices(host);
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
             // start the aws network service
             this.host.startService(
-                    Operation.createPost(UriUtils.buildUri(host, AWSNetworkService.class)),
+                    Operation.createPost(UriUtils.buildUri(this.host, AWSNetworkService.class)),
                     new AWSNetworkService());
             this.provisionNetworkFactory = UriUtils.buildUri(this.host,
                     ProvisionNetworkTaskService.FACTORY_LINK);
@@ -212,19 +212,19 @@ public class TestProvisionAWSNetwork {
     }
 
     private void provisionNetwork(ProvisionNetworkTaskState ps, Operation response) throws Throwable {
-        host.testStart(1);
+        this.host.testStart(1);
         Operation startPost = Operation.createPost(this.provisionNetworkFactory)
                 .setBody(ps)
                 .setCompletion((o, e) -> {
                     if (e != null) {
-                        host.failIteration(e);
+                        this.host.failIteration(e);
                         return;
                     }
                     response.setBody(o.getBody(ProvisionNetworkTaskState.class));
-                    host.completeIteration();
+                    this.host.completeIteration();
                 });
-        host.send(startPost);
-        host.testWait();
+        this.host.send(startPost);
+        this.host.testWait();
 
     }
 

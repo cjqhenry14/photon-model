@@ -64,13 +64,13 @@ public class TestAWSUtils {
         CommandLineArgumentParser.parseFromProperties(this);
 
         // ignore if any of the required properties are missing
-        org.junit.Assume.assumeTrue(TestUtils.isNull(privateKey, privateKeyId, region));
+        org.junit.Assume.assumeTrue(TestUtils.isNull(this.privateKey, this.privateKeyId, this.region));
 
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
-            PhotonModelServices.startServices(host);
-            PhotonModelTaskServices.startServices(host);
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
         } catch (Throwable e) {
             throw new Exception(e);
         }
@@ -97,7 +97,7 @@ public class TestAWSUtils {
 
     @Test
     public void testInvalidClientCredentials() throws Throwable {
-        expectedEx.expect(AmazonServiceException.class);
+        this.expectedEx.expect(AmazonServiceException.class);
         AuthCredentialsServiceState creds = new AuthCredentialsServiceState();
         creds.privateKey = "bar";
         creds.privateKeyId = "foo";

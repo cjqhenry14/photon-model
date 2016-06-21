@@ -138,11 +138,11 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         public AWSComputeServiceCreationContext(AWSComputeStateForCreation computeState,
                 Operation op) {
             this.computeState = computeState;
-            createorUpdateOperations = new ArrayList<Operation>();
-            vpcNetworkStateMap = new HashMap<String, NetworkState>();
-            creationStage = AWSComputeStateCreationStage.POPULATE_COMPUTESTATES;
-            networkCreationStage = AWSNetworkCreationStage.CLIENT;
-            awsAdapterOperation = op;
+            this.createorUpdateOperations = new ArrayList<Operation>();
+            this.vpcNetworkStateMap = new HashMap<String, NetworkState>();
+            this.creationStage = AWSComputeStateCreationStage.POPULATE_COMPUTESTATES;
+            this.networkCreationStage = AWSNetworkCreationStage.CLIENT;
+            this.awsAdapterOperation = op;
         }
     }
 
@@ -466,29 +466,29 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToEnumerationTask(service,
-                    aws.computeState.parentTaskLink,
+            OperationContext.restoreOperationContext(this.opContext);
+            AdapterUtils.sendFailurePatchToEnumerationTask(this.service,
+                    this.aws.computeState.parentTaskLink,
                     exception);
 
         }
 
         @Override
         public void onSuccess(DescribeVpcsRequest request, DescribeVpcsResult result) {
-            OperationContext.restoreOperationContext(opContext);
+            OperationContext.restoreOperationContext(this.opContext);
             // Update the CIDR blocks corresponding to the VPCs in the network state
             for (Vpc resultVPC : result.getVpcs()) {
-                NetworkState networkStateToUpdate = aws.vpcNetworkStateMap
+                NetworkState networkStateToUpdate = this.aws.vpcNetworkStateMap
                         .get(resultVPC.getVpcId());
                 networkStateToUpdate.subnetCIDR = resultVPC.getCidrBlock();
                 if (networkStateToUpdate.subnetCIDR == null) {
-                    service.logWarning("AWS did not return CIDR information for VPC %s",
+                    this.service.logWarning("AWS did not return CIDR information for VPC %s",
                             resultVPC.toString());
                 }
-                aws.vpcNetworkStateMap.put(resultVPC.getVpcId(), networkStateToUpdate);
+                this.aws.vpcNetworkStateMap.put(resultVPC.getVpcId(), networkStateToUpdate);
             }
-            aws.networkCreationStage = next;
-            service.handleNetworkStateChanges(aws);
+            this.aws.networkCreationStage = this.next;
+            this.service.handleNetworkStateChanges(this.aws);
         }
     }
 
@@ -529,9 +529,9 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToEnumerationTask(service,
-                    aws.computeState.parentTaskLink,
+            OperationContext.restoreOperationContext(this.opContext);
+            AdapterUtils.sendFailurePatchToEnumerationTask(this.service,
+                    this.aws.computeState.parentTaskLink,
                     exception);
 
         }
@@ -544,20 +544,20 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         @Override
         public void onSuccess(DescribeInternetGatewaysRequest request,
                 DescribeInternetGatewaysResult result) {
-            OperationContext.restoreOperationContext(opContext);
+            OperationContext.restoreOperationContext(this.opContext);
             for (InternetGateway resultGateway : result.getInternetGateways()) {
                 for (InternetGatewayAttachment attachment : resultGateway.getAttachments()) {
-                    if (aws.vpcNetworkStateMap.containsKey(attachment.getVpcId())) {
-                        NetworkState networkStateToUpdate = aws.vpcNetworkStateMap
+                    if (this.aws.vpcNetworkStateMap.containsKey(attachment.getVpcId())) {
+                        NetworkState networkStateToUpdate = this.aws.vpcNetworkStateMap
                                 .get(attachment.getVpcId());
                         networkStateToUpdate.customProperties.put(AWS_GATEWAY_ID,
                                 resultGateway.getInternetGatewayId());
-                        aws.vpcNetworkStateMap.put(attachment.getVpcId(), networkStateToUpdate);
+                        this.aws.vpcNetworkStateMap.put(attachment.getVpcId(), networkStateToUpdate);
                     }
                 }
             }
-            aws.networkCreationStage = next;
-            service.handleNetworkStateChanges(aws);
+            this.aws.networkCreationStage = this.next;
+            this.service.handleNetworkStateChanges(this.aws);
         }
     }
 
@@ -602,9 +602,9 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToEnumerationTask(service,
-                    aws.computeState.parentTaskLink,
+            OperationContext.restoreOperationContext(this.opContext);
+            AdapterUtils.sendFailurePatchToEnumerationTask(this.service,
+                    this.aws.computeState.parentTaskLink,
                     exception);
 
         }
@@ -616,18 +616,18 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
         @Override
         public void onSuccess(DescribeRouteTablesRequest request,
                 DescribeRouteTablesResult result) {
-            OperationContext.restoreOperationContext(opContext);
+            OperationContext.restoreOperationContext(this.opContext);
             for (RouteTable routeTable : result.getRouteTables()) {
-                if (aws.vpcNetworkStateMap.containsKey(routeTable.getVpcId())) {
-                    NetworkState networkStateToUpdate = aws.vpcNetworkStateMap
+                if (this.aws.vpcNetworkStateMap.containsKey(routeTable.getVpcId())) {
+                    NetworkState networkStateToUpdate = this.aws.vpcNetworkStateMap
                             .get(routeTable.getVpcId());
                     networkStateToUpdate.customProperties.put(AWS_VPC_ROUTE_TABLE_ID,
                             routeTable.getRouteTableId());
-                    aws.vpcNetworkStateMap.put(routeTable.getVpcId(), networkStateToUpdate);
+                    this.aws.vpcNetworkStateMap.put(routeTable.getVpcId(), networkStateToUpdate);
                 }
             }
-            aws.networkCreationStage = next;
-            service.handleNetworkStateChanges(aws);
+            this.aws.networkCreationStage = this.next;
+            this.service.handleNetworkStateChanges(this.aws);
         }
     }
 

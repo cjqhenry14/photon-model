@@ -115,17 +115,17 @@ public class TestAWSSetupUtils {
         public boolean isCountPopulated;
 
         public BaseLineState() {
-            baselineVMCount = 0;
-            baselineComputeDescriptionCount = 0;
-            isCountPopulated = false;
+            this.baselineVMCount = 0;
+            this.baselineComputeDescriptionCount = 0;
+            this.isCountPopulated = false;
         }
 
         @Override
         public String toString() {
             StringBuffer sb = new StringBuffer();
-            sb.append(BASELINE_INSTANCE_COUNT).append(baselineVMCount)
+            sb.append(BASELINE_INSTANCE_COUNT).append(this.baselineVMCount)
                     .append(BASELINE_COMPUTE_DESCRIPTION_COUNT)
-                    .append(baselineComputeDescriptionCount);
+                    .append(this.baselineComputeDescriptionCount);
             return sb.toString();
         }
     }
@@ -502,19 +502,19 @@ public class TestAWSSetupUtils {
 
         AWSRunInstancesAsyncHandler(VerificationHost host) {
             this.host = host;
-            instanceIds = new ArrayList<String>();
+            this.instanceIds = new ArrayList<String>();
         }
 
         @Override
         public void onError(Exception exception) {
-            host.log("Error creating instance{s} on AWS endpoint %s", exception);
+            this.host.log("Error creating instance{s} on AWS endpoint %s", exception);
         }
 
         @Override
         public void onSuccess(RunInstancesRequest request, RunInstancesResult result) {
             for (Instance i : result.getReservation().getInstances()) {
-                instanceIds.add(i.getInstanceId());
-                host.log("Successfully created instances on AWS endpoint %s", i.getInstanceId());
+                this.instanceIds.add(i.getInstanceId());
+                this.host.log("Successfully created instances on AWS endpoint %s", i.getInstanceId());
             }
         }
     }
@@ -759,13 +759,13 @@ public class TestAWSSetupUtils {
 
         @Override
         public void onError(Exception exception) {
-            host.log("Error deleting instance{s} from AWS %s", exception);
+            this.host.log("Error deleting instance{s} from AWS %s", exception);
         }
 
         @Override
         public void onSuccess(TerminateInstancesRequest request,
                 TerminateInstancesResult result) {
-            host.log("Successfully deleted instances from the AWS endpoint %s",
+            this.host.log("Successfully deleted instances from the AWS endpoint %s",
                     result.getTerminatingInstances().toString());
         }
     }
@@ -844,8 +844,8 @@ public class TestAWSSetupUtils {
 
         @Override
         public void onError(Exception exception) {
-            responseReceived = true;
-            host.log("Error describing instances on AWS. The exception encounterd is %s",
+            this.responseReceived = true;
+            this.host.log("Error describing instances on AWS. The exception encounterd is %s",
                     exception);
         }
 
@@ -853,12 +853,12 @@ public class TestAWSSetupUtils {
         public void onSuccess(DescribeInstancesRequest request,
                 DescribeInstancesResult result) {
             int counter = 0;
-            switch (mode) {
+            switch (this.mode) {
             case CHECK_START:
                 for (Reservation r : result.getReservations()) {
                     for (Instance i : r.getInstances()) {
                         if (i.getState().getCode() == AWS_STARTED_CODE) {
-                            provisioningFlags.set(counter, Boolean.TRUE);
+                            this.provisioningFlags.set(counter, Boolean.TRUE);
                             counter++;
                         }
                     }
@@ -868,7 +868,7 @@ public class TestAWSSetupUtils {
                 for (Reservation r : result.getReservations()) {
                     for (Instance i : r.getInstances()) {
                         if (i.getState().getCode() == AWS_TERMINATED_CODE) {
-                            deletionFlags.set(counter, Boolean.TRUE);
+                            this.deletionFlags.set(counter, Boolean.TRUE);
                             counter++;
                         }
                     }
@@ -882,31 +882,31 @@ public class TestAWSSetupUtils {
                         if (i.getState().getCode() != AWS_TERMINATED_CODE) {
                             computeDescriptionSet
                                     .add(getRegionId(i).concat("~").concat(i.getInstanceType()));
-                            baseLineState.baselineVMCount++;
+                            this.baseLineState.baselineVMCount++;
                         }
                     }
                 }
                 // If the discovered resources on the endpoint already map to a test compute
                 // description then we will not be creating a new CD for it.
-                if (testComputeDescriptions != null) {
-                    for (String testCD : testComputeDescriptions) {
+                if (this.testComputeDescriptions != null) {
+                    for (String testCD : this.testComputeDescriptions) {
                         if (computeDescriptionSet.contains(testCD)) {
                             computeDescriptionSet.remove(testCD);
                         }
                     }
                 }
-                baseLineState.baselineComputeDescriptionCount = computeDescriptionSet.size();
+                this.baseLineState.baselineComputeDescriptionCount = computeDescriptionSet.size();
 
-                host.log("The baseline instance count on AWS is %d ",
-                        baseLineState.baselineVMCount);
-                host.log("These instances will be represented by %d additional compute "
-                        + "descriptions ", baseLineState.baselineComputeDescriptionCount);
-                baseLineState.isCountPopulated = true;
+                this.host.log("The baseline instance count on AWS is %d ",
+                        this.baseLineState.baselineVMCount);
+                this.host.log("These instances will be represented by %d additional compute "
+                        + "descriptions ", this.baseLineState.baselineComputeDescriptionCount);
+                this.baseLineState.isCountPopulated = true;
                 break;
             default:
-                host.log("Invalid stage %s for describing AWS instances", mode);
+                this.host.log("Invalid stage %s for describing AWS instances", this.mode);
             }
-            responseReceived = true;
+            this.responseReceived = true;
         }
     }
 

@@ -35,16 +35,16 @@ public class RecurserTest {
 
     @Before
     public void setup() {
-        connection = rule.get();
+        this.connection = rule.get();
     }
 
     @Test
     public void recurse() throws InvalidPropertyFaultMsg, FinderException, RuntimeFaultFaultMsg {
 
-        Recurser recurser = new Recurser(connection);
+        Recurser recurser = new Recurser(this.connection);
         recurser.setTraverseLeafs(true);
 
-        Element root = Element.asRoot(connection.getServiceContent().getRootFolder());
+        Element root = Element.asRoot(this.connection.getServiceContent().getRootFolder());
         List<Element> all = recurser.recurse(root, "New Folder", "My*");
         for (Element element : all) {
             System.out.println(element);

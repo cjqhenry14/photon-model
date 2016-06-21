@@ -68,7 +68,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
     private final ExecutorService enumerationThreadPool;
 
     public VSphereAdapterResourceEnumerationService() {
-        enumerationThreadPool = new ThreadPoolExecutor(MAX_CONCURRENT_ENUM_PROCESSES,
+        this.enumerationThreadPool = new ThreadPoolExecutor(MAX_CONCURRENT_ENUM_PROCESSES,
                 MAX_CONCURRENT_ENUM_PROCESSES,
                 0L, TimeUnit.MILLISECONDS,
                 new SynchronousQueue<>(),
@@ -141,7 +141,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
 
     private void endEnumerationProcess(ComputeStateWithDescription parent, TaskManager mgr) {
         // just remove from map, enumeration process checks if it should continue at every step
-        ComputeEnumerateResourceRequest old = startedEnumProcessesByHost
+        ComputeEnumerateResourceRequest old = this.startedEnumProcessesByHost
                 .remove(parent.documentSelfLink);
 
         if (old == null) {
@@ -156,7 +156,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
             ComputeStateWithDescription parent,
             ComputeEnumerateResourceRequest request, TaskManager mgr) {
 
-        ComputeEnumerateResourceRequest old = startedEnumProcessesByHost
+        ComputeEnumerateResourceRequest old = this.startedEnumProcessesByHost
                 .putIfAbsent(parent.documentSelfLink, request);
 
         if (old != null) {
@@ -179,7 +179,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
         }
 
         try {
-            enumerationThreadPool.execute(() -> {
+            this.enumerationThreadPool.execute(() -> {
                 try {
                     startEnumerationProcess(parent, client);
                 } catch (Exception e) {

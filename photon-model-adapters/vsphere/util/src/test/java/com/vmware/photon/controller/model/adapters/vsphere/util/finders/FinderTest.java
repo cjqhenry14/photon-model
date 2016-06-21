@@ -35,13 +35,13 @@ public class FinderTest {
 
     @Before
     public void setup() {
-        connection = rule.get();
+        this.connection = rule.get();
     }
 
     @Test
     public void fullPath()
             throws InvalidPropertyFaultMsg, FinderException, RuntimeFaultFaultMsg {
-        Finder finder = new Finder(connection, "/Datacenters/New Folder/MyDatacenter");
+        Finder finder = new Finder(this.connection, "/Datacenters/New Folder/MyDatacenter");
 
         ManagedObjectReference vm = new ManagedObjectReference();
         vm.setType("VirtualMachine");
@@ -53,7 +53,7 @@ public class FinderTest {
     @Test
     public void find()
             throws InvalidPropertyFaultMsg, FinderException, RuntimeFaultFaultMsg {
-        Finder finder = new Finder(connection, "/Datacenters/New Folder/MyDatacenter");
+        Finder finder = new Finder(this.connection, "/Datacenters/New Folder/MyDatacenter");
 
         Element rp = finder.defaultResourcePool();
         System.out.println(rp);

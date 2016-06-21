@@ -145,15 +145,15 @@ public class AzureInstanceService extends StatelessService {
 
     @Override
     public void handleStart(Operation startPost) {
-        executorService = getHost().allocateExecutor(this);
+        this.executorService = getHost().allocateExecutor(this);
 
         super.handleStart(startPost);
     }
 
     @Override
     public void handleStop(Operation delete) {
-        executorService.shutdown();
-        awaitTermination(this, executorService);
+        this.executorService.shutdown();
+        awaitTermination(this, this.executorService);
         super.handleStop(delete);
     }
 
@@ -1041,7 +1041,7 @@ public class AzureInstanceService extends StatelessService {
 
     private Retrofit.Builder getRetrofitBuilder() {
         Retrofit.Builder builder = new Retrofit.Builder();
-        builder.callbackExecutor(executorService);
+        builder.callbackExecutor(this.executorService);
         return builder;
     }
 
@@ -1328,7 +1328,7 @@ public class AzureInstanceService extends StatelessService {
         OperationContext opContext;
 
         public AzureAsyncCallback() {
-            opContext = OperationContext.getOperationContext();
+            this.opContext = OperationContext.getOperationContext();
         }
 
         /**
@@ -1343,13 +1343,13 @@ public class AzureInstanceService extends StatelessService {
 
         @Override
         public void failure(Throwable t) {
-            OperationContext.restoreOperationContext(opContext);
+            OperationContext.restoreOperationContext(this.opContext);
             onError(t);
         }
 
         @Override
         public void success(ServiceResponse<T> result) {
-            OperationContext.restoreOperationContext(opContext);
+            OperationContext.restoreOperationContext(this.opContext);
             onSuccess(result);
         }
     }

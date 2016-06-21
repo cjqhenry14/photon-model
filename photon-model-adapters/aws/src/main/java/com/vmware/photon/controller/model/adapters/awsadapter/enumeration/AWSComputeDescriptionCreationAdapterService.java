@@ -91,12 +91,12 @@ public class AWSComputeDescriptionCreationAdapterService extends StatelessServic
         public AWSComputeDescriptionCreationServiceContext(AWSComputeDescriptionCreationState cdState,
                 Operation op) {
             this.cdState = cdState;
-            localComputeDescriptionSet = new HashSet<String>();
-            representativeComputeDescriptionSet = new HashSet<String>();
-            computeDescriptionsToBeCreatedList = new ArrayList<String>();
-            createOperations = new ArrayList<Operation>();
-            creationStage = AWSComputeDescCreationStage.GET_REPRESENTATIVE_LIST;
-            awsAdapterOperation = op;
+            this.localComputeDescriptionSet = new HashSet<String>();
+            this.representativeComputeDescriptionSet = new HashSet<String>();
+            this.computeDescriptionsToBeCreatedList = new ArrayList<String>();
+            this.createOperations = new ArrayList<Operation>();
+            this.creationStage = AWSComputeDescCreationStage.GET_REPRESENTATIVE_LIST;
+            this.awsAdapterOperation = op;
         }
     }
 

@@ -400,7 +400,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             try {
                 // Lower timeout
-                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(2));
+                this.host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(2));
 
                 ResourceAllocationTaskState returnState = this
                         .postServiceSynchronously(
@@ -420,7 +420,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
                         is("No compute resources available with poolId:"
                                 + resourcePool));
             } finally {
-                host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
+                this.host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
             }
         }
 
@@ -473,7 +473,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             try {
                 // Lower timeout to 5 seconds
-                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(2));
+                this.host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(2));
 
                 ResourceAllocationTaskState returnState = this
                         .postServiceSynchronously(
@@ -493,7 +493,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
                         is("No compute resources available with poolId:"
                                 + resourcePool2));
             } finally {
-                host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
+                this.host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
             }
         }
 
@@ -512,7 +512,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
 
             try {
                 // Lower timeout to 5 seconds
-                host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(2));
+                this.host.setOperationTimeOutMicros(TimeUnit.SECONDS.toMicros(2));
 
                 ResourceAllocationTaskState returnState = this
                         .postServiceSynchronously(
@@ -532,7 +532,7 @@ public class ResourceAllocationTaskServiceTest extends Suite {
                         is("No compute resources available with poolId:"
                                 + resourcePool));
             } finally {
-                host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
+                this.host.setOperationTimeOutMicros(ServiceHost.ServiceHostState.DEFAULT_OPERATION_TIMEOUT_MICROS);
             }
         }
     }

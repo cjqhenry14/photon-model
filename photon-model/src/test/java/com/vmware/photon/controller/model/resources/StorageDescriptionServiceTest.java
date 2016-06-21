@@ -335,7 +335,7 @@ public class StorageDescriptionServiceTest extends Suite {
         @Test
         public void testTenantLinksQuery() throws Throwable {
             StorageDescriptionService.StorageDescription storageState = buildValidStartState();
-            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(this.host, TenantService.class);
             storageState.tenantLinks = new ArrayList<>();
             storageState.tenantLinks.add(UriUtils.buildUriPath(
                     tenantUri.getPath(), "tenantA"));

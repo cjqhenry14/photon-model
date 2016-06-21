@@ -71,14 +71,14 @@ public class AWSTaskStatusChecker {
     }
 
     public void start() {
-        if (expirationTimeMicros > 0 && Utils.getNowMicrosUtc() > expirationTimeMicros) {
+        if (this.expirationTimeMicros > 0 && Utils.getNowMicrosUtc() > this.expirationTimeMicros) {
             String msg = String
                     .format("Compute with instance id %s did not reach desired %s state in the required time interval.",
-                            instanceId, desiredState);
-            service.logSevere(msg);
+                            this.instanceId, this.desiredState);
+            this.service.logSevere(msg);
             Throwable t = new RuntimeException(msg);
-            AdapterUtils.sendFailurePatchToProvisioningTask(service,
-                    computeRequest.provisioningTaskReference, t);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
+                    this.computeRequest.provisioningTaskReference, t);
             return;
         }
         DescribeInstancesRequest descRequest = new DescribeInstancesRequest();
@@ -95,16 +95,16 @@ public class AWSTaskStatusChecker {
                 if (exception instanceof AmazonServiceException
                         && ((AmazonServiceException) exception).getErrorCode()
                                 .equalsIgnoreCase(AWS_INVALID_INSTANCE_ID_ERROR_CODE)) {
-                    service.logWarning(
+                    AWSTaskStatusChecker.this.service.logWarning(
                             "Could not retrieve status for instance %s. Retrying... Exception on AWS is %s",
-                            instanceId, exception);
-                    AWSTaskStatusChecker.create(amazonEC2Client,
-                            instanceId, desiredState, consumer,
-                            computeRequest, service, expirationTimeMicros).start();
+                            AWSTaskStatusChecker.this.instanceId, exception);
+                    AWSTaskStatusChecker.create(AWSTaskStatusChecker.this.amazonEC2Client,
+                            AWSTaskStatusChecker.this.instanceId, AWSTaskStatusChecker.this.desiredState, AWSTaskStatusChecker.this.consumer,
+                            AWSTaskStatusChecker.this.computeRequest, AWSTaskStatusChecker.this.service, AWSTaskStatusChecker.this.expirationTimeMicros).start();
                     return;
                 }
-                AdapterUtils.sendFailurePatchToProvisioningTask(service,
-                        computeRequest.provisioningTaskReference, exception);
+                AdapterUtils.sendFailurePatchToProvisioningTask(AWSTaskStatusChecker.this.service,
+                        AWSTaskStatusChecker.this.computeRequest.provisioningTaskReference, exception);
                 return;
             }
 
@@ -113,21 +113,21 @@ public class AWSTaskStatusChecker {
                     DescribeInstancesResult result) {
                 Instance instance = result.getReservations().get(0)
                         .getInstances().get(0);
-                if (!instance.getState().getName().equals(desiredState)) {
+                if (!instance.getState().getName().equals(AWSTaskStatusChecker.this.desiredState)) {
                     // if the task is not in the running state, schedule thread
                     // to run again in 5 seconds
-                    service.getHost().schedule(
+                    AWSTaskStatusChecker.this.service.getHost().schedule(
                             () -> {
-                                AWSTaskStatusChecker.create(amazonEC2Client,
-                                        instanceId, desiredState, consumer,
-                                        computeRequest, service, expirationTimeMicros).start();
+                                AWSTaskStatusChecker.create(AWSTaskStatusChecker.this.amazonEC2Client,
+                                        AWSTaskStatusChecker.this.instanceId, AWSTaskStatusChecker.this.desiredState, AWSTaskStatusChecker.this.consumer,
+                                        AWSTaskStatusChecker.this.computeRequest, AWSTaskStatusChecker.this.service, AWSTaskStatusChecker.this.expirationTimeMicros).start();
                             }, 5, TimeUnit.SECONDS);
                     return;
                 }
-                consumer.accept(instance);
+                AWSTaskStatusChecker.this.consumer.accept(instance);
                 return;
             }
         };
-        amazonEC2Client.describeInstancesAsync(descRequest, describeHandler);
+        this.amazonEC2Client.describeInstancesAsync(descRequest, describeHandler);
     }
 }

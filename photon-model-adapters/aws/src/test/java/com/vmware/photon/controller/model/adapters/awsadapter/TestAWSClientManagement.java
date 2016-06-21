@@ -68,18 +68,18 @@ public class TestAWSClientManagement extends BasicReusableHostTestCase {
             this.host.startService(
                     Operation.createPost(UriUtils.buildUri(this.host,
                             AWSInstanceService.class)),
-                    instanceService);
+                    this.instanceService);
             serviceSelfLinks.add(AWSInstanceService.SELF_LINK);
 
             this.statsService = new AWSStatsService();
             this.host.startService(
                     Operation.createPost(UriUtils.buildUri(this.host,
                             AWSStatsService.class)),
-                    statsService);
+                    this.statsService);
             serviceSelfLinks.add(AWSStatsService.SELF_LINK);
 
-            host.waitForServiceAvailable(AWSStatsService.SELF_LINK);
-            host.waitForServiceAvailable(AWSInstanceService.SELF_LINK);
+            this.host.waitForServiceAvailable(AWSStatsService.SELF_LINK);
+            this.host.waitForServiceAvailable(AWSInstanceService.SELF_LINK);
         } catch (Throwable e) {
             this.host.log("Error starting up services for the test %s", e.getMessage());
             throw new Exception(e);
@@ -88,7 +88,7 @@ public class TestAWSClientManagement extends BasicReusableHostTestCase {
 
     @After
     public void tearDown() throws InterruptedException {
-        if (host == null) {
+        if (this.host == null) {
             return;
         }
     }
@@ -106,25 +106,25 @@ public class TestAWSClientManagement extends BasicReusableHostTestCase {
 
         // Getting an AWSclient from the client manager
         this.creds = new AuthCredentialsServiceState();
-        this.creds.privateKey = accessKey;
-        this.creds.privateKeyId = secretKey;
+        this.creds.privateKey = this.accessKey;
+        this.creds.privateKeyId = this.secretKey;
 
-        this.client = clientManager.getOrCreateEC2Client(creds, TestAWSSetupUtils.zoneId,
-                instanceService, null,
-                isMock, false);
+        this.client = clientManager.getOrCreateEC2Client(this.creds, TestAWSSetupUtils.zoneId,
+                this.instanceService, null,
+                this.isMock, false);
         assertEquals(count1, clientManager.getCacheCount(false));
 
         // Requesting another AWS client with the same set of credentials will not
         // create a new entry in the cache
-        this.client = clientManager.getOrCreateEC2Client(creds, TestAWSSetupUtils.zoneId,
-                instanceService, null,
-                isMock, false);
+        this.client = clientManager.getOrCreateEC2Client(this.creds, TestAWSSetupUtils.zoneId,
+                this.instanceService, null,
+                this.isMock, false);
         assertEquals(count1, clientManager.getCacheCount(false));
 
         // Saving a reference to the executor associated with the client to chec
         // if it is shutdown when no references remain
 
-        ExecutorService executorService = client.getExecutorService();
+        ExecutorService executorService = this.client.getExecutorService();
 
         // Emulating shutdown of individual services to check that the client resources are
         // cleaned up as expected.

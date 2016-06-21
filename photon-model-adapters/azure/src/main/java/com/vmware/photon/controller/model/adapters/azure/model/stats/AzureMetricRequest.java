@@ -26,7 +26,7 @@ public class AzureMetricRequest {
     private String tableName;
 
     public String getStorageConnectionString() {
-        return storageConnectionString;
+        return this.storageConnectionString;
     }
 
     public void setStorageConnectionString(String storageConnectionString) {
@@ -34,7 +34,7 @@ public class AzureMetricRequest {
     }
 
     public String getPartitionValue() {
-        return partitionValue;
+        return this.partitionValue;
     }
 
     public void setPartitionValue(String partitionValue) {
@@ -42,7 +42,7 @@ public class AzureMetricRequest {
     }
 
     public Date getTimestamp() {
-        return timestamp;
+        return this.timestamp;
     }
 
     public void setTimestamp(Date timestamp) {
@@ -50,7 +50,7 @@ public class AzureMetricRequest {
     }
 
     public String getMetricName() {
-        return metricName;
+        return this.metricName;
     }
 
     public void setMetricName(String metricName) {
@@ -58,7 +58,7 @@ public class AzureMetricRequest {
     }
 
     public String getTableName() {
-        return tableName;
+        return this.tableName;
     }
 
     public void setTableName(String tableName) {

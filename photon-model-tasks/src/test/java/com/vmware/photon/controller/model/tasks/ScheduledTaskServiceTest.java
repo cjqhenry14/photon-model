@@ -156,8 +156,8 @@ public class ScheduledTaskServiceTest extends Suite {
             inPool.minCpuCount = 1;
             inPool.minMemoryBytes = 1024;
 
-            ResourcePoolState returnPool = TestUtils.doPost(host, inPool, ResourcePoolState.class,
-                    UriUtils.buildUri(host, ResourcePoolService.FACTORY_LINK));
+            ResourcePoolState returnPool = TestUtils.doPost(this.host, inPool, ResourcePoolState.class,
+                    UriUtils.buildUri(this.host, ResourcePoolService.FACTORY_LINK));
 
             ComputeDescriptionService.ComputeDescription computeDescription = new ComputeDescriptionService.ComputeDescription();
             computeDescription.id = UUID.randomUUID().toString();
@@ -165,18 +165,18 @@ public class ScheduledTaskServiceTest extends Suite {
             computeDescription.name = "test-desc";
             computeDescription.enumerationAdapterReference = UriUtils.buildUri(this.host,
                     MockAdapter.MockSuccessEnumerationAdapter.SELF_LINK);
-            ComputeDescriptionService.ComputeDescription outDesc = TestUtils.doPost(host,
+            ComputeDescriptionService.ComputeDescription outDesc = TestUtils.doPost(this.host,
                     computeDescription,
                     ComputeDescriptionService.ComputeDescription.class,
-                    UriUtils.buildUri(host, ComputeDescriptionService.FACTORY_LINK));
+                    UriUtils.buildUri(this.host, ComputeDescriptionService.FACTORY_LINK));
 
             ComputeService.ComputeState computeHost = new ComputeService.ComputeState();
             computeHost.id = UUID.randomUUID().toString();
             computeHost.descriptionLink = outDesc.documentSelfLink;
             computeHost.resourcePoolLink = returnPool.documentSelfLink;
-            ComputeService.ComputeState returnComputeState = TestUtils.doPost(host, computeHost,
+            ComputeService.ComputeState returnComputeState = TestUtils.doPost(this.host, computeHost,
                     ComputeService.ComputeState.class,
-                    UriUtils.buildUri(host, ComputeService.FACTORY_LINK));
+                    UriUtils.buildUri(this.host, ComputeService.FACTORY_LINK));
 
             ResourceEnumerationTaskState enumTaskState = new ResourceEnumerationTaskState();
             enumTaskState.computeDescriptionLink = outDesc.documentSelfLink;
@@ -192,9 +192,9 @@ public class ScheduledTaskServiceTest extends Suite {
             scheduledTaskState.initialStateJson = Utils.toJson(enumTaskState);
             scheduledTaskState.intervalMicros = TimeUnit.MINUTES.toMicros(10);
             scheduledTaskState.documentSelfLink = UUID.randomUUID().toString();
-            TestUtils.doPost(host, scheduledTaskState,
+            TestUtils.doPost(this.host, scheduledTaskState,
                     ScheduledTaskState.class,
-                    UriUtils.buildUri(host, ScheduledTaskService.FACTORY_LINK));
+                    UriUtils.buildUri(this.host, ScheduledTaskService.FACTORY_LINK));
             this.host.waitFor(
                     "Timeout waiting for enum task execution",
                     () -> {
@@ -218,9 +218,9 @@ public class ScheduledTaskServiceTest extends Suite {
             periodicTaskState.initialStateJson = Utils.toJson(enumTaskState);
             periodicTaskState.intervalMicros = TimeUnit.MILLISECONDS.toMicros(250);
             periodicTaskState.documentSelfLink = UUID.randomUUID().toString();
-            TestUtils.doPost(host, periodicTaskState,
+            TestUtils.doPost(this.host, periodicTaskState,
                     ScheduledTaskState.class,
-                    UriUtils.buildUri(host, ScheduledTaskService.FACTORY_LINK));
+                    UriUtils.buildUri(this.host, ScheduledTaskService.FACTORY_LINK));
             int expectedInvocations = 5;
             this.host.waitFor(
                     "Timeout waiting for enum task execution",

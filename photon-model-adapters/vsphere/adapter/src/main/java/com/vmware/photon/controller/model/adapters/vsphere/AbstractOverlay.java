@@ -44,7 +44,7 @@ public abstract class AbstractOverlay {
     }
 
     protected Object getOrFail(String name) {
-        Object res = props.get(name);
+        Object res = this.props.get(name);
         if (res == null) {
             // TODO how to handle null-valued properties
             throw new IllegalArgumentException("property '" + name + "' not fetched");
@@ -55,12 +55,12 @@ public abstract class AbstractOverlay {
     protected void ensureType(String type) {
         if (!type.equals(this.ref.getType())) {
             String msg = String.format("Cannot overlay type '%s' on top of %s", type, VimUtils
-                    .convertMoRefToString(ref));
+                    .convertMoRefToString(this.ref));
             throw new IllegalArgumentException(msg);
         }
     }
 
     public ManagedObjectReference getId() {
-        return ref;
+        return this.ref;
     }
 }

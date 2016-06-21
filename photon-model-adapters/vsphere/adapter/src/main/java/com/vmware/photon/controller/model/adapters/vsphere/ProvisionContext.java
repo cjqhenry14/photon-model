@@ -228,10 +228,10 @@ public class ProvisionContext {
     }
 
     public URI getAdapterManagementReference() {
-        if (child.adapterManagementReference != null) {
-            return child.adapterManagementReference;
+        if (this.child.adapterManagementReference != null) {
+            return this.child.adapterManagementReference;
         } else {
-            return parent.adapterManagementReference;
+            return this.parent.adapterManagementReference;
         }
     }
 
@@ -241,10 +241,10 @@ public class ProvisionContext {
      * @return
      */
     public String getResourcePoolId() {
-        if (child.description.zoneId != null) {
-            return child.description.zoneId;
+        if (this.child.description.zoneId != null) {
+            return this.child.description.zoneId;
         } else {
-            return parent.description.zoneId;
+            return this.parent.description.zoneId;
         }
     }
 

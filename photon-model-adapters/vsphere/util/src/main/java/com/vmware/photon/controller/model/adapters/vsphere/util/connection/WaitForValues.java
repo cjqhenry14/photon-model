@@ -206,7 +206,7 @@ public class WaitForValues extends BaseHelper {
             throws InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
 
         Object[] res = new Object[fetchProps.length];
-        GetMoRef get = new GetMoRef(connection);
+        GetMoRef get = new GetMoRef(this.connection);
 
         Map<String, Object> prop2Value = get.entityProps(moRef, fetchProps);
         for (int i = 0; i < fetchProps.length; i++) {

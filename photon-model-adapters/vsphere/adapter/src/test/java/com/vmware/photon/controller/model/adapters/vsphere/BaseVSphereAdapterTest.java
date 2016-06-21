@@ -58,37 +58,37 @@ public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
         // TODO: VSYM-992 - improve test/fix arbitrary timeout
         this.host.setTimeoutSeconds(600);
 
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
+        this.host.startService(
+                Operation.createPost(UriUtils.buildUri(this.host,
                         VSphereAdapterInstanceService.class)),
                 new VSphereAdapterInstanceService());
 
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
+        this.host.startService(
+                Operation.createPost(UriUtils.buildUri(this.host,
                         VSphereAdapterPowerService.class)),
                 new VSphereAdapterPowerService());
 
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
+        this.host.startService(
+                Operation.createPost(UriUtils.buildUri(this.host,
                         VSphereAdapterSnapshotService.class)),
                 new VSphereAdapterSnapshotService());
 
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
+        this.host.startService(
+                Operation.createPost(UriUtils.buildUri(this.host,
                         VSphereAdapterResourceEnumerationService.class)),
                 new VSphereAdapterResourceEnumerationService());
 
-        host.waitForServiceAvailable(PhotonModelServices.LINKS);
-        host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+        this.host.waitForServiceAvailable(PhotonModelServices.LINKS);
+        this.host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
 
-        host.waitForServiceAvailable(VSphereAdapterInstanceService.SELF_LINK,
+        this.host.waitForServiceAvailable(VSphereAdapterInstanceService.SELF_LINK,
                 VSphereAdapterPowerService.SELF_LINK,
                 VSphereAdapterSnapshotService.SELF_LINK,
                 VSphereAdapterResourceEnumerationService.SELF_LINK);
 
-        vcUrl = System.getProperty("vc.url");
-        if (vcUrl == null) {
-            vcUrl = "http://not-configured";
+        this.vcUrl = System.getProperty("vc.url");
+        if (this.vcUrl == null) {
+            this.vcUrl = "http://not-configured";
         }
     }
 
@@ -104,7 +104,7 @@ public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
     }
 
     public boolean isMock() {
-        return vcUsername == null || vcUsername.length() == 0;
+        return this.vcUsername == null || this.vcUsername.length() == 0;
     }
 
     public BasicConnection createConnection() {
@@ -114,9 +114,9 @@ public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
 
         BasicConnection connection = new BasicConnection();
         connection.setIgnoreSslErrors(true);
-        connection.setUsername(vcUsername);
-        connection.setPassword(vcPassword);
-        connection.setURI(URI.create(vcUrl));
+        connection.setUsername(this.vcUsername);
+        connection.setPassword(this.vcPassword);
+        connection.setURI(URI.create(this.vcUrl));
         connection.connect();
         return connection;
     }
@@ -138,8 +138,8 @@ public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
     }
 
     protected ComputeState getComputeState(ComputeState vm) throws Throwable {
-        return host.getServiceState(null, ComputeState.class,
-                UriUtils.buildUri(host, vm.documentSelfLink));
+        return this.host.getServiceState(null, ComputeState.class,
+                UriUtils.buildUri(this.host, vm.documentSelfLink));
     }
 
     protected ResourcePoolState createResourcePool()
@@ -167,8 +167,8 @@ public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
     protected AuthCredentialsServiceState createAuth() throws Throwable {
         AuthCredentialsServiceState auth = new AuthCredentialsServiceState();
         auth.type = DEFAULT_AUTH_TYPE;
-        auth.privateKeyId = vcUsername;
-        auth.privateKey = vcPassword;
+        auth.privateKeyId = this.vcUsername;
+        auth.privateKey = this.vcPassword;
         auth.documentSelfLink = UUID.randomUUID().toString();
 
         AuthCredentialsServiceState result = TestUtils

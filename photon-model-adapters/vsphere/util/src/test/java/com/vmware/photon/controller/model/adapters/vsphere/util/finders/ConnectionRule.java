@@ -54,7 +54,7 @@ public class ConnectionRule extends ExternalResource {
             }
         }
 
-        return connection;
+        return this.connection;
     }
 
     @Override

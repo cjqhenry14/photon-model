@@ -352,7 +352,7 @@ public class FirewallServiceTest extends Suite {
         @Test
         public void testTenantLinksQuery() throws Throwable {
             FirewallService.FirewallState firewallState = buildValidStartState();
-            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(this.host, TenantService.class);
             firewallState.tenantLinks = new ArrayList<>();
             firewallState.tenantLinks.add(UriUtils.buildUriPath(
                     tenantUri.getPath(), "tenantA"));

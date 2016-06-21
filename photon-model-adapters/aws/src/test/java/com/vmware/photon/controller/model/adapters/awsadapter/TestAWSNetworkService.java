@@ -70,17 +70,17 @@ public class TestAWSNetworkService {
         CommandLineArgumentParser.parseFromProperties(this);
 
         // ignore if any of the required properties are missing
-        org.junit.Assume.assumeTrue(TestUtils.isNull(privateKey, privateKeyId, region, subnet));
+        org.junit.Assume.assumeTrue(TestUtils.isNull(this.privateKey, this.privateKeyId, this.region, this.subnet));
 
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
-            PhotonModelServices.startServices(host);
-            PhotonModelTaskServices.startServices(host);
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
 
             this.netSvc = new AWSNetworkService();
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host,
+            this.host.startService(
+                    Operation.createPost(UriUtils.buildUri(this.host,
                             AWSNetworkService.class)),
                     this.netSvc);
             this.aws = new AWSAllocation(null);
@@ -103,7 +103,7 @@ public class TestAWSNetworkService {
 
     @Test
     public void testGetDefaultVPCSubnet() throws Throwable {
-        String sub = getDefaultVPCSubnet(aws);
+        String sub = getDefaultVPCSubnet(this.aws);
         // should always return an RFC1918 address
         TaskUtils.isRFC1918(sub);
     }
@@ -135,8 +135,8 @@ public class TestAWSNetworkService {
         // Since only one exception can be thrown in a test we will only verify the removal
         // of the VPC.  VPC removal requires all related objects be removed, so if the VPC
         // is gone then it's safe to say the subnet is as well
-        expectedEx.expect(AmazonServiceException.class);
-        expectedEx.expectMessage("InvalidVpcID.NotFound");
+        this.expectedEx.expect(AmazonServiceException.class);
+        this.expectedEx.expectMessage("InvalidVpcID.NotFound");
         this.netSvc.getVPC(vpcID, this.aws.amazonEC2Client);
     }
 
@@ -204,15 +204,15 @@ public class TestAWSNetworkService {
 
     @Test
     public void TestGetInvalidVPC() throws Throwable {
-        expectedEx.expect(AmazonServiceException.class);
-        expectedEx.expectMessage("InvalidVpcID.NotFound");
+        this.expectedEx.expect(AmazonServiceException.class);
+        this.expectedEx.expectMessage("InvalidVpcID.NotFound");
         this.netSvc.getVPC("1234", this.aws.amazonEC2Client);
     }
 
     @Test
     public void testGetInvalidSubnet() throws Throwable {
-        expectedEx.expect(AmazonServiceException.class);
-        expectedEx.expectMessage("InvalidSubnetID.NotFound");
+        this.expectedEx.expect(AmazonServiceException.class);
+        this.expectedEx.expectMessage("InvalidSubnetID.NotFound");
         this.netSvc.getSubnet("1234", this.aws.amazonEC2Client);
     }
 }

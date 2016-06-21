@@ -30,6 +30,6 @@ public class GenericVimFault extends Exception {
     }
 
     public MethodFault getFaultInfo() {
-        return fault;
+        return this.fault;
     }
 }

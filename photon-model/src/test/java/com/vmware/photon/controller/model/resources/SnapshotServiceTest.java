@@ -104,7 +104,7 @@ public class SnapshotServiceTest extends Suite {
         @Test
         public void testValidStartState() throws Throwable {
             SnapshotService.SnapshotState startState = buildValidStartState();
-            assertNotNull(host);
+            assertNotNull(this.host);
 
             SnapshotService.SnapshotState returnState = postServiceSynchronously(
                     SnapshotService.FACTORY_LINK,
@@ -119,7 +119,7 @@ public class SnapshotServiceTest extends Suite {
         @Test
         public void testDuplicatePost() throws Throwable {
             SnapshotService.SnapshotState startState = buildValidStartState();
-            assertNotNull(host);
+            assertNotNull(this.host);
 
             SnapshotService.SnapshotState returnState = postServiceSynchronously(
                     SnapshotService.FACTORY_LINK,
@@ -284,7 +284,7 @@ public class SnapshotServiceTest extends Suite {
         public void testTenantLinksQuery() throws Throwable {
             SnapshotService.SnapshotState st = buildValidStartState();
 
-            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(this.host, TenantService.class);
             st.tenantLinks = new ArrayList<>();
             st.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));

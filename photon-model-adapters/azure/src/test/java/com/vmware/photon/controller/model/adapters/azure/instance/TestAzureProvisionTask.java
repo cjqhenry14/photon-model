@@ -64,14 +64,14 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     @Before
     public void setUp() throws Exception {
         try {
-            azureVMName = azureVMName == null ? generateName(azureVMNamePrefix) : azureVMName;
-            PhotonModelServices.startServices(host);
-            PhotonModelTaskServices.startServices(host);
-            AzureAdapters.startServices(host);
+            this.azureVMName = this.azureVMName == null ? generateName(this.azureVMNamePrefix) : this.azureVMName;
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
+            AzureAdapters.startServices(this.host);
 
-            host.waitForServiceAvailable(PhotonModelServices.LINKS);
-            host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
-            host.waitForServiceAvailable(AzureAdapters.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            this.host.waitForServiceAvailable(AzureAdapters.LINKS);
 
             // TODO: VSYM-992 - improve test/fix arbitrary timeout
             this.host.setTimeoutSeconds(1200);
@@ -83,12 +83,12 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     @After
     public void tearDown() throws InterruptedException {
         // try to delete the VMs
-        if (vmState != null) {
+        if (this.vmState != null) {
             try {
-                AzureTestUtil.deleteVMs(host, vmState.documentSelfLink, isMock);
+                AzureTestUtil.deleteVMs(this.host, this.vmState.documentSelfLink, this.isMock);
             } catch (Throwable deleteEx) {
                 // just log and move on
-                host.log(Level.WARNING, "Exception deleting VM - %s", deleteEx.getMessage());
+                this.host.log(Level.WARNING, "Exception deleting VM - %s", deleteEx.getMessage());
             }
         }
     }
@@ -98,22 +98,22 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
     public void testProvision() throws Throwable {
 
         // Create a resource pool where the VM will be housed
-        ResourcePoolService.ResourcePoolState outPool = createDefaultResourcePool(host);
+        ResourcePoolService.ResourcePoolState outPool = createDefaultResourcePool(this.host);
         this.resourcePoolLink = outPool.documentSelfLink;
 
         // create a compute host for the Azure
-        ComputeState computeHost = createDefaultComputeHost(host, clientID, clientKey,
-                subscriptionId, tenantId, resourcePoolLink);
+        ComputeState computeHost = createDefaultComputeHost(this.host, this.clientID, this.clientKey,
+                this.subscriptionId, this.tenantId, this.resourcePoolLink);
 
         // create a Azure VM compute resoruce
-        vmState = createDefaultVMResource(host, azureVMName, computeHost.documentSelfLink,
-                resourcePoolLink);
+        this.vmState = createDefaultVMResource(this.host, this.azureVMName, computeHost.documentSelfLink,
+                this.resourcePoolLink);
 
         // kick off a provision task to do the actual VM creation
         ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskState();
 
-        provisionTask.computeLink = vmState.documentSelfLink;
-        provisionTask.isMockRequest = isMock;
+        provisionTask.computeLink = this.vmState.documentSelfLink;
+        provisionTask.isMockRequest = this.isMock;
         provisionTask.taskSubStage = ProvisionComputeTaskState.SubStage.CREATING_HOST;
 
         ProvisionComputeTaskState outTask = TestUtils.doPost(this.host,
@@ -130,11 +130,11 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         // check that the VM has been created
         ProvisioningUtils.queryComputeInstances(this.host, 2);
 
-        if (!skipStats) {
-            host.setTimeoutSeconds(600);
-            host.waitFor("Error waiting for stats", () -> {
+        if (!this.skipStats) {
+            this.host.setTimeoutSeconds(600);
+            this.host.waitFor("Error waiting for stats", () -> {
                 try {
-                    issueStatsRequest(vmState);
+                    issueStatsRequest(this.vmState);
                 } catch (Throwable t) {
                     return false;
                 }
@@ -143,8 +143,8 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         }
 
         // delete vm
-        deleteVMs(host, vmState.documentSelfLink, isMock);
-        vmState = null;
+        deleteVMs(this.host, this.vmState.documentSelfLink, this.isMock);
+        this.vmState = null;
     }
 
     private void issueStatsRequest(ComputeState vm) throws Throwable {
@@ -153,25 +153,25 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
             @Override
             public void handleRequest(Operation op) {
                 if (op.getAction() == Action.PATCH) {
-                    if (!isMock) {
+                    if (!TestAzureProvisionTask.this.isMock) {
                         ComputeStatsResponse resp = op.getBody(ComputeStatsResponse.class);
                         if (resp.statsList.size() != 1) {
-                            host.failIteration(
+                            TestAzureProvisionTask.this.host.failIteration(
                                     new IllegalStateException("response size was incorrect."));
                             return;
                         }
                         if (resp.statsList.get(0).statValues.size() == 0) {
-                            host.failIteration(new IllegalStateException(
+                            TestAzureProvisionTask.this.host.failIteration(new IllegalStateException(
                                     "incorrect number of metrics received."));
                             return;
                         }
                         if (!resp.statsList.get(0).computeLink.equals(vm.documentSelfLink)) {
-                            host.failIteration(
+                            TestAzureProvisionTask.this.host.failIteration(
                                     new IllegalStateException("Incorrect computeLink returned."));
                             return;
                         }
                     }
-                    host.completeIteration();
+                    TestAzureProvisionTask.this.host.completeIteration();
                 }
             }
         };
@@ -180,7 +180,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         this.host.startService(startOp, parentService);
         ComputeStatsRequest statsRequest = new ComputeStatsRequest();
         statsRequest.computeLink = vm.documentSelfLink;
-        statsRequest.isMockRequest = isMock;
+        statsRequest.isMockRequest = this.isMock;
         statsRequest.parentTaskLink = servicePath;
         this.host.sendAndWait(Operation.createPatch(UriUtils.buildUri(
                 this.host, AzureUriPaths.AZURE_STATS_ADAPTER))

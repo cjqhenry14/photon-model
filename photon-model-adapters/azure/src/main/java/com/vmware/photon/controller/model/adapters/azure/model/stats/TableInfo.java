@@ -25,10 +25,10 @@ public class TableInfo {
     private String sasTokenExpirationTime;
 
     public String getStartTime() {
-        return startTime;
+        return this.startTime;
     }
 
     public String getTableName() {
-        return tableName;
+        return this.tableName;
     }
 }

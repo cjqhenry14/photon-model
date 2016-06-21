@@ -26,10 +26,10 @@ public class Location {
     private String partitionKey;
 
     public List<TableInfo> getTableInfo() {
-        return tableInfo;
+        return this.tableInfo;
     }
 
     public String getPartitionKey() {
-        return partitionKey;
+        return this.partitionKey;
     }
 }

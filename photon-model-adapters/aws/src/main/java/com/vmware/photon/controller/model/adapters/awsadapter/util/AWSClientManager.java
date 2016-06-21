@@ -62,11 +62,11 @@ public class AWSClientManager {
     public AWSClientManager(boolean statsFlag) {
         this.statsFlag = statsFlag;
         if (statsFlag) {
-            cloudWatchClientCache = new LRUCache<String, AmazonCloudWatchAsyncClient>(
+            this.cloudWatchClientCache = new LRUCache<String, AmazonCloudWatchAsyncClient>(
                     CLIENT_CACHE_INITIAL_SIZE, CLIENT_CACHE_MAX_SIZE);
             return;
         }
-        ec2ClientCache = new LRUCache<String, AmazonEC2AsyncClient>(CLIENT_CACHE_INITIAL_SIZE,
+        this.ec2ClientCache = new LRUCache<String, AmazonEC2AsyncClient>(CLIENT_CACHE_INITIAL_SIZE,
                 CLIENT_CACHE_MAX_SIZE);
     }
 
@@ -85,19 +85,19 @@ public class AWSClientManager {
             AuthCredentialsServiceState credentials,
             String regionId, StatelessService service, URI parentTaskLink, boolean isMock,
             boolean isEnumeration) {
-        if (statsFlag) {
+        if (this.statsFlag) {
             throw new UnsupportedOperationException(
                     "Cannot get AWS EC2 Client in Stats mode.");
         }
         AmazonEC2AsyncClient amazonEC2Client = null;
         String cacheKey = credentials.documentSelfLink + TILDA + regionId;
-        if (ec2ClientCache.containsKey(cacheKey)) {
-            return ec2ClientCache.get(cacheKey);
+        if (this.ec2ClientCache.containsKey(cacheKey)) {
+            return this.ec2ClientCache.get(cacheKey);
         }
         try {
             amazonEC2Client = AWSUtils.getAsyncClient(credentials, regionId,
                     isMock, getExecutor(service.getHost()));
-            ec2ClientCache.put(cacheKey, amazonEC2Client);
+            this.ec2ClientCache.put(cacheKey, amazonEC2Client);
         } catch (Throwable e) {
             service.logSevere(e);
             if (isEnumeration) {
@@ -125,19 +125,19 @@ public class AWSClientManager {
             AuthCredentialsServiceState credentials,
             String regionId, StatelessService service,
             URI parentTaskLink, boolean isMock) {
-        if (!statsFlag) {
+        if (!this.statsFlag) {
             throw new UnsupportedOperationException(
                     "Cannot get AWS CloudWatch without Stats mode.");
         }
         String cacheKey = credentials.documentSelfLink + TILDA + regionId;
         AmazonCloudWatchAsyncClient amazonCloudWatchClient = null;
-        if (cloudWatchClientCache.containsKey(cacheKey)) {
-            return cloudWatchClientCache.get(cacheKey);
+        if (this.cloudWatchClientCache.containsKey(cacheKey)) {
+            return this.cloudWatchClientCache.get(cacheKey);
         }
         try {
             amazonCloudWatchClient = AWSUtils.getStatsAsyncClient(credentials,
                     regionId, getExecutor(service.getHost()), isMock);
-            cloudWatchClientCache.put(cacheKey, amazonCloudWatchClient);
+            this.cloudWatchClientCache.put(cacheKey, amazonCloudWatchClient);
         } catch (Throwable e) {
             service.logSevere(e);
             AdapterUtils.sendFailurePatchToProvisioningTask(service,
@@ -150,19 +150,19 @@ public class AWSClientManager {
      * Clears out the client cache and all the resources associated with each of the AWS clients.
      */
     public void cleanUp() {
-        if (statsFlag) {
-            for (AmazonCloudWatchAsyncClient client : cloudWatchClientCache.values()) {
+        if (this.statsFlag) {
+            for (AmazonCloudWatchAsyncClient client : this.cloudWatchClientCache.values()) {
                 cleanupCloudWatchClientResources(client);
             }
             cleanupExecutorCache();
-            cloudWatchClientCache.clear();
+            this.cloudWatchClientCache.clear();
             return;
         }
-        for (AmazonEC2AsyncClient client : ec2ClientCache.values()) {
+        for (AmazonEC2AsyncClient client : this.ec2ClientCache.values()) {
             cleanupEC2ClientResources(client);
         }
         cleanupExecutorCache();
-        ec2ClientCache.clear();
+        this.ec2ClientCache.clear();
     }
 
     /**
@@ -172,14 +172,14 @@ public class AWSClientManager {
     private synchronized ExecutorService getExecutor(ServiceHost host) {
         ExecutorService executorService;
         URI hostURI = host.getPublicUri();
-        if (executorCache == null) {
-            executorCache = new LRUCache<URI, ExecutorService>(
+        if (this.executorCache == null) {
+            this.executorCache = new LRUCache<URI, ExecutorService>(
                     THREAD_POOL_CACHE_INITIAL_SIZE, THREAD_POOL_CACHE_MAX_SIZE);
         }
-        executorService = executorCache.get(hostURI);
+        executorService = this.executorCache.get(hostURI);
         if (executorService == null) {
             executorService = allocateExecutor(host.getPublicUri(), Utils.DEFAULT_THREAD_COUNT);
-            executorCache.put(hostURI, executorService);
+            this.executorCache.put(hostURI, executorService);
         }
         return executorService;
     }
@@ -200,17 +200,17 @@ public class AWSClientManager {
      * Method to clear out the cache that saves the references to the executuors per host.
      */
     private void cleanupExecutorCache() {
-        if (executorCache == null) {
+        if (this.executorCache == null) {
             return;
         }
-        for (ExecutorService executorService : executorCache.values()) {
+        for (ExecutorService executorService : this.executorCache.values()) {
             // Adding this check as the Amazon client shutdown also shuts down the associated
             // executor pool.
             if (!executorService.isShutdown()) {
                 executorService.shutdown();
                 awaitTermination(logger, executorService);
             }
-            executorCache.clear();
+            this.executorCache.clear();
         }
 
     }
@@ -220,12 +220,12 @@ public class AWSClientManager {
      */
     public int getCacheCount(boolean statsFlag) {
         if (statsFlag) {
-            if (cloudWatchClientCache != null) {
-                return cloudWatchClientCache.size();
+            if (this.cloudWatchClientCache != null) {
+                return this.cloudWatchClientCache.size();
             }
         }
-        if (ec2ClientCache != null) {
-            return ec2ClientCache.size();
+        if (this.ec2ClientCache != null) {
+            return this.ec2ClientCache.size();
         }
         return 0;
     }

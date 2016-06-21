@@ -137,7 +137,7 @@ public class InstanceClient extends BaseHelper {
         this.vm = vm;
 
         ComputeState state = new ComputeState();
-        state.resourcePoolLink = VimUtils.firstNonNull(this.state.resourcePoolLink, parent.resourcePoolLink);
+        state.resourcePoolLink = VimUtils.firstNonNull(this.state.resourcePoolLink, this.parent.resourcePoolLink);
 
         enrichStateFromVm(state, vm);
 
@@ -157,7 +157,7 @@ public class InstanceClient extends BaseHelper {
         cloneSpec.setPowerOn(true);
         cloneSpec.setTemplate(false);
 
-        String displayName = getCustomProperty(ComputeProperties.CUSTOM_DISPLAY_NAME, state.description.name);
+        String displayName = getCustomProperty(ComputeProperties.CUSTOM_DISPLAY_NAME, this.state.description.name);
         ManagedObjectReference cloneTask = getVimPort()
                 .cloneVMTask(template, folder, displayName, cloneSpec);
 
@@ -177,7 +177,7 @@ public class InstanceClient extends BaseHelper {
     }
 
     public void deleteInstance() throws Exception {
-        ManagedObjectReference vm = CustomProperties.of(state)
+        ManagedObjectReference vm = CustomProperties.of(this.state)
                 .getMoRef(CustomProperties.MOREF);
 
         TaskInfo info;
@@ -222,7 +222,7 @@ public class InstanceClient extends BaseHelper {
         this.vm = vm;
 
         ComputeState state = new ComputeState();
-        state.resourcePoolLink = VimUtils.firstNonNull(this.state.resourcePoolLink, parent.resourcePoolLink);
+        state.resourcePoolLink = VimUtils.firstNonNull(this.state.resourcePoolLink, this.parent.resourcePoolLink);
 
         enrichStateFromVm(state, vm);
 
@@ -249,10 +249,10 @@ public class InstanceClient extends BaseHelper {
         }
 
         // the path to folder holding all vm files
-        String dir = get.entityProp(vm, VimPath.vm_config_files_vmPathName);
+        String dir = this.get.entityProp(this.vm, VimPath.vm_config_files_vmPathName);
         dir = Paths.get(dir).getParent().toString();
 
-        ArrayOfVirtualDevice devices = get.entityProp(vm, VimPath.vm_config_hardware_device);
+        ArrayOfVirtualDevice devices = this.get.entityProp(this.vm, VimPath.vm_config_hardware_device);
 
         VirtualDevice scsiController = getFirstScsiController(devices);
         int scsiUnit = findFreeUnit(scsiController, devices.getVirtualDevice());
@@ -326,13 +326,13 @@ public class InstanceClient extends BaseHelper {
             String dir, VirtualDevice scsiController, int unitNumber)
             throws Exception {
 
-        ManagedObjectReference diskManager = connection.getServiceContent().getVirtualDiskManager();
+        ManagedObjectReference diskManager = this.connection.getServiceContent().getVirtualDiskManager();
 
         // put full clone in the vm folder
         String destName = makePathToVmdkFile(ds, dir);
 
         // all ops are withing a datacenter
-        ManagedObjectReference sourceDc = finder.getDatacenter().object;
+        ManagedObjectReference sourceDc = this.finder.getDatacenter().object;
         ManagedObjectReference destDc = sourceDc;
 
         Boolean force = true;
@@ -545,7 +545,7 @@ public class InstanceClient extends BaseHelper {
      */
     private void enrichStateFromVm(ComputeState state, ManagedObjectReference ref)
             throws InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
-        Map<String, Object> props = get.entityProps(ref,
+        Map<String, Object> props = this.get.entityProps(ref,
                 VimPath.vm_config_instanceUuid,
                 VimPath.vm_config_name,
                 VimPath.vm_config_hardware_device,
@@ -576,7 +576,7 @@ public class InstanceClient extends BaseHelper {
         ManagedObjectReference resourcePool = getOrCreateResourcePoolForVm(true);
         ManagedObjectReference datastore = getDatastore();
 
-        String datastoreName = get.entityProp(datastore, "name");
+        String datastoreName = this.get.entityProp(datastore, "name");
         VirtualMachineConfigSpec spec = buildVirtualMachineConfigSpec(datastoreName);
 
         ManagedObjectReference vmTask = getVimPort().createVMTask(folder, spec, resourcePool, null);
@@ -618,9 +618,9 @@ public class InstanceClient extends BaseHelper {
         }
 
         if (folderPath == null) {
-            return finder.vmFolder().object;
+            return this.finder.vmFolder().object;
         } else {
-            return finder.folder(folderPath).object;
+            return this.finder.folder(folderPath).object;
         }
     }
 
@@ -635,15 +635,15 @@ public class InstanceClient extends BaseHelper {
      */
     private VirtualMachineConfigSpec buildVirtualMachineConfigSpec(String datastoreName)
             throws InvalidPropertyFaultMsg, FinderException, RuntimeFaultFaultMsg {
-        String displayName = getCustomProperty(ComputeProperties.CUSTOM_DISPLAY_NAME, state.description.name);
+        String displayName = getCustomProperty(ComputeProperties.CUSTOM_DISPLAY_NAME, this.state.description.name);
         VirtualMachineConfigSpec spec = new VirtualMachineConfigSpec();
         spec.setName(displayName);
-        spec.setNumCPUs((int) state.description.cpuCount);
+        spec.setNumCPUs((int) this.state.description.cpuCount);
         spec.setGuestId(VirtualMachineGuestOsIdentifier.OTHER_GUEST_64.value());
-        spec.setMemoryMB(toMb(state.description.totalMemoryBytes));
+        spec.setMemoryMB(toMb(this.state.description.totalMemoryBytes));
 
-        spec.getExtraConfig().add(configEntry(CONFIG_DESC_LINK, state.descriptionLink));
-        spec.getExtraConfig().add(configEntry(CONFIG_PARENT_LINK, state.parentLink));
+        spec.getExtraConfig().add(configEntry(CONFIG_DESC_LINK, this.state.descriptionLink));
+        spec.getExtraConfig().add(configEntry(CONFIG_PARENT_LINK, this.state.parentLink));
 
         VirtualMachineFileInfo files = new VirtualMachineFileInfo();
         // Use a full path to the config file to avoid creating a VM with the same name
@@ -678,7 +678,7 @@ public class InstanceClient extends BaseHelper {
             throws FinderException, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
 
         ManagedObjectReference network = getNetwork();
-        String networkName = get.entityProp(network, "name");
+        String networkName = this.get.entityProp(network, "name");
 
         VirtualEthernetCard nic = new VirtualE1000();
         nic.setAddressType(VirtualEthernetCardMacType.GENERATED.value());
@@ -717,19 +717,19 @@ public class InstanceClient extends BaseHelper {
      */
     private ManagedObjectReference getDatastore()
             throws RuntimeFaultFaultMsg, InvalidPropertyFaultMsg, FinderException {
-        if (datastore != null) {
-            return datastore;
+        if (this.datastore != null) {
+            return this.datastore;
         }
 
-        String datastorePath = state.description.dataStoreId;
+        String datastorePath = this.state.description.dataStoreId;
 
         if (datastorePath == null) {
-            datastore = finder.defaultDatastore().object;
+            this.datastore = this.finder.defaultDatastore().object;
         } else {
-            datastore = finder.datastore(datastorePath).object;
+            this.datastore = this.finder.datastore(datastorePath).object;
         }
 
-        return datastore;
+        return this.datastore;
     }
 
     /**
@@ -749,17 +749,17 @@ public class InstanceClient extends BaseHelper {
         Element parentResourcePool;
 
         // if a parent resource pool is not configured used the default one.
-        String parentResourcePath = VimUtils.firstNonNull(state.description.zoneId,
-                parent.description.zoneId);
+        String parentResourcePath = VimUtils.firstNonNull(this.state.description.zoneId,
+                this.parent.description.zoneId);
 
         if (parentResourcePath != null) {
-            parentResourcePool = finder.resourcePool(parentResourcePath);
+            parentResourcePool = this.finder.resourcePool(parentResourcePath);
         } else {
             // missing parent state path: default to the (assumed) single resource pool in the dc
-            parentResourcePool = finder.defaultResourcePool();
+            parentResourcePool = this.finder.defaultResourcePool();
         }
 
-        String vmName = state.description.name;
+        String vmName = this.state.description.name;
 
         // try to build a resource pool for the requested vm
         String resourcePoolPath = parentResourcePool.path + "/" + vmName;
@@ -767,7 +767,7 @@ public class InstanceClient extends BaseHelper {
         ManagedObjectReference result = null;
 
         try {
-            result = finder.resourcePool(resourcePoolPath).object;
+            result = this.finder.resourcePool(resourcePoolPath).object;
         } catch (FinderException e) {
             logger.log(Level.INFO, "cannot find ResourcePool " + resourcePoolPath);
             // resource pool not found
@@ -788,8 +788,8 @@ public class InstanceClient extends BaseHelper {
      * @return
      */
     private String getCustomProperty(String custPropKey, String defaultValue) {
-        if (state.description.customProperties != null) {
-            String s = state.description.customProperties.get(custPropKey);
+        if (this.state.description.customProperties != null) {
+            String s = this.state.description.customProperties.get(custPropKey);
             if (s != null) {
                 return s;
             }
@@ -846,7 +846,7 @@ public class InstanceClient extends BaseHelper {
             return getVimPort().createResourcePool(parent, name, spec);
         } catch (DuplicateNameFaultMsg e) {
             // someone else won the race to create this pool, just return it
-            return finder.resourcePool(resourcePoolPath).object;
+            return this.finder.resourcePool(resourcePoolPath).object;
         }
     }
 
@@ -861,11 +861,11 @@ public class InstanceClient extends BaseHelper {
      */
     private ManagedObjectReference getNetwork()
             throws FinderException, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
-        String id = state.description.networkId;
+        String id = this.state.description.networkId;
         if (id != null) {
-            return finder.network(id).object;
+            return this.finder.network(id).object;
         } else {
-            return finder.defaultNetwork().object;
+            return this.finder.defaultNetwork().object;
         }
     }
 

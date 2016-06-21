@@ -22,6 +22,6 @@ public class DiagnosticMonitorConfiguration {
     private WindowsEventLog windowsEventLog;
 
     public Metrics getMetrics() {
-        return metrics;
+        return this.metrics;
     }
 }

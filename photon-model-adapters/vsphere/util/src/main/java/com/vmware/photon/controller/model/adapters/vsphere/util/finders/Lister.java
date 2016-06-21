@@ -61,7 +61,7 @@ public class Lister extends BaseHelper {
 
     public List<Element> list()
             throws FinderException, InvalidPropertyFaultMsg, RuntimeFaultFaultMsg {
-        switch (start.getType()) {
+        switch (this.start.getType()) {
         case "Folder":
             return listFolder();
         case "Datacenter":
@@ -74,7 +74,7 @@ public class Lister extends BaseHelper {
         case "ResourcePool":
             return listResourcePool();
         default:
-            throw new FinderException("Unlistable type: " + start.getType());
+            throw new FinderException("Unlistable type: " + this.start.getType());
         }
     }
 
@@ -182,7 +182,7 @@ public class Lister extends BaseHelper {
         PropertyFilterSpec spec = new PropertyFilterSpec();
 
         ObjectSpec objSpec = new ObjectSpec();
-        objSpec.setObj(start);
+        objSpec.setObj(this.start);
 
         TraversalSpec selectionSpec = new TraversalSpec();
         selectionSpec.setPath("childEntity");

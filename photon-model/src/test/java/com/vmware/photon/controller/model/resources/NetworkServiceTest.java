@@ -235,7 +235,7 @@ public class NetworkServiceTest extends Suite {
         @Test
         public void testTenantLinksQuery() throws Throwable {
             NetworkService.NetworkState networkState = buildValidStartState();
-            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(this.host, TenantService.class);
             networkState.tenantLinks = new ArrayList<>();
             networkState.tenantLinks.add(UriUtils.buildUriPath(
                     tenantUri.getPath(), "tenantA"));

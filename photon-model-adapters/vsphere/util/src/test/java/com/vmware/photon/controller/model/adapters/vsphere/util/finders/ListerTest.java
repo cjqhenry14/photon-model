@@ -36,13 +36,13 @@ public class ListerTest {
 
     @Before
     public void setup() {
-        connection = rule.get();
+        this.connection = rule.get();
     }
 
     @Test
     public void list() throws InvalidPropertyFaultMsg, FinderException, RuntimeFaultFaultMsg {
 
-        Lister lister = new Lister(connection, connection.getServiceContent().getRootFolder(), "");
+        Lister lister = new Lister(this.connection, this.connection.getServiceContent().getRootFolder(), "");
 
         List<Element> list = lister.list();
         for (Element element : list) {

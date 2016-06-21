@@ -48,14 +48,14 @@ public class Recurser extends BaseHelper {
     public Recurser(Connection connection) {
         super(connection);
 
-        globCompiler = new GlobCompiler();
-        matcher = new Perl5Matcher();
+        this.globCompiler = new GlobCompiler();
+        this.matcher = new Perl5Matcher();
     }
 
     public List<Element> recurse(Element root, String... parts)
             throws InvalidPropertyFaultMsg, FinderException, RuntimeFaultFaultMsg {
         if (parts == null || parts.length == 0) {
-            if (!Lister.isTraversable(root.object) || !traverseLeafs) {
+            if (!Lister.isTraversable(root.object) || !this.traverseLeafs) {
                 return Collections.singletonList(root);
             }
         }
@@ -91,14 +91,14 @@ public class Recurser extends BaseHelper {
         Pattern compiled;
 
         try {
-            compiled = globCompiler.compile(pattern);
+            compiled = this.globCompiler.compile(pattern);
         } catch (MalformedPatternException e) {
             throw new FinderException("Bad glob pattern: " + pattern, e);
         }
 
         path = basename(path);
 
-        return matcher.matches(path, compiled);
+        return this.matcher.matches(path, compiled);
     }
 
     private String basename(String path) {
@@ -106,7 +106,7 @@ public class Recurser extends BaseHelper {
     }
 
     public boolean isTraverseLeafs() {
-        return traverseLeafs;
+        return this.traverseLeafs;
     }
 
     public void setTraverseLeafs(boolean traverseLeafs) {

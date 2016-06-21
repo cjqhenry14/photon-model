@@ -62,16 +62,16 @@ public class EnumerationClientTest {
         PropertyFilterSpec spec = client.createFullFilterSpec();
 
         for (List<ObjectContent> page : client.retrieveObjects(spec)) {
-            logger.info("***");
+            this.logger.info("***");
 
             for (ObjectContent cont : page) {
                 if (cont.getObj().getType().equals(VimNames.TYPE_VM)) {
                     VmOverlay vm = new VmOverlay(cont);
-                    logger.info(vm.getName());
-                    logger.info(vm.getInstanceUuid());
-                    logger.info(vm.getDescriptionLink());
-                    logger.info(vm.getParentLink());
-                    logger.info("" + vm.getPowerState());
+                    this.logger.info(vm.getName());
+                    this.logger.info(vm.getInstanceUuid());
+                    this.logger.info(vm.getDescriptionLink());
+                    this.logger.info(vm.getParentLink());
+                    this.logger.info("" + vm.getPowerState());
                 }
             }
         }

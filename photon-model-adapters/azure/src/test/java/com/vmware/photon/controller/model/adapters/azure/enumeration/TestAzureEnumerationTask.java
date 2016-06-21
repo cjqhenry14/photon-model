@@ -82,24 +82,24 @@ public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
     @Before
     public void setUp() throws Exception {
         try {
-            azureVMName = azureVMName == null ? generateName(azureVMNamePrefix) : azureVMName;
-            PhotonModelServices.startServices(host);
-            PhotonModelTaskServices.startServices(host);
-            AzureAdapters.startServices(host);
+            this.azureVMName = this.azureVMName == null ? generateName(this.azureVMNamePrefix) : this.azureVMName;
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
+            AzureAdapters.startServices(this.host);
             // TODO: VSYM-992 - improve test/fix arbitrary timeout
             this.host.setTimeoutSeconds(1200);
 
-            host.waitForServiceAvailable(PhotonModelServices.LINKS);
-            host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
-            host.waitForServiceAvailable(AzureAdapters.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            this.host.waitForServiceAvailable(AzureAdapters.LINKS);
 
-            ApplicationTokenCredentials credentials = new ApplicationTokenCredentials(clientID,
-                    tenantId, clientKey, AzureEnvironment.AZURE);
-            computeManagementClient = new ComputeManagementClientImpl(credentials);
-            computeManagementClient.setSubscriptionId(subscriptionId);
+            ApplicationTokenCredentials credentials = new ApplicationTokenCredentials(this.clientID,
+                    this.tenantId, this.clientKey, AzureEnvironment.AZURE);
+            this.computeManagementClient = new ComputeManagementClientImpl(credentials);
+            this.computeManagementClient.setSubscriptionId(this.subscriptionId);
 
-            resourceManagementClient = new ResourceManagementClientImpl(credentials);
-            resourceManagementClient.setSubscriptionId(subscriptionId);
+            this.resourceManagementClient = new ResourceManagementClientImpl(credentials);
+            this.resourceManagementClient.setSubscriptionId(this.subscriptionId);
         } catch (Throwable e) {
             throw new Exception(e);
         }
@@ -108,12 +108,12 @@ public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
     @After
     public void tearDown() throws InterruptedException {
         // try to delete the VMs
-        if (vmState != null) {
+        if (this.vmState != null) {
             try {
-                deleteVMs(host, vmState.documentSelfLink, isMock);
+                deleteVMs(this.host, this.vmState.documentSelfLink, this.isMock);
             } catch (Throwable deleteEx) {
                 // just log and move on
-                host.log(Level.WARNING, "Exception deleting VM - %s", deleteEx.getMessage());
+                this.host.log(Level.WARNING, "Exception deleting VM - %s", deleteEx.getMessage());
             }
         }
     }
@@ -121,22 +121,22 @@ public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
     @Test
     public void testEnumeration() throws Throwable {
         // Create a resource pool where the VM will be housed
-        ResourcePoolState outPool = createDefaultResourcePool(host);
+        ResourcePoolState outPool = createDefaultResourcePool(this.host);
         this.resourcePoolLink = outPool.documentSelfLink;
 
         // create a compute host for the Azure
-        computeHost = createDefaultComputeHost(host, clientID, clientKey, subscriptionId, tenantId,
-                resourcePoolLink);
+        this.computeHost = createDefaultComputeHost(this.host, this.clientID, this.clientKey, this.subscriptionId, this.tenantId,
+                this.resourcePoolLink);
 
         // create a Azure VM compute resoruce
-        vmState = createDefaultVMResource(host, azureVMName, computeHost.documentSelfLink,
-                resourcePoolLink);
+        this.vmState = createDefaultVMResource(this.host, this.azureVMName, this.computeHost.documentSelfLink,
+                this.resourcePoolLink);
 
         // kick off a provision task to do the actual VM creation
         ProvisionComputeTaskState provisionTask = new ProvisionComputeTaskState();
 
-        provisionTask.computeLink = vmState.documentSelfLink;
-        provisionTask.isMockRequest = isMock;
+        provisionTask.computeLink = this.vmState.documentSelfLink;
+        provisionTask.isMockRequest = this.isMock;
         provisionTask.taskSubStage = SubStage.CREATING_HOST;
 
         ProvisionComputeTaskState outTask = TestUtils
@@ -151,10 +151,10 @@ public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
         // 1 compute host instance + 1 vm compute state
         ProvisioningUtils.queryComputeInstances(this.host, 2);
 
-        if (isMock) {
+        if (this.isMock) {
             runEnumeration();
-            deleteVMs(host, vmState.documentSelfLink, isMock);
-            vmState = null;
+            deleteVMs(this.host, this.vmState.documentSelfLink, this.isMock);
+            this.vmState = null;
             ProvisioningUtils.queryComputeInstances(this.host, 1);
             return;
         }
@@ -176,8 +176,8 @@ public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
         ProvisioningUtils.queryComputeInstances(this.host, count);
 
         // delete vm directly on azure
-        computeManagementClient.getVirtualMachinesOperations()
-                .beginDelete(azureVMName, azureVMName);
+        this.computeManagementClient.getVirtualMachinesOperations()
+                .beginDelete(this.azureVMName, this.azureVMName);
 
         runEnumeration();
 
@@ -186,36 +186,36 @@ public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
         ProvisioningUtils.queryComputeInstances(this.host, count);
 
         // clean up
-        vmState = null;
-        resourceManagementClient.getResourceGroupsOperations().beginDelete(azureVMName);
+        this.vmState = null;
+        this.resourceManagementClient.getResourceGroupsOperations().beginDelete(this.azureVMName);
     }
 
     private void createAzureVMResources(int numOfVMs) throws Throwable {
         for (int i = 0; i < numOfVMs; i++) {
             String staleVMName = "stalevm-" + i;
-            createDefaultVMResource(host, staleVMName, computeHost.documentSelfLink,
-                    resourcePoolLink);
+            createDefaultVMResource(this.host, staleVMName, this.computeHost.documentSelfLink,
+                    this.resourcePoolLink);
         }
     }
 
     private void runEnumeration() throws Throwable {
         ResourceEnumerationTaskState enumerationTaskState = new ResourceEnumerationTaskState();
 
-        enumerationTaskState.computeDescriptionLink = computeHost.descriptionLink;
-        enumerationTaskState.parentComputeLink = computeHost.documentSelfLink;
+        enumerationTaskState.computeDescriptionLink = this.computeHost.descriptionLink;
+        enumerationTaskState.parentComputeLink = this.computeHost.documentSelfLink;
         enumerationTaskState.enumerationAction = EnumerationAction.START;
         enumerationTaskState.adapterManagementReference = UriUtils
                 .buildUri(AzureEnumerationAdapterService.SELF_LINK);
-        enumerationTaskState.resourcePoolLink = resourcePoolLink;
-        enumerationTaskState.isMockRequest = isMock;
+        enumerationTaskState.resourcePoolLink = this.resourcePoolLink;
+        enumerationTaskState.isMockRequest = this.isMock;
 
         ResourceEnumerationTaskState enumTask = TestUtils
-                .doPost(host, enumerationTaskState, ResourceEnumerationTaskState.class,
-                        UriUtils.buildUri(host, ResourceEnumerationTaskService.FACTORY_LINK));
+                .doPost(this.host, enumerationTaskState, ResourceEnumerationTaskState.class,
+                        UriUtils.buildUri(this.host, ResourceEnumerationTaskService.FACTORY_LINK));
 
-        host.waitFor("Error waiting for enumeration task", () -> {
+        this.host.waitFor("Error waiting for enumeration task", () -> {
             try {
-                ResourceEnumerationTaskState state = host
+                ResourceEnumerationTaskState state = this.host
                         .waitForFinishedTask(ResourceEnumerationTaskState.class,
                                 enumTask.documentSelfLink);
                 if (state != null) {
@@ -229,7 +229,7 @@ public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
     }
 
     private int getAzureVMCount() throws Exception {
-        ServiceResponse<List<VirtualMachine>> response = computeManagementClient
+        ServiceResponse<List<VirtualMachine>> response = this.computeManagementClient
                 .getVirtualMachinesOperations().listAll();
 
         int count = 0;
@@ -241,7 +241,7 @@ public class TestAzureEnumerationTask extends BasicReusableHostTestCase {
             count++;
         }
 
-        host.log("Initial VM count: %d", count);
+        this.host.log("Initial VM count: %d", count);
         return count;
     }
 }

@@ -18,6 +18,6 @@ public class Properties {
     private PublicConfiguration publicConfiguration;
 
     public PublicConfiguration getPublicConfiguration() {
-        return publicConfiguration;
+        return this.publicConfiguration;
     }
 }

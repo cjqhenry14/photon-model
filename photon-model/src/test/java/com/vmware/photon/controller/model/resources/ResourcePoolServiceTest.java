@@ -270,7 +270,7 @@ public class ResourcePoolServiceTest extends Suite {
         public void testTenantLinksQuery() throws Throwable {
             ResourcePoolService.ResourcePoolState rp = buildValidStartState();
 
-            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(this.host, TenantService.class);
             rp.tenantLinks = new ArrayList<>();
             rp.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));

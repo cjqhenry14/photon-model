@@ -117,7 +117,7 @@ public abstract class BaseModelTest extends BasicReusableHostTestCase {
 
         this.host.testStart(1);
         Operation patchOperation = Operation
-                .createPatch(UriUtils.buildUri(host, serviceUri))
+                .createPatch(UriUtils.buildUri(this.host, serviceUri))
                 .setBody(patchBody)
                 .setCompletion(this.host.getCompletion());
 

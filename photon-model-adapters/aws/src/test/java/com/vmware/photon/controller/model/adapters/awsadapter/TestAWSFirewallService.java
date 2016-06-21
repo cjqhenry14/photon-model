@@ -85,15 +85,15 @@ public class TestAWSFirewallService {
     public void setUp() throws Exception {
         CommandLineArgumentParser.parseFromProperties(this);
         // ignore if any of the required properties are missing
-        org.junit.Assume.assumeTrue(TestUtils.isNull(privateKey, privateKeyId, region, subnet));
+        org.junit.Assume.assumeTrue(TestUtils.isNull(this.privateKey, this.privateKeyId, this.region, this.subnet));
         this.host = VerificationHost.create(0);
         try {
             this.host.start();
             PhotonModelServices.startServices(this.host);
             PhotonModelTaskServices.startServices(this.host);
             this.svc = new AWSFirewallService();
-            host.startService(
-                    Operation.createPost(UriUtils.buildUri(host,
+            this.host.startService(
+                    Operation.createPost(UriUtils.buildUri(this.host,
                             AWSFirewallService.class)),
                     this.svc);
             this.client = TestUtils.getClient(this.privateKeyId,this.privateKey,this.region,false);
@@ -122,7 +122,7 @@ public class TestAWSFirewallService {
      */
     @Test
     public void testInvalidGetSecurityGroup() throws Throwable {
-        expectedEx.expect(AmazonServiceException.class);
+        this.expectedEx.expect(AmazonServiceException.class);
         getSecurityGroup(this.client, "foo-bar");
     }
 
@@ -134,7 +134,7 @@ public class TestAWSFirewallService {
     public void testDefaultSecurityGroup() throws Throwable {
         createSecurityGroup(this.client, null);
         getSecurityGroup(this.client);
-        svc.deleteSecurityGroup(this.client);
+        this.svc.deleteSecurityGroup(this.client);
     }
 
     /*
@@ -159,7 +159,7 @@ public class TestAWSFirewallService {
         validateDefaultRules(rules);
 
         // lets delete the default CM group
-        svc.deleteSecurityGroup(this.client);
+        this.svc.deleteSecurityGroup(this.client);
     }
 
     /*
@@ -168,12 +168,12 @@ public class TestAWSFirewallService {
      */
     @Test
     public void testDeleteMissingGroup() throws Throwable {
-        expectedEx.expect(AmazonServiceException.class);
-        expectedEx.expectMessage("The security group 'cell-manager-security-group' does not exist");
+        this.expectedEx.expect(AmazonServiceException.class);
+        this.expectedEx.expectMessage("The security group 'cell-manager-security-group' does not exist");
 
         // lets delete the default CM group
         // which doesn't exist
-        svc.deleteSecurityGroup(this.client);
+        this.svc.deleteSecurityGroup(this.client);
     }
 
     /*
@@ -184,7 +184,7 @@ public class TestAWSFirewallService {
         allocateSecurityGroup(this.aws);
         SecurityGroup group = getSecurityGroup(this.client);
         validateDefaultRules(group.getIpPermissions());
-        svc.deleteSecurityGroup(this.client);
+        this.svc.deleteSecurityGroup(this.client);
     }
 
     /*
@@ -205,7 +205,7 @@ public class TestAWSFirewallService {
         allocateSecurityGroup(this.aws);
         SecurityGroup updatedGroup = getSecurityGroup(this.client, DEFAULT_SECURITY_GROUP_NAME);
         validateDefaultRules(updatedGroup.getIpPermissions());
-        svc.deleteSecurityGroup(this.client);
+        this.svc.deleteSecurityGroup(this.client);
     }
 
     /*
@@ -233,7 +233,7 @@ public class TestAWSFirewallService {
         String groupID = createSecurityGroup(this.client, null);
         ArrayList<Allow> rules = TestUtils.getAllowIngressRules();
         updateIngressRules(this.client, groupID, buildRules(rules));
-        SecurityGroup awsSG = svc.getSecurityGroupByID(this.client,groupID);
+        SecurityGroup awsSG = this.svc.getSecurityGroupByID(this.client,groupID);
 
         List<IpPermission> ingress = awsSG.getIpPermissions();
 
@@ -241,7 +241,7 @@ public class TestAWSFirewallService {
             assertDefaultRules(rule);
         }
 
-        svc.deleteSecurityGroup(this.client,groupID);
+        this.svc.deleteSecurityGroup(this.client,groupID);
 
     }
 

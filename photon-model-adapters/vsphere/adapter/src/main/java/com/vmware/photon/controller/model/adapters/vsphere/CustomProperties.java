@@ -50,7 +50,7 @@ public class CustomProperties {
             throw new IllegalArgumentException("resourceState is required");
         }
 
-        getPropsForRead = () -> {
+        this.getPropsForRead = () -> {
             if (resourceState.customProperties == null) {
                 return Collections.emptyMap();
             } else {
@@ -58,7 +58,7 @@ public class CustomProperties {
             }
         };
 
-        getPropsForWrite = () -> {
+        this.getPropsForWrite = () -> {
             if (resourceState.customProperties == null) {
                 resourceState.customProperties = new HashMap<>();
             }
@@ -66,7 +66,7 @@ public class CustomProperties {
             return resourceState.customProperties;
         };
 
-        remove = (String key) -> {
+        this.remove = (String key) -> {
             if (resourceState.customProperties != null) {
                 resourceState.customProperties.remove(key);
             }
@@ -82,7 +82,7 @@ public class CustomProperties {
     }
 
     public String getString(String key, String defaultValue) {
-        String result = getPropsForRead.get().get(key);
+        String result = this.getPropsForRead.get().get(key);
         if (result == null) {
             return defaultValue;
         } else {
@@ -126,9 +126,9 @@ public class CustomProperties {
 
     public CustomProperties put(String key, String s) {
         if (s == null) {
-            remove.accept(key);
+            this.remove.accept(key);
         } else {
-            getPropsForWrite.get().put(key, s);
+            this.getPropsForWrite.get().put(key, s);
         }
 
         return this;
@@ -136,7 +136,7 @@ public class CustomProperties {
 
     public CustomProperties put(String key, Integer i) {
         if (i == null) {
-            remove.accept(key);
+            this.remove.accept(key);
         } else {
             put(key, Integer.toString(i));
         }
@@ -146,7 +146,7 @@ public class CustomProperties {
 
     public CustomProperties put(String key, Long i) {
         if (i == null) {
-            remove.accept(key);
+            this.remove.accept(key);
         } else {
             put(key, Long.toString(i));
         }

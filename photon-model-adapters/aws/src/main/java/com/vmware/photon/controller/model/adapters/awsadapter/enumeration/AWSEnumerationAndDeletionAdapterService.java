@@ -107,17 +107,17 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
         public int pageNo = 0;
 
         public EnumerationDeletionContext(AWSEnumerationRequest request, Operation op) {
-            computeEnumerationRequest = request.computeEnumerateResourceRequest;
-            awsAdapterOperation = op;
-            parentAuth = request.parentAuth;
-            computeHostDescription = request.computeHostDescription;
-            enumerationHostMap = new ConcurrentSkipListMap<String, Boolean>();
-            localInstanceIds = new ConcurrentSkipListMap<String, ComputeState>();
-            remoteInstanceIds = new HashSet<String>();
-            instancesToBeDeleted = new ArrayList<ComputeState>();
-            deleteOperations = new ArrayList<Operation>();
-            stage = AWSEnumerationDeletionStages.ENUMERATE;
-            subStage = AWSEnumerationDeletionSubStage.GET_LOCAL_RESOURCES;
+            this.computeEnumerationRequest = request.computeEnumerateResourceRequest;
+            this.awsAdapterOperation = op;
+            this.parentAuth = request.parentAuth;
+            this.computeHostDescription = request.computeHostDescription;
+            this.enumerationHostMap = new ConcurrentSkipListMap<String, Boolean>();
+            this.localInstanceIds = new ConcurrentSkipListMap<String, ComputeState>();
+            this.remoteInstanceIds = new HashSet<String>();
+            this.instancesToBeDeleted = new ArrayList<ComputeState>();
+            this.deleteOperations = new ArrayList<Operation>();
+            this.stage = AWSEnumerationDeletionStages.ENUMERATE;
+            this.subStage = AWSEnumerationDeletionSubStage.GET_LOCAL_RESOURCES;
         }
     }
 
@@ -379,10 +379,10 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            OperationContext.restoreOperationContext(opContext);
-            service.logSevere(exception);
-            AdapterUtils.sendFailurePatchToEnumerationTask(service,
-                    aws.computeEnumerationRequest.enumerationTaskReference,
+            OperationContext.restoreOperationContext(this.opContext);
+            this.service.logSevere(exception);
+            AdapterUtils.sendFailurePatchToEnumerationTask(this.service,
+                    this.aws.computeEnumerationRequest.enumerationTaskReference,
                     exception);
 
         }
@@ -390,21 +390,21 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
         @Override
         public void onSuccess(DescribeInstancesRequest request,
                 DescribeInstancesResult result) {
-            OperationContext.restoreOperationContext(opContext);
+            OperationContext.restoreOperationContext(this.opContext);
             int totalNumberOfInstances = 0;
             // Print the details of the instances discovered on the AWS endpoint
             for (Reservation r : result.getReservations()) {
                 for (Instance i : r.getInstances()) {
-                    service.logInfo("%d=====Instance details %s =====",
+                    this.service.logInfo("%d=====Instance details %s =====",
                             ++totalNumberOfInstances,
                             i.getInstanceId());
-                    aws.remoteInstanceIds.add(i.getInstanceId());
+                    this.aws.remoteInstanceIds.add(i.getInstanceId());
                 }
             }
-            service.logInfo("Successfully enumerated %d instances on the AWS host",
+            this.service.logInfo("Successfully enumerated %d instances on the AWS host",
                     totalNumberOfInstances);
-            aws.subStage = next;
-            ((AWSEnumerationAndDeletionAdapterService) service).deleteResourcesInLocalSystem(aws);
+            this.aws.subStage = this.next;
+            ((AWSEnumerationAndDeletionAdapterService) this.service).deleteResourcesInLocalSystem(this.aws);
             return;
         }
     }

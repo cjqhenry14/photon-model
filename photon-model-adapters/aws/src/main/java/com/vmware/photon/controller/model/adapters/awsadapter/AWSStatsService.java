@@ -107,9 +107,9 @@ public class AWSStatsService extends StatelessService {
         public boolean isComputeHost;
 
         public AWSStatsDataHolder() {
-            statsResponse = new ComputeStats();
+            this.statsResponse = new ComputeStats();
             // create a thread safe map to hold stats values for resource
-            statsResponse.statValues = new ConcurrentSkipListMap<>();
+            this.statsResponse.statValues = new ConcurrentSkipListMap<>();
         }
     }
 
@@ -307,15 +307,15 @@ public class AWSStatsService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToProvisioningTask(service, service.getHost(),
-                    statsData.statsRequest.parentTaskLink, exception);
+            OperationContext.restoreOperationContext(this.opContext);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this.service, this.service.getHost(),
+                    this.statsData.statsRequest.parentTaskLink, exception);
         }
 
         @Override
         public void onSuccess(GetMetricStatisticsRequest request,
                 GetMetricStatisticsResult result) {
-            OperationContext.restoreOperationContext(opContext);
+            OperationContext.restoreOperationContext(this.opContext);
             List<Datapoint> dpList = result.getDatapoints();
             // Sort the data points in increasing order of timestamp
             Collections.sort(dpList, new Comparator<Datapoint>() {
@@ -344,18 +344,18 @@ public class AWSStatsService extends StatelessService {
                 ServiceStat stat = new ServiceStat();
                 stat.latestValue = latestAverage;
                 stat.unit = AWSStatsNormalizer.getNormalizedUnitValue(DIMENSION_CURRENCY_VALUE);
-                statsData.statsResponse.statValues
+                this.statsData.statsResponse.statValues
                         .put(AWSStatsNormalizer.getNormalizedStatKeyValue(result.getLabel()), stat);
                 ServiceStat burnRateStat = new ServiceStat();
                 burnRateStat.latestValue = burnRate;
                 burnRateStat.unit = AWSStatsNormalizer
                         .getNormalizedUnitValue(DIMENSION_CURRENCY_VALUE);
-                statsData.statsResponse.statValues.put(
+                this.statsData.statsResponse.statValues.put(
                         AWSStatsNormalizer.getNormalizedStatKeyValue(AWSConstants.BURN_RATE),
                         burnRateStat);
             }
 
-            getEC2Stats(statsData, AGGREGATE_METRIC_NAMES_ACROSS_INSTANCES, true);
+            getEC2Stats(this.statsData, AGGREGATE_METRIC_NAMES_ACROSS_INSTANCES, true);
         }
 
         private long getDateDifference(Date oldDate, Date newDate, TimeUnit timeUnit) {
@@ -384,15 +384,15 @@ public class AWSStatsService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToProvisioningTask(service, service.getHost(),
-                    statsData.statsRequest.parentTaskLink, exception);
+            OperationContext.restoreOperationContext(this.opContext);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this.service, this.service.getHost(),
+                    this.statsData.statsRequest.parentTaskLink, exception);
         }
 
         @Override
         public void onSuccess(GetMetricStatisticsRequest request,
                 GetMetricStatisticsResult result) {
-            OperationContext.restoreOperationContext(opContext);
+            OperationContext.restoreOperationContext(this.opContext);
             List<Datapoint> dpList = result.getDatapoints();
             Double averageSum = 0d;
             Double sampleCount = 0d;
@@ -406,29 +406,29 @@ public class AWSStatsService extends StatelessService {
                 ServiceStat stat = new ServiceStat();
                 stat.latestValue = averageSum / sampleCount;
                 stat.unit = AWSStatsNormalizer.getNormalizedUnitValue(unit);
-                statsData.statsResponse.statValues
+                this.statsData.statsResponse.statValues
                         .put(AWSStatsNormalizer.getNormalizedStatKeyValue(result.getLabel()), stat);
             }
 
-            if (statsData.numResponses.incrementAndGet() == numOfMetrics) {
+            if (this.statsData.numResponses.incrementAndGet() == this.numOfMetrics) {
                 // Put the number of API requests as a stat
                 ServiceStat apiCallCountStat = new ServiceStat();
-                apiCallCountStat.latestValue = numOfMetrics;
-                if (isAggregateStats) {
+                apiCallCountStat.latestValue = this.numOfMetrics;
+                if (this.isAggregateStats) {
                     // Number of Aggregate metrics + 1 call for cost metric
                     apiCallCountStat.latestValue += 1;
                 }
                 apiCallCountStat.unit = PhotonModelConstants.UNIT_COUNT;
-                statsData.statsResponse.statValues.put(PhotonModelConstants.API_CALL_COUNT,
+                this.statsData.statsResponse.statValues.put(PhotonModelConstants.API_CALL_COUNT,
                         apiCallCountStat);
 
                 ComputeStatsResponse respBody = new ComputeStatsResponse();
-                statsData.statsResponse.computeLink = statsData.computeDesc.documentSelfLink;
-                respBody.taskStage = statsData.statsRequest.nextStage;
+                this.statsData.statsResponse.computeLink = this.statsData.computeDesc.documentSelfLink;
+                respBody.taskStage = this.statsData.statsRequest.nextStage;
                 respBody.statsList = new ArrayList<>();
-                respBody.statsList.add(statsData.statsResponse);
-                service.sendRequest(Operation.createPatch(
-                        UriUtils.buildUri(service.getHost(), statsData.statsRequest.parentTaskLink))
+                respBody.statsList.add(this.statsData.statsResponse);
+                this.service.sendRequest(Operation.createPatch(
+                        UriUtils.buildUri(this.service.getHost(), this.statsData.statsRequest.parentTaskLink))
                         .setBody(respBody));
             }
         }

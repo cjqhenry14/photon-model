@@ -46,8 +46,8 @@ public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
         // set the monitoring interval to 250 ms
         System.setProperty(StatsCollectionTaskSchedulerService.STATS_MONITORING_INTERVAL, "250");
         PhotonModelTaskServices.startServices(this.getHost());
-        host.startService(
-                Operation.createPost(UriUtils.buildUri(host,
+        this.host.startService(
+                Operation.createPost(UriUtils.buildUri(this.host,
                         MockStatsAdapter.class)),
                 new MockStatsAdapter());
         this.host.waitForServiceAvailable(StatsCollectionTaskService.FACTORY_LINK);
@@ -72,7 +72,7 @@ public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
         computeState.descriptionLink = descReturnState.documentSelfLink;
         computeState.resourcePoolLink = rpReturnState.documentSelfLink;
         List<String> computeLinks = new ArrayList<String>();
-        for (int i = 0; i < numResources; i++) {
+        for (int i = 0; i < this.numResources; i++) {
             ComputeState res = postServiceSynchronously(
                     ComputeService.FACTORY_LINK, computeState,
                     ComputeState.class);
@@ -85,20 +85,20 @@ public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
         postServiceSynchronously(
                 StatsCollectionTaskSchedulerService.FACTORY_LINK, schedulerState,
                 StatsCollectionTaskServiceSchedulerState.class);
-        ServiceDocumentQueryResult res = host.getFactoryState(UriUtils
-                .buildExpandLinksQueryUri(UriUtils.buildUri(host,
+        ServiceDocumentQueryResult res = this.host.getFactoryState(UriUtils
+                .buildExpandLinksQueryUri(UriUtils.buildUri(this.host,
                         StatsCollectionTaskSchedulerService.FACTORY_LINK)));
         assertTrue(res.documents.size() == 1);
 
         // get stats from resources; make sure maintenance has run more than once
-        for (int i = 0; i < numResources; i++) {
+        for (int i = 0; i < this.numResources; i++) {
             String statsUriPath = UriUtils.buildUriPath(computeLinks.get(i),
                     ServiceHost.SERVICE_URI_SUFFIX_STATS);
             this.host.waitFor("Error waiting for stats", () -> {
                 ServiceStats resStats = getServiceSynchronously(statsUriPath, ServiceStats.class);
                 boolean returnStatus = true;
                 for (ServiceStat stat : resStats.entries.values()) {
-                    if (stat.latestValue < numResources ||
+                    if (stat.latestValue < this.numResources ||
                             stat.timeSeriesStats.dataPoints.size() == 0) {
                         returnStatus = false;
                     }

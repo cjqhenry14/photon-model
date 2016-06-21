@@ -448,7 +448,7 @@ public class DiskServiceTest extends Suite {
         public void testTenantLinksQuery() throws Throwable {
             DiskService.DiskState disk = buildValidStartState();
 
-            URI tenantUri = UriUtils.buildFactoryUri(host, TenantService.class);
+            URI tenantUri = UriUtils.buildFactoryUri(this.host, TenantService.class);
             disk.tenantLinks = new ArrayList<>();
             disk.tenantLinks.add(UriUtils.buildUriPath(tenantUri.getPath(),
                     "tenantA"));

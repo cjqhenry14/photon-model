@@ -435,20 +435,20 @@ public class AWSInstanceService extends StatelessService {
             List<Operation> createOperations = new ArrayList<Operation>();
             // consumer to be invoked once a VM is in the running state
             Consumer<Instance> consumer = instance -> {
-                OperationContext.restoreOperationContext(opContext);
+                OperationContext.restoreOperationContext(this.opContext);
                 if (instance == null) {
-                    AdapterUtils.sendFailurePatchToProvisioningTask(service,
-                            computeReq.provisioningTaskReference,
+                    AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
+                            this.computeReq.provisioningTaskReference,
                             new IllegalStateException("Error getting instance EC2 instance"));
                     return;
                 }
                 ComputeStateWithDescription resultDesc = new ComputeStateWithDescription();
                 resultDesc.address = instance.getPublicIpAddress();
                 resultDesc.powerState = AWSUtils.mapToPowerState(instance.getState());
-                if (computeDesc.customProperties == null) {
+                if (this.computeDesc.customProperties == null) {
                     resultDesc.customProperties = new HashMap<String, String>();
                 } else {
-                    resultDesc.customProperties = computeDesc.customProperties;
+                    resultDesc.customProperties = this.computeDesc.customProperties;
                 }
                 resultDesc.id = instance.getInstanceId();
                 resultDesc.customProperties.put(AWSConstants.AWS_VPC_ID,
@@ -459,7 +459,7 @@ public class AWSInstanceService extends StatelessService {
                 privateNICState.address = instance.getPrivateIpAddress();
                 privateNICState.id = instance.getInstanceId() + HYPHEN + PRIVATE_INTERFACE;
                 privateNICState.documentSelfLink = privateNICState.id;
-                privateNICState.tenantLinks = computeDesc.tenantLinks;
+                privateNICState.tenantLinks = this.computeDesc.tenantLinks;
 
                 // Compute State Network Links
                 resultDesc.networkLinks = new ArrayList<String>();
@@ -473,13 +473,13 @@ public class AWSInstanceService extends StatelessService {
                     publicNICState.address = instance.getPublicIpAddress();
                     publicNICState.id = instance.getInstanceId() + HYPHEN + PUBLIC_INTERFACE;
                     publicNICState.documentSelfLink = publicNICState.id;
-                    publicNICState.tenantLinks = computeDesc.tenantLinks;
+                    publicNICState.tenantLinks = this.computeDesc.tenantLinks;
 
                     Operation postPublicNetworkInterface = Operation
-                            .createPost(service,
+                            .createPost(this.service,
                                     NetworkInterfaceService.FACTORY_LINK)
                             .setBody(publicNICState)
-                            .setReferer(service.getHost().getUri());
+                            .setReferer(this.service.getHost().getUri());
                     createOperations.add(postPublicNetworkInterface);
 
                     resultDesc.networkLinks.add(UriUtils.buildUriPath(
@@ -488,42 +488,42 @@ public class AWSInstanceService extends StatelessService {
                 }
                 // Create operations
                 Operation patchState = Operation
-                        .createPatch(computeReq.computeReference)
+                        .createPatch(this.computeReq.computeReference)
                         .setBody(resultDesc)
-                        .setReferer(service.getHost().getUri());
+                        .setReferer(this.service.getHost().getUri());
                 createOperations.add(patchState);
 
                 Operation postPrivateNetworkInterface = Operation
                         .createPost(
                                 UriUtils.buildUri(
-                                        service.getHost(),
+                                        this.service.getHost(),
                                         NetworkInterfaceService.FACTORY_LINK))
                         .setBody(privateNICState)
-                        .setReferer(service.getHost().getUri());
+                        .setReferer(this.service.getHost().getUri());
                 createOperations.add(postPrivateNetworkInterface);
 
                 OperationJoin.JoinedCompletionHandler joinCompletion = (ox,
                         exc) -> {
                     if (exc != null) {
-                        service.logSevere("Error updating VM state. %s", Utils.toString(exc));
-                        AdapterUtils.sendFailurePatchToProvisioningTask(service,
-                                computeReq.provisioningTaskReference,
+                        this.service.logSevere("Error updating VM state. %s", Utils.toString(exc));
+                        AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
+                                this.computeReq.provisioningTaskReference,
                                 new IllegalStateException("Error updating VM state"));
                         return;
                     }
-                    AdapterUtils.sendPatchToProvisioningTask(service,
-                            computeReq.provisioningTaskReference);
+                    AdapterUtils.sendPatchToProvisioningTask(this.service,
+                            this.computeReq.provisioningTaskReference);
                 };
                 OperationJoin joinOp = OperationJoin.create(createOperations);
                 joinOp.setCompletion(joinCompletion);
-                joinOp.sendWith(service.getHost());
+                joinOp.sendWith(this.service.getHost());
             };
 
             String instanceId = result.getReservation().getInstances().get(0)
                     .getInstanceId();
-            AWSTaskStatusChecker.create(amazonEC2Client, instanceId,
-                    AWSInstanceService.AWS_RUNNING_NAME, consumer, computeReq,
-                    service, taskExpirationTimeMicros).start();
+            AWSTaskStatusChecker.create(this.amazonEC2Client, instanceId,
+                    AWSInstanceService.AWS_RUNNING_NAME, consumer, this.computeReq,
+                    this.service, this.taskExpirationTimeMicros).start();
         }
     }
 
@@ -592,9 +592,9 @@ public class AWSInstanceService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToProvisioningTask(service,
-                    computeReq.provisioningTaskReference, exception);
+            OperationContext.restoreOperationContext(this.opContext);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
+                    this.computeReq.provisioningTaskReference, exception);
         }
 
         @Override
@@ -604,19 +604,19 @@ public class AWSInstanceService extends StatelessService {
 
                 @Override
                 public void accept(Instance instance) {
-                    OperationContext.restoreOperationContext(opContext);
+                    OperationContext.restoreOperationContext(AWSTerminateHandler.this.opContext);
                     if (instance == null) {
-                        AdapterUtils.sendFailurePatchToProvisioningTask(service,
-                                computeReq.provisioningTaskReference,
+                        AdapterUtils.sendFailurePatchToProvisioningTask(AWSTerminateHandler.this.service,
+                                AWSTerminateHandler.this.computeReq.provisioningTaskReference,
                                 new IllegalStateException("Error getting instance"));
                         return;
                     }
-                    deleteComputeResource(service, computeDesc, computeReq);
+                    deleteComputeResource(AWSTerminateHandler.this.service, AWSTerminateHandler.this.computeDesc, AWSTerminateHandler.this.computeReq);
                 }
             };
-            AWSTaskStatusChecker.create(amazonEC2Client, instanceId,
+            AWSTaskStatusChecker.create(this.amazonEC2Client, this.instanceId,
                     AWSInstanceService.AWS_TERMINATED_NAME, consumer,
-                    computeReq, service, taskExpirationTimeMicros).start();
+                    this.computeReq, this.service, this.taskExpirationTimeMicros).start();
         }
     }
 

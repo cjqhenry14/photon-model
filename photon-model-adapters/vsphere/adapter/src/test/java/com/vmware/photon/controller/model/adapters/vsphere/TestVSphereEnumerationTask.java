@@ -50,14 +50,14 @@ public class TestVSphereEnumerationTask extends BaseVSphereAdapterTest {
     @Test
     public void testRefresh() throws Throwable {
         // Create a resource pool where the VM will be housed
-        resourcePool = createResourcePool();
+        this.resourcePool = createResourcePool();
 
-        auth = createAuth();
+        this.auth = createAuth();
 
-        computeHostDescription = createComputeDescription();
-        computeHost = createComputeHost();
+        this.computeHostDescription = createComputeDescription();
+        this.computeHost = createComputeHost();
 
-        vmDescription = createVmDescription();
+        this.vmDescription = createVmDescription();
 
         doRefresh();
 
@@ -69,13 +69,13 @@ public class TestVSphereEnumerationTask extends BaseVSphereAdapterTest {
 
     private void doRefresh() throws Throwable {
         ResourceEnumerationTaskState task = new ResourceEnumerationTaskState();
-        task.adapterManagementReference = computeHost.adapterManagementReference;
-        task.computeDescriptionLink = vmDescription.documentSelfLink;
+        task.adapterManagementReference = this.computeHost.adapterManagementReference;
+        task.computeDescriptionLink = this.vmDescription.documentSelfLink;
 
         task.isMockRequest = isMock();
         task.enumerationAction = EnumerationAction.REFRESH;
-        task.parentComputeLink = computeHost.documentSelfLink;
-        task.resourcePoolLink = resourcePool.documentSelfLink;
+        task.parentComputeLink = this.computeHost.documentSelfLink;
+        task.resourcePoolLink = this.resourcePool.documentSelfLink;
 
         ResourceEnumerationTaskState outTask = TestUtils.doPost(this.host,
                 task,
@@ -103,8 +103,8 @@ public class TestVSphereEnumerationTask extends BaseVSphereAdapterTest {
                 .buildUri(this.host, VSphereUriPaths.ENUMERATION_SERVICE);
         computeDesc.authCredentialsLink = this.auth.documentSelfLink;
         computeDesc.name = computeDesc.id;
-        computeDesc.dataStoreId = dataStoreId;
-        computeDesc.networkId = networkId;
+        computeDesc.dataStoreId = this.dataStoreId;
+        computeDesc.networkId = this.networkId;
 
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,
@@ -118,9 +118,9 @@ public class TestVSphereEnumerationTask extends BaseVSphereAdapterTest {
         ComputeState computeState = new ComputeState();
         computeState.id = UUID.randomUUID().toString();
         computeState.documentSelfLink = computeState.id;
-        computeState.descriptionLink = computeHostDescription.documentSelfLink;
+        computeState.descriptionLink = this.computeHostDescription.documentSelfLink;
         computeState.resourcePoolLink = this.resourcePool.documentSelfLink;
-        computeState.adapterManagementReference = UriUtils.buildUri(vcUrl);
+        computeState.adapterManagementReference = UriUtils.buildUri(this.vcUrl);
 
         ComputeState returnState = TestUtils.doPost(this.host, computeState,
                 ComputeState.class,
@@ -142,7 +142,7 @@ public class TestVSphereEnumerationTask extends BaseVSphereAdapterTest {
                 .buildUri(this.host, VSphereUriPaths.ENUMERATION_SERVICE);
         computeDesc.authCredentialsLink = this.auth.documentSelfLink;
 
-        computeDesc.zoneId = zoneId;
+        computeDesc.zoneId = this.zoneId;
 
         return TestUtils.doPost(this.host, computeDesc,
                 ComputeDescription.class,

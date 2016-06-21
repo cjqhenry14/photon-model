@@ -18,6 +18,6 @@ public class AzureDiagnosticSettings {
     private Properties properties;
 
     public Properties getProperties() {
-        return properties;
+        return this.properties;
     }
 }

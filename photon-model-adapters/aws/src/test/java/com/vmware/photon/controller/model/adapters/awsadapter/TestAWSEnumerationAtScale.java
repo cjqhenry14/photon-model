@@ -94,22 +94,22 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
     public void setUp() throws Exception {
         CommandLineArgumentParser.parseFromProperties(this);
         // create credentials
-        creds = new AuthCredentialsServiceState();
-        creds.privateKey = secretKey;
-        creds.privateKeyId = accessKey;
-        client = AWSUtils.getAsyncClient(creds, TestAWSSetupUtils.zoneId,
-                isMock, getExecutor());
+        this.creds = new AuthCredentialsServiceState();
+        this.creds.privateKey = this.secretKey;
+        this.creds.privateKeyId = this.accessKey;
+        this.client = AWSUtils.getAsyncClient(this.creds, TestAWSSetupUtils.zoneId,
+                this.isMock, getExecutor());
         try {
-            PhotonModelServices.startServices(host);
-            PhotonModelTaskServices.startServices(host);
-            AWSAdapters.startServices(host);
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
+            AWSAdapters.startServices(this.host);
 
-            host.waitForServiceAvailable(PhotonModelServices.LINKS);
-            host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
-            host.waitForServiceAvailable(AWSAdapters.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            this.host.waitForServiceAvailable(AWSAdapters.LINKS);
 
             // TODO: VSYM-992 - improve test/remove arbitrary timeout
-            host.setTimeoutSeconds(200);
+            this.host.setTimeoutSeconds(200);
 
             // create the compute host, resource pool and the VM state to be used in the test.
             createResourcePoolComputeHost();
@@ -126,16 +126,16 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
         }
         try {
             // Delete all vms from the endpoint that were created from the test
-            host.log("Deleting %d instance created from the test ", instancesToCleanUp.size());
+            this.host.log("Deleting %d instance created from the test ", instancesToCleanUp.size());
             bounceAWSClient();
             if (instancesToCleanUp.size() > 0) {
-                int initialCount = instancesToCleanUp.size() % batchSize > 0
-                        ? (instancesToCleanUp.size() % batchSize) : batchSize;
+                int initialCount = instancesToCleanUp.size() % this.batchSize > 0
+                        ? (instancesToCleanUp.size() % this.batchSize) : this.batchSize;
                 boolean firstDeletionCycle = true;
                 int oldIndex = 0;
                 List<String> instanceBatchToDelete = new ArrayList<String>();
                 for (int totalDeletedInstances = initialCount; totalDeletedInstances <= instancesToCleanUp
-                        .size(); totalDeletedInstances += batchSize) {
+                        .size(); totalDeletedInstances += this.batchSize) {
                     if (firstDeletionCycle) {
                         instanceBatchToDelete = instancesToCleanUp.subList(0, initialCount);
                         firstDeletionCycle = false;
@@ -145,14 +145,14 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
                     }
                     oldIndex = totalDeletedInstances;
                     this.host.log("Deleting %d instances", instanceBatchToDelete.size());
-                    deleteAllVMsOnThisEndpoint(host, isMock, outComputeHost.documentSelfLink,
+                    deleteAllVMsOnThisEndpoint(this.host, this.isMock, this.outComputeHost.documentSelfLink,
                             instanceBatchToDelete);
                     // Check that all the instances that are required to be deleted are in
                     // terminated state on AWS
-                    waitForInstancesToBeTerminated(client, host, instanceBatchToDelete);
+                    waitForInstancesToBeTerminated(this.client, this.host, instanceBatchToDelete);
                 }
             }
-            cleanupEC2ClientResources(client);
+            cleanupEC2ClientResources(this.client);
         } catch (Throwable deleteEx) {
             // just log and move on
             this.host.log(Level.WARNING, "Exception deleting VMs - %s", deleteEx.getMessage());
@@ -163,66 +163,66 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
      * Re-initializes the AWS client so that the outstanding memory buffers and threads are released back.
      */
     private void bounceAWSClient() {
-        cleanupEC2ClientResources(client);
-        client = AWSUtils.getAsyncClient(creds, TestAWSSetupUtils.zoneId,
-                isMock, getExecutor());
+        cleanupEC2ClientResources(this.client);
+        this.client = AWSUtils.getAsyncClient(this.creds, TestAWSSetupUtils.zoneId,
+                this.isMock, getExecutor());
     }
 
     @Test
     public void testEnumerationAtScale() throws Throwable {
-        if (!isMock) {
+        if (!this.isMock) {
             this.host.setTimeoutSeconds(600);
-            baseLineState = getBaseLineInstanceCount(this.host, client, testComputeDescriptions);
+            this.baseLineState = getBaseLineInstanceCount(this.host, this.client, testComputeDescriptions);
             // Run data collection when there are no resources on the AWS endpoint. Ensure that
             // there are no failures if the number of discovered instances is 0.
-            enumerateResources(this.host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+            enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
+                    this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_BASELINE_VMs);
             // Check if the requested number of instances are under the set account limits
-            if ((baseLineState.baselineVMCount + instanceCountAtScale) >= awsAccountLimit) {
+            if ((this.baseLineState.baselineVMCount + this.instanceCountAtScale) >= this.awsAccountLimit) {
                 this.host.log(
                         "Requested number of resources will exceed account limit. Reducing number"
                         + " of requested instances");
-                instanceCountAtScale = awsAccountLimit - baseLineState.baselineVMCount;
+                this.instanceCountAtScale = this.awsAccountLimit - this.baseLineState.baselineVMCount;
             }
             // Create {instanceCountAtScale} VMs on AWS
-            this.host.log("Running scale test by provisioning %d instances", instanceCountAtScale);
-            int initialCount = instanceCountAtScale % batchSize > 0
-                    ? (instanceCountAtScale % batchSize) : batchSize;
+            this.host.log("Running scale test by provisioning %d instances", this.instanceCountAtScale);
+            int initialCount = this.instanceCountAtScale % this.batchSize > 0
+                    ? (this.instanceCountAtScale % this.batchSize) : this.batchSize;
             boolean firstSpawnCycle = true;
-            for (int totalSpawnedInstances = initialCount; totalSpawnedInstances <= instanceCountAtScale; totalSpawnedInstances += batchSize) {
-                int instancesToSpawn = batchSize;
+            for (int totalSpawnedInstances = initialCount; totalSpawnedInstances <= this.instanceCountAtScale; totalSpawnedInstances += this.batchSize) {
+                int instancesToSpawn = this.batchSize;
                 if (firstSpawnCycle) {
                     instancesToSpawn = initialCount;
                     firstSpawnCycle = false;
                 }
-                instanceIds = provisionAWSVMWithEC2Client(client, this.host, instancesToSpawn,
+                instanceIds = provisionAWSVMWithEC2Client(this.client, this.host, instancesToSpawn,
                         instanceType_t2_micro);
                 instancesToCleanUp.addAll(instanceIds);
                 this.host.log("Instances to cleanup is %d", instancesToCleanUp.size());
-                waitForProvisioningToComplete(instanceIds, this.host, client, errorRate);
+                waitForProvisioningToComplete(instanceIds, this.host, this.client, this.errorRate);
                 this.host.log("Instances have turned on");
             }
-            enumerateResources(this.host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+            enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
+                    this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_INITIAL_RUN_AT_SCALE);
 
             // UPDATE some percent of the spawned instances to have a tag
-            int instancesToTagCount = (int) ((instanceCountAtScale / HUNDERED) * modifyRate);
+            int instancesToTagCount = (int) ((this.instanceCountAtScale / HUNDERED) * this.modifyRate);
             this.host.log("Updating %d instances", instancesToTagCount);
             List<String> instanceIdsToTag = instancesToCleanUp.subList(0, instancesToTagCount);
             createNameTagForResources(instanceIdsToTag);
             // Record the time taken to discover updates to a subset of the instances.
-            enumerateResources(this.host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+            enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
+                    this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_DISCOVER_UPDATES_AT_SCALE);
 
             // DELETE some percent of the instances
             this.host.log("Deleting %d instances", instancesToTagCount);
-            deleteVMsUsingEC2Client(client, this.host, instanceIdsToTag);
+            deleteVMsUsingEC2Client(this.client, this.host, instanceIdsToTag);
             // Record time spent in enumeration to discover the deleted instances and delete them.
-            enumerateResources(this.host, isMock, outPool.documentSelfLink,
-                    outComputeHost.descriptionLink, outComputeHost.documentSelfLink,
+            enumerateResources(this.host, this.isMock, this.outPool.documentSelfLink,
+                    this.outComputeHost.descriptionLink, this.outComputeHost.documentSelfLink,
                     TEST_CASE_DISCOVER_DELETES_AT_SCALE);
         } else {
             // Do nothing. Basic enumeration logic tested in functional test.
@@ -236,7 +236,7 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
         Tag awsName = new Tag().withKey(AWS_TAG_NAME).withValue(SCALE_VM_NAME);
         ArrayList<Tag> tags = new ArrayList<>();
         tags.add(awsName);
-        createTags(instanceIdsToTag, tags, client);
+        createTags(instanceIdsToTag, tags, this.client);
     }
 
     /**
@@ -245,10 +245,10 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
      */
     public void createResourcePoolComputeHost() throws Throwable {
         // Create a resource pool where the VM will be housed
-        outPool = createAWSResourcePool(this.host);
+        this.outPool = createAWSResourcePool(this.host);
 
         // create a compute host for the AWS EC2 VM
-        outComputeHost = createAWSComputeHost(this.host, outPool.documentSelfLink, accessKey,
-                secretKey);
+        this.outComputeHost = createAWSComputeHost(this.host, this.outPool.documentSelfLink, this.accessKey,
+                this.secretKey);
     }
 }

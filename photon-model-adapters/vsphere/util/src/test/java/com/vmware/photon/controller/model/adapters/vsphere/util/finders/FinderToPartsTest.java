@@ -58,6 +58,6 @@ public class FinderToPartsTest {
 
     @Test
     public void toParts() {
-        assertEquals(Arrays.asList(parts), Finder.toParts(path));
+        assertEquals(Arrays.asList(this.parts), Finder.toParts(this.path));
     }
 }

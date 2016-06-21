@@ -86,14 +86,14 @@ public class AzureStatsService extends StatelessService {
 
     @Override
     public void handleStart(Operation startPost) {
-        executorService = getHost().allocateExecutor(this);
+        this.executorService = getHost().allocateExecutor(this);
         super.handleStart(startPost);
     }
 
     @Override
     public void handleStop(Operation delete) {
-        executorService.shutdown();
-        awaitTermination(executorService);
+        this.executorService.shutdown();
+        awaitTermination(this.executorService);
         super.handleStop(delete);
     }
 
@@ -127,9 +127,9 @@ public class AzureStatsService extends StatelessService {
         public String partitionValue;
 
         public AzureStatsDataHolder() {
-            statsResponse = new ComputeStats();
+            this.statsResponse = new ComputeStats();
             // create a thread safe map to hold stats values for resource
-            statsResponse.statValues = new ConcurrentSkipListMap<String, ServiceStat>();
+            this.statsResponse.statValues = new ConcurrentSkipListMap<String, ServiceStat>();
         }
     }
 
@@ -373,14 +373,14 @@ public class AzureStatsService extends StatelessService {
 
         @Override
         public void onError(Exception exception) {
-            OperationContext.restoreOperationContext(opContext);
-            AdapterUtils.sendFailurePatchToProvisioningTask(service, service.getHost(),
-                    statsData.statsRequest.parentTaskLink, exception);
+            OperationContext.restoreOperationContext(this.opContext);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this.service, this.service.getHost(),
+                    this.statsData.statsRequest.parentTaskLink, exception);
         }
 
         @Override
         public void onSuccess(AzureMetricRequest request, AzureMetricResponse result) {
-            OperationContext.restoreOperationContext(opContext);
+            OperationContext.restoreOperationContext(this.opContext);
             List<Datapoint> dpList = result.getDatapoints();
             Double averageSum = 0d;
             Double count = 0d;
@@ -392,18 +392,18 @@ public class AzureStatsService extends StatelessService {
                 // TODO: https://jira-hzn.eng.vmware.com/browse/VSYM-769
                 ServiceStat stat = new ServiceStat();
                 stat.latestValue = (count == 0 ? 0 : averageSum / count);
-                statsData.statsResponse.statValues.put(
+                this.statsData.statsResponse.statValues.put(
                         AzureStatsNormalizer.getNormalizedStatKeyValue(result.getLabel()), stat);
             }
 
-            if (statsData.numResponses.incrementAndGet() == METRIC_NAMES.length) {
+            if (this.statsData.numResponses.incrementAndGet() == METRIC_NAMES.length) {
                 ComputeStatsResponse respBody = new ComputeStatsResponse();
-                statsData.statsResponse.computeLink = statsData.computeDesc.documentSelfLink;
-                respBody.taskStage = statsData.statsRequest.nextStage;
+                this.statsData.statsResponse.computeLink = this.statsData.computeDesc.documentSelfLink;
+                respBody.taskStage = this.statsData.statsRequest.nextStage;
                 respBody.statsList = new ArrayList<>();
-                respBody.statsList.add(statsData.statsResponse);
-                service.sendRequest(Operation.createPatch(
-                        UriUtils.buildUri(service.getHost(), statsData.statsRequest.parentTaskLink))
+                respBody.statsList.add(this.statsData.statsResponse);
+                this.service.sendRequest(Operation.createPatch(
+                        UriUtils.buildUri(this.service.getHost(), this.statsData.statsRequest.parentTaskLink))
                         .setBody(respBody));
             }
         }
@@ -422,7 +422,7 @@ public class AzureStatsService extends StatelessService {
     public void getMetricStatisticsAsync(
             final AzureMetricRequest request,
             final AsyncHandler<AzureMetricRequest, AzureMetricResponse> asyncHandler) {
-        executorService.submit(new Runnable() {
+        this.executorService.submit(new Runnable() {
             @Override
             public void run() {
                 AzureMetricResponse response = new AzureMetricResponse();
