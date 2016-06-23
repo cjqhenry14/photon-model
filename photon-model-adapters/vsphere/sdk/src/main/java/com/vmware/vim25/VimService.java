@@ -1,7 +1,6 @@
 
 package com.vmware.vim25;
 
-import java.net.MalformedURLException;
 import java.net.URL;
 import javax.xml.namespace.QName;
 import javax.xml.ws.Service;
@@ -17,7 +16,7 @@ import javax.xml.ws.WebServiceFeature;
  * Generated source version: 2.2
  * 
  */
-@WebServiceClient(name = "VimService", targetNamespace = "urn:vim25Service", wsdlLocation = "file:/home/jvassev/projects/dcp/photon-model/photon-model-adapters/vsphere/sdk/src/wsdl/vimService.wsdl")
+@WebServiceClient(name = "VimService", targetNamespace = "urn:vim25Service", wsdlLocation = "vimService.wsdl")
 public class VimService
     extends Service
 {
@@ -27,14 +26,11 @@ public class VimService
     private final static QName VIMSERVICE_QNAME = new QName("urn:vim25Service", "VimService");
 
     static {
-        URL url = null;
+        VIMSERVICE_WSDL_LOCATION = com.vmware.vim25.VimService.class.getResource("vimService.wsdl");
         WebServiceException e = null;
-        try {
-            url = new URL("file:/home/jvassev/projects/dcp/photon-model/photon-model-adapters/vsphere/sdk/src/wsdl/vimService.wsdl");
-        } catch (MalformedURLException ex) {
-            e = new WebServiceException(ex);
+        if (VIMSERVICE_WSDL_LOCATION == null) {
+            e = new WebServiceException("Cannot find 'vimService.wsdl' wsdl. Place the resource correctly in the classpath.");
         }
-        VIMSERVICE_WSDL_LOCATION = url;
         VIMSERVICE_EXCEPTION = e;
     }
 

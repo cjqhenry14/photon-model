@@ -39,6 +39,7 @@
                   <goal>wsimport</goal>
                 </goals>
                 <configuration>
+                  <wsdlDirectory>src/main/resources/com/vmware/vim25</wsdlDirectory>
                   <wsdlFiles>
                     <file>vimService.wsdl</file>
                   </wsdlFiles>
@@ -50,6 +51,7 @@
                 <vmArg>-Djavax.xml.accessExternalSchema=all</vmArg>
               </vmArgs>
               <packageName>com.vmware.vim25</packageName>
+              <wsdlLocation>vimService.wsdl</wsdlLocation>
               <sourceDestDir>src/main/java</sourceDestDir>
               <xnocompile>true</xnocompile>
               <verbose>true</verbose>

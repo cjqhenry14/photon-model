@@ -172,6 +172,9 @@
         <resources>
           <resource>
             <directory>src/main/resources</directory>
+            <includes>
+              <include>**/*.*</include>
+            </includes>
           </resource>
           <resource>
             <directory>target/extra-resources</directory>
@@ -243,8 +246,7 @@
       <resource>
         <directory>src/main/resources</directory>
         <includes>
-          <include>*.git.properties</include>
-          <include>bin/*</include>
+          <include>**/*.*</include>
         </includes>
       </resource>
     </resources>
