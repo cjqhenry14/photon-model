@@ -196,8 +196,7 @@ public class TestProvisionAWSNetwork {
         NetworkState net = getNetworkState(networkDescriptionLink);
 
         AWSNetworkService netSVC = new AWSNetworkService();
-        AmazonEC2AsyncClient client = AWSUtils.getAsyncClient(creds, this.region, false,
-                getExecutor());
+        AmazonEC2AsyncClient client = AWSUtils.getAsyncClient(creds, this.region, getExecutor());
         // if any artifact is not present then an error will be thrown
         assertNotNull(
                 netSVC.getVPC(net.customProperties.get(AWS_VPC_ID), client));

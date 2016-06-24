@@ -351,8 +351,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
                 this, aws, next);
         aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
                 aws.computeHostDescription.zoneId, this,
-                aws.computeEnumerationRequest.enumerationTaskReference,
-                aws.computeEnumerationRequest.isMockRequest, true);
+                aws.computeEnumerationRequest.enumerationTaskReference, true);
         aws.amazonEC2Client.describeInstancesAsync(request,
                 resultHandler);
     }

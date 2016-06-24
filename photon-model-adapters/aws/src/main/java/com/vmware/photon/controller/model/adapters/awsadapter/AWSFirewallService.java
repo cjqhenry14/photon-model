@@ -125,8 +125,7 @@ public class AWSFirewallService extends StatelessService {
         case AWS_CLIENT:
             requestState.client = this.clientManager.getOrCreateEC2Client(requestState.credentials,
                     requestState.firewall.regionID, this,
-                    requestState.firewallRequest.provisioningTaskReference,
-                    requestState.firewallRequest.isMockRequest, false);
+                    requestState.firewallRequest.provisioningTaskReference, false);
             if (requestState.firewallRequest.requestType == FirewallInstanceRequest.InstanceRequestType.CREATE) {
                 requestState.stage = FirewallStage.PROVISION_SECURITY_GROUP;
             } else {

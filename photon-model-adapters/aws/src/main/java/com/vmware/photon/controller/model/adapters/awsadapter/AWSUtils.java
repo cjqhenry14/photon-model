@@ -80,8 +80,7 @@ public class AWSUtils {
     public static final String DEFAULT_PROTOCOL = "tcp";
 
     public static AmazonEC2AsyncClient getAsyncClient(
-            AuthCredentialsServiceState credentials, String region,
-            boolean isMockRequest, ExecutorService executorService) {
+            AuthCredentialsServiceState credentials, String region, ExecutorService executorService) {
         AmazonEC2AsyncClient ec2AsyncClient = new AmazonEC2AsyncClient(
                 new BasicAWSCredentials(credentials.privateKeyId,
                         credentials.privateKey),
@@ -89,11 +88,6 @@ public class AWSUtils {
 
         ec2AsyncClient.setRegion(Region.getRegion(Regions.fromName(region)));
 
-        // make a call to validate credentials
-        if (!isMockRequest) {
-            ec2AsyncClient.describeAvailabilityZones();
-
-        }
         return ec2AsyncClient;
 
     }
@@ -200,7 +194,7 @@ public class AWSUtils {
 
     /**
      * Returns the region Id for the AWS instance
-     * @param vm
+     *
      * @return the region id
      */
     public static String getRegionId(Instance i) {

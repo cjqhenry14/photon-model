@@ -270,8 +270,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             AWSEnumerationCreationStages next) {
         aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
                 aws.computeHostDescription.zoneId, this,
-                aws.computeEnumerationRequest.enumerationTaskReference,
-                aws.computeEnumerationRequest.isMockRequest, true);
+                aws.computeEnumerationRequest.enumerationTaskReference, true);
         aws.stage = next;
         handleEnumerationRequest(aws);
     }
@@ -505,7 +504,6 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
 
         /**
          * Posts a compute description to the compute description service for creation.
-         * @param documentSelfLink
          */
         private void createComputeDescriptions(AWSEnumerationCreationSubStage next) {
             AWSComputeDescriptionCreationState cd = new AWSComputeDescriptionCreationState();

@@ -97,8 +97,7 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
         this.creds = new AuthCredentialsServiceState();
         this.creds.privateKey = this.secretKey;
         this.creds.privateKeyId = this.accessKey;
-        this.client = AWSUtils.getAsyncClient(this.creds, TestAWSSetupUtils.zoneId,
-                this.isMock, getExecutor());
+        this.client = AWSUtils.getAsyncClient(this.creds, TestAWSSetupUtils.zoneId, getExecutor());
         try {
             PhotonModelServices.startServices(this.host);
             PhotonModelTaskServices.startServices(this.host);
@@ -164,8 +163,7 @@ public class TestAWSEnumerationAtScale extends BasicReusableHostTestCase {
      */
     private void bounceAWSClient() {
         cleanupEC2ClientResources(this.client);
-        this.client = AWSUtils.getAsyncClient(this.creds, TestAWSSetupUtils.zoneId,
-                this.isMock, getExecutor());
+        this.client = AWSUtils.getAsyncClient(this.creds, TestAWSSetupUtils.zoneId, getExecutor());
     }
 
     @Test

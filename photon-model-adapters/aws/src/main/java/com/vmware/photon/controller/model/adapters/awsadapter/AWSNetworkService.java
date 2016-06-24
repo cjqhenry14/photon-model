@@ -137,8 +137,7 @@ public class AWSNetworkService extends StatelessService {
         case AWS_CLIENT:
             awsNet.client = this.clientManager.getOrCreateEC2Client(
                     awsNet.credentials, awsNet.network.regionID,
-                    this, awsNet.networkRequest.provisioningTaskReference,
-                    awsNet.networkRequest.isMockRequest, false);
+                    this, awsNet.networkRequest.provisioningTaskReference, false);
             if (awsNet.networkRequest.requestType == NetworkInstanceRequest.InstanceRequestType.CREATE) {
                 awsNet.stage = NetworkStage.PROVISION_VPC;
             } else {

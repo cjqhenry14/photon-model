@@ -92,7 +92,7 @@ public class TestAWSUtils {
         AuthCredentialsServiceState creds = new AuthCredentialsServiceState();
         creds.privateKey = this.privateKey;
         creds.privateKeyId = this.privateKeyId;
-        AWSUtils.getAsyncClient(creds, this.region, false, getExecutor());
+        AWSUtils.getAsyncClient(creds, this.region, getExecutor());
     }
 
     @Test
@@ -101,7 +101,7 @@ public class TestAWSUtils {
         AuthCredentialsServiceState creds = new AuthCredentialsServiceState();
         creds.privateKey = "bar";
         creds.privateKeyId = "foo";
-        AWSUtils.getAsyncClient(creds, this.region, false, getExecutor());
+        AWSUtils.getAsyncClient(creds, this.region, getExecutor());
     }
 
     @Test

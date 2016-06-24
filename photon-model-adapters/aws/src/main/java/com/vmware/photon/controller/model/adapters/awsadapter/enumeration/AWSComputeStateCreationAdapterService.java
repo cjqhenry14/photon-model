@@ -198,8 +198,6 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
 
     /**
      * Method to create Compute States associated with the instances received from the AWS host.
-     * @param next
-     * @param instancesToBeCreated
      */
     private void createOperations(AWSComputeServiceCreationContext context,
             AWSComputeStateCreationStage next) {
@@ -228,8 +226,8 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
     }
 
     /**
-     * Populates the compute state / network link associated with an AWS VM instance and creates an operation for posting it.
-     * @param csDetails
+     * Populates the compute state / network link associated with an AWS VM instance and creates an
+     * operation for posting it.
      */
     private void populateComputeStateAndNetworks(AWSComputeServiceCreationContext context,
             Instance instance, String existingComputeStateDocumentLink,
@@ -421,13 +419,12 @@ public class AWSComputeStateCreationAdapterService extends StatelessService {
 
     /**
      * Method to instantiate the AWS Async client for future use
-     * @param aws
      */
     private void getAWSAsyncClient(AWSComputeServiceCreationContext context,
             AWSNetworkCreationStage next) {
         context.amazonEC2Client = this.clientManager.getOrCreateEC2Client(
                 context.computeState.parentAuth, context.computeState.regionId,
-                this, context.computeState.parentTaskLink, false, true);
+                this, context.computeState.parentTaskLink, true);
         context.networkCreationStage = next;
         handleNetworkStateChanges(context);
     }

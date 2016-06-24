@@ -78,13 +78,11 @@ public class AWSClientManager {
      * @param regionId The region of the AWS client
      * @param service The stateless service making the request and for which the executor pool needs to be allocated.
      * @param parentTaskLink The parentTaskLink where the error (if any) needs to be reported.
-     * @param isMock Indicates if this a mock request
      * @return The AWSClient
      */
     public synchronized AmazonEC2AsyncClient getOrCreateEC2Client(
             AuthCredentialsServiceState credentials,
-            String regionId, StatelessService service, URI parentTaskLink, boolean isMock,
-            boolean isEnumeration) {
+            String regionId, StatelessService service, URI parentTaskLink, boolean isEnumeration) {
         if (this.statsFlag) {
             throw new UnsupportedOperationException(
                     "Cannot get AWS EC2 Client in Stats mode.");
@@ -95,8 +93,8 @@ public class AWSClientManager {
             return this.ec2ClientCache.get(cacheKey);
         }
         try {
-            amazonEC2Client = AWSUtils.getAsyncClient(credentials, regionId,
-                    isMock, getExecutor(service.getHost()));
+            amazonEC2Client = AWSUtils
+                    .getAsyncClient(credentials, regionId, getExecutor(service.getHost()));
             this.ec2ClientCache.put(cacheKey, amazonEC2Client);
         } catch (Throwable e) {
             service.logSevere(e);
@@ -115,7 +113,6 @@ public class AWSClientManager {
      * Get or create a CloudWatch Client instance that will be used to get stats from AWS.
      * @param credentials The auth credentials to be used for the client creation
      * @param regionId The region of the AWS client
-     * @param executorService The executorService used to run the requests.
      * @param service The stateless service for which the operation is being performed.
      * @param parentTaskLink The parentTaskLink where the error (if any) needs to be reported.
      * @param isMock Indicates if this a mock request

@@ -227,8 +227,7 @@ public class TestProvisionAWSFirewall {
         FirewallState fw = getFirewallState(firewallDescriptionLink);
 
         AWSFirewallService fwSVC = new AWSFirewallService();
-        AmazonEC2AsyncClient client = AWSUtils.getAsyncClient(creds, this.region, false,
-                getExecutor());
+        AmazonEC2AsyncClient client = AWSUtils.getAsyncClient(creds, this.region, getExecutor());
         // if any artifact is not present then an error will be thrown
         assertNotNull(fwSVC.getSecurityGroupByID(client,
                 fw.customProperties.get(AWSFirewallService.SECURITY_GROUP_ID)));

@@ -110,15 +110,13 @@ public class TestAWSClientManagement extends BasicReusableHostTestCase {
         this.creds.privateKeyId = this.secretKey;
 
         this.client = clientManager.getOrCreateEC2Client(this.creds, TestAWSSetupUtils.zoneId,
-                this.instanceService, null,
-                this.isMock, false);
+                this.instanceService, null, false);
         assertEquals(count1, clientManager.getCacheCount(false));
 
         // Requesting another AWS client with the same set of credentials will not
         // create a new entry in the cache
         this.client = clientManager.getOrCreateEC2Client(this.creds, TestAWSSetupUtils.zoneId,
-                this.instanceService, null,
-                this.isMock, false);
+                this.instanceService, null, false);
         assertEquals(count1, clientManager.getCacheCount(false));
 
         // Saving a reference to the executor associated with the client to chec

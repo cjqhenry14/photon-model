@@ -28,6 +28,7 @@ import static com.vmware.photon.controller.model.adapters.azure.constants.AzureC
 import static com.vmware.photon.controller.model.adapters.azure.utils.AzureUtils.awaitTermination;
 import static com.vmware.photon.controller.model.adapters.azure.utils.AzureUtils.cleanUpHttpClient;
 import static com.vmware.photon.controller.model.adapters.azure.utils.AzureUtils.getAzureConfig;
+import static com.vmware.xenon.common.Operation.STATUS_CODE_UNAUTHORIZED;
 
 import java.io.File;
 import java.net.URI;
@@ -106,6 +107,7 @@ import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.ServiceDocument;
+import com.vmware.xenon.common.ServiceErrorResponse;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
@@ -325,7 +327,11 @@ public class AzureInstanceService extends StatelessService {
                 ctx.parentAuth.userLink, new ServiceCallback<Subscription>() {
                     @Override
                     public void failure(Throwable e) {
-                        ctx.operation.fail(e);
+                        // Azure doesn't send us any meaningful status code to work with
+                        ServiceErrorResponse rsp = new ServiceErrorResponse();
+                        rsp.message = "Invalid Azure credentials";
+                        rsp.statusCode = STATUS_CODE_UNAUTHORIZED;
+                        ctx.operation.fail(e, rsp);
                     }
 
                     @Override

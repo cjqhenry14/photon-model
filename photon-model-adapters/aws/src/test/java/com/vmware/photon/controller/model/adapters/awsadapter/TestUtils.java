@@ -48,7 +48,7 @@ public class TestUtils {
         AuthCredentialsServiceState creds = new AuthCredentialsServiceState();
         creds.privateKey = privateKey;
         creds.privateKeyId = privateKeyId;
-        return AWSUtils.getAsyncClient(creds, region, isMockRequest, getExecutor());
+        return AWSUtils.getAsyncClient(creds, region, getExecutor());
     }
 
     // validate that the passed items are not null

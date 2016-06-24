@@ -193,8 +193,7 @@ public class TestAWSProvisionTask {
             AuthCredentialsServiceState creds = new AuthCredentialsServiceState();
             creds.privateKey = this.secretKey;
             creds.privateKeyId = this.accessKey;
-            client = AWSUtils.getAsyncClient(creds, TestAWSSetupUtils.zoneId,
-                this.isMock, getExecutor());
+            client = AWSUtils.getAsyncClient(creds, TestAWSSetupUtils.zoneId, getExecutor());
             remoteStateBefore = TestAWSSetupUtils.getBaseLineInstanceCount(this.host, client, null);
         }
         // delete just the local representation of the resource

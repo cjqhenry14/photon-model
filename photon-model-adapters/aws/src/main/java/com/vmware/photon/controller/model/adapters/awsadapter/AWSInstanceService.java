@@ -18,6 +18,7 @@ import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstant
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.PUBLIC_INTERFACE;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.allocateSecurityGroup;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getSecurityGroup;
+import static com.vmware.xenon.common.Operation.STATUS_CODE_UNAUTHORIZED;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -29,8 +30,11 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.handlers.AsyncHandler;
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
+import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesRequest;
+import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
 import com.amazonaws.services.ec2.model.RunInstancesResult;
@@ -48,12 +52,12 @@ import com.vmware.photon.controller.model.resources.DiskService.DiskType;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Operation.CompletionHandler;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.ServiceDocument;
+import com.vmware.xenon.common.ServiceErrorResponse;
 import com.vmware.xenon.common.StatelessService;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
@@ -138,8 +142,7 @@ public class AWSInstanceService extends StatelessService {
         case CLIENT:
             aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
                     getRequestRegionId(aws), this,
-                    aws.computeRequest.provisioningTaskReference, aws.computeRequest.isMockRequest,
-                    false);
+                    aws.computeRequest.provisioningTaskReference, false);
             // now that we have a client lets move onto the next step
             switch (aws.computeRequest.requestType) {
             case CREATE:
@@ -152,8 +155,7 @@ public class AWSInstanceService extends StatelessService {
                 handleAllocation(aws);
                 break;
             case VALIDATE_CREDENTIALS:
-                // complete
-                aws.awsOperation.complete();
+                validateAWSCredentials(aws);
                 break;
             default:
                 aws.error = new Exception("Unknown AWS provisioning stage");
@@ -688,6 +690,40 @@ public class AWSInstanceService extends StatelessService {
             return aws.child.description.customProperties.get(AWSConstants.AWS_SUBNET_ID);
         }
         return null;
+    }
+
+    private void validateAWSCredentials(final AWSAllocation aws) {
+        if (aws.computeRequest.isMockRequest) {
+            aws.awsOperation.complete();
+            return;
+        }
+
+        aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
+                getRequestRegionId(aws), this,
+                aws.computeRequest.provisioningTaskReference, false);
+
+        // make a call to validate credentials
+        aws.amazonEC2Client.describeAvailabilityZonesAsync(new DescribeAvailabilityZonesRequest(),
+                new AsyncHandler<DescribeAvailabilityZonesRequest, DescribeAvailabilityZonesResult>() {
+                    @Override public void onError(Exception e) {
+                        if (e instanceof AmazonServiceException) {
+                            AmazonServiceException ase = (AmazonServiceException) e;
+                            if (ase.getStatusCode() == STATUS_CODE_UNAUTHORIZED) {
+                                ServiceErrorResponse r = Utils.toServiceErrorResponse(e);
+                                r.statusCode = STATUS_CODE_UNAUTHORIZED;
+                                aws.awsOperation.fail(e, r);
+                            }
+                            return;
+                        }
+
+                        aws.awsOperation.fail(e);
+                    }
+
+                    @Override public void onSuccess(DescribeAvailabilityZonesRequest request,
+                            DescribeAvailabilityZonesResult describeAvailabilityZonesResult) {
+                        aws.awsOperation.complete();
+                    }
+                });
     }
 
 }
