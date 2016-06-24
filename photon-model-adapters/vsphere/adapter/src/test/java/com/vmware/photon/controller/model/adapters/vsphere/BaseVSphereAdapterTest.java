@@ -31,13 +31,13 @@ import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
 import com.vmware.photon.controller.model.tasks.TestUtils;
-import com.vmware.xenon.common.BasicReusableHostTestCase;
-import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.UriUtils;
+import com.vmware.xenon.common.test.VerificationHost;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
+import com.vmware.xenon.services.common.ExampleService;
 
-public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
+public class BaseVSphereAdapterTest {
 
     public static final String DEFAULT_AUTH_TYPE = "Username/Password";
 
@@ -50,43 +50,31 @@ public class BaseVSphereAdapterTest extends BasicReusableHostTestCase {
     public String networkId = System.getProperty(TestProperties.VC_NETWORK_ID);
 
     public String vcFolder = System.getProperty("vc.folder");
+    protected VerificationHost host;
 
     @Before
     public void setUp() throws Throwable {
-        PhotonModelServices.startServices(this.host);
-        PhotonModelTaskServices.startServices(this.host);
+        this.host = VerificationHost.create(0);
+
+        this.host.start();
+        this.host.waitForServiceAvailable(ExampleService.FACTORY_LINK);
+
         // TODO: VSYM-992 - improve test/fix arbitrary timeout
         this.host.setTimeoutSeconds(600);
 
-        this.host.startService(
-                Operation.createPost(UriUtils.buildUri(this.host,
-                        VSphereAdapterInstanceService.class)),
-                new VSphereAdapterInstanceService());
+        try {
+            PhotonModelServices.startServices(this.host);
+            PhotonModelTaskServices.startServices(this.host);
+            VSphereAdapters.startServices(this.host);
 
-        this.host.startService(
-                Operation.createPost(UriUtils.buildUri(this.host,
-                        VSphereAdapterPowerService.class)),
-                new VSphereAdapterPowerService());
+            this.host.waitForServiceAvailable(PhotonModelServices.LINKS);
+            this.host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
+            this.host.waitForServiceAvailable(VSphereAdapters.LINKS);
+        } catch (Throwable e) {
+            this.host.log("Error starting up services for the test %s", e.getMessage());
+            throw new Exception(e);
+        }
 
-        this.host.startService(
-                Operation.createPost(UriUtils.buildUri(this.host,
-                        VSphereAdapterSnapshotService.class)),
-                new VSphereAdapterSnapshotService());
-
-        this.host.startService(
-                Operation.createPost(UriUtils.buildUri(this.host,
-                        VSphereAdapterResourceEnumerationService.class)),
-                new VSphereAdapterResourceEnumerationService());
-
-        this.host.waitForServiceAvailable(PhotonModelServices.LINKS);
-        this.host.waitForServiceAvailable(PhotonModelTaskServices.LINKS);
-
-        this.host.waitForServiceAvailable(VSphereAdapterInstanceService.SELF_LINK,
-                VSphereAdapterPowerService.SELF_LINK,
-                VSphereAdapterSnapshotService.SELF_LINK,
-                VSphereAdapterResourceEnumerationService.SELF_LINK);
-
-        this.vcUrl = System.getProperty("vc.url");
         if (this.vcUrl == null) {
             this.vcUrl = "http://not-configured";
         }
