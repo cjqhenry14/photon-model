@@ -26,6 +26,8 @@ import com.vmware.xenon.common.ServiceDocumentDescription.PropertyIndexingOption
 public class ResourceState extends ServiceDocument {
 
     public static final String FIELD_NAME_GROUP_LINKS = "groupLinks";
+    public static final String FIELD_NAME_CUSTOM_PROPERTIES = "customProperties";
+    public static final String FIELD_NAME_TENANT_LINKS = "tenantLinks";
 
     /**
      * Custom property bag that can be used to store disk specific
