@@ -36,26 +36,26 @@ public class AWSConstants {
     public static final String AWS_ATTACHMENT_VPC_FILTER = "attachment.vpc-id";
     public static final String AWS_INVALID_INSTANCE_ID_ERROR_CODE = "InvalidInstanceID.NotFound";
     public static final String PROPERTY_NAME_QUERY_PAGE_SIZE = UriPaths.PROPERTY_PREFIX
-            + AWSConstants.QUERY_PAGE_SIZE;
+            + AWSConstants.class.getSimpleName() + ".QUERY_PAGE_SIZE";
     private static int QUERY_PAGE_SIZE = Integer.getInteger(PROPERTY_NAME_QUERY_PAGE_SIZE, 50);
     public static final String PROPERTY_NAME_QUERY_RESULT_LIMIT = UriPaths.PROPERTY_PREFIX
-            + AWSConstants.QUERY_RESULT_LIMIT;
+            + AWSConstants.class.getSimpleName() + ".QUERY_RESULT_LIMIT";
     private static int QUERY_RESULT_LIMIT = Integer.getInteger(PROPERTY_NAME_QUERY_RESULT_LIMIT,
             50);
     public static final String PROPERTY_NAME_CLIENT_CACHE_MAX_SIZE = UriPaths.PROPERTY_PREFIX
-            + AWSConstants.CLIENT_CACHE_MAX_SIZE;
+            + AWSConstants.class.getSimpleName() + ".CLIENT_CACHE_MAX_SIZE";
     public static int CLIENT_CACHE_MAX_SIZE = Integer.getInteger(
             PROPERTY_NAME_CLIENT_CACHE_MAX_SIZE, 50);
     public static final String PROPERTY_NAME_CLIENT_CACHE_INITIAL_SIZE = UriPaths.PROPERTY_PREFIX
-            + AWSConstants.CLIENT_CACHE_INITIAL_SIZE;
+            + AWSConstants.class.getSimpleName() + ".CLIENT_CACHE_INITIAL_SIZE";
     public static int CLIENT_CACHE_INITIAL_SIZE = Integer.getInteger(
             PROPERTY_NAME_CLIENT_CACHE_INITIAL_SIZE, 16);
     public static final String PROPERTY_NAME_THREAD_POOL_CACHE_MAX_SIZE = UriPaths.PROPERTY_PREFIX
-            + AWSConstants.THREAD_POOL_CACHE_MAX_SIZE;
+            + AWSConstants.class.getSimpleName() + ".THREAD_POOL_CACHE_MAX_SIZE";
     public static int THREAD_POOL_CACHE_MAX_SIZE = Integer.getInteger(
             PROPERTY_NAME_CLIENT_CACHE_MAX_SIZE, 10);
     public static final String PROPERTY_NAME_THREAD_POOL_CACHE_INITIAL_SIZE = UriPaths.PROPERTY_PREFIX
-            + AWSConstants.THREAD_POOL_CACHE_INITIAL_SIZE;
+            + AWSConstants.class.getSimpleName() + ".THREAD_POOL_CACHE_INITIAL_SIZE";
     public static int THREAD_POOL_CACHE_INITIAL_SIZE = Integer.getInteger(
             PROPERTY_NAME_CLIENT_CACHE_INITIAL_SIZE, 5);
 
