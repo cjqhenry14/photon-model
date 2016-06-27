@@ -41,7 +41,7 @@ public class BaseVSphereAdapterTest {
 
     public static final String DEFAULT_AUTH_TYPE = "Username/Password";
 
-    public String vcUrl;
+    public String vcUrl = System.getProperty(TestProperties.VC_URL);
     public String vcUsername = System.getProperty(TestProperties.VC_USERNAME);
     public String vcPassword = System.getProperty(TestProperties.VC_PASSWORD);
 
@@ -49,7 +49,8 @@ public class BaseVSphereAdapterTest {
     public String dataStoreId = System.getProperty(TestProperties.VC_DATASTORE_ID);
     public String networkId = System.getProperty(TestProperties.VC_NETWORK_ID);
 
-    public String vcFolder = System.getProperty("vc.folder");
+    public String vcFolder = System.getProperty(TestProperties.VC_FOLDER);
+
     protected VerificationHost host;
 
     @Before

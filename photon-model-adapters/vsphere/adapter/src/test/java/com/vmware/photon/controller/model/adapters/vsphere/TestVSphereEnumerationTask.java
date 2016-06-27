@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
@@ -48,7 +47,6 @@ public class TestVSphereEnumerationTask extends BaseVSphereAdapterTest {
     private ComputeState computeHost;
     private ComputeDescription vmDescription;
 
-    @Ignore("JIRA - https://jira-hzn.eng.vmware.com/browse/VSYM-1034")
     @Test
     public void testRefresh() throws Throwable {
         // Create a resource pool where the VM will be housed
