@@ -16,15 +16,11 @@ package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSConstants.getQueryPageSize;
 import static com.vmware.photon.controller.model.adapters.awsadapter.AWSUtils.getAWSNonTerminatedInstancesFilter;
 
-import java.net.URI;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.function.Consumer;
 
 import com.amazonaws.handlers.AsyncHandler;
 import com.amazonaws.services.ec2.AmazonEC2AsyncClient;
@@ -46,7 +42,6 @@ import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-import com.vmware.photon.controller.model.util.PhotonModelUtils;
 
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
@@ -179,19 +174,16 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         this.getHost().startService(postAWscomputeStateService,
                 new AWSComputeStateCreationAdapterService());
 
-        Consumer<Operation> onSuccess = (o) -> {
+        getHost().registerForServiceAvailability((o, e) -> {
+            if (e != null) {
+                String message = "Failed to start up all the services related to the AWS Enumeration Creation Adapter Service";
+                this.logInfo(message);
+                throw new IllegalStateException(message);
+            }
             this.logInfo(
-                    "Successfully started up all the services related to the AWS Enumeration Creation Service");
-            return;
-        };
-        Set<URI> serviceURLS = new HashSet<URI>();
-        serviceURLS.add(
-                UriUtils.buildUri(this.getHost(),
-                        AWSComputeDescriptionCreationAdapterService.SELF_LINK));
-        serviceURLS
-                .add(UriUtils.buildUri(this.getHost(),
-                        AWSComputeStateCreationAdapterService.SELF_LINK));
-        PhotonModelUtils.checkFactoryAvailability(this, startPost, serviceURLS, onSuccess);
+                    "Successfully started up all the services related to the AWS Enumeration Creation Adapter Service");
+        }, AWSComputeDescriptionCreationAdapterService.SELF_LINK,
+                AWSComputeStateCreationAdapterService.SELF_LINK);
     }
 
     /**

@@ -15,9 +15,7 @@ package com.vmware.photon.controller.model.adapters.awsadapter.enumeration;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeEnumerateResourceRequest;
@@ -25,7 +23,6 @@ import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
-import com.vmware.photon.controller.model.util.PhotonModelUtils;
 
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
@@ -137,18 +134,16 @@ public class AWSEnumerationAdapterService extends StatelessService {
         this.getHost().startService(patchAWSEnumerationDeletionService,
                 new AWSEnumerationAndDeletionAdapterService());
 
-        Consumer<Operation> onSuccess = (o) -> {
+        getHost().registerForServiceAvailability((o, e) -> {
+            if (e != null) {
+                String message = "Failed to start up all the services related to the AWS Enumeration Adapter Service";
+                this.logInfo(message);
+                throw new IllegalStateException(message);
+            }
             this.logInfo(
-                    "Successfully started up all the services related to the AWS Enumeration Creation Service");
-            return;
-        };
-        Set<URI> serviceURLS = new HashSet<URI>();
-        serviceURLS.add(UriUtils.buildUri(this.getHost(),
-                AWSEnumerationAndCreationAdapterService.SELF_LINK));
-        serviceURLS
-                .add(UriUtils.buildUri(this.getHost(),
-                        AWSEnumerationAndDeletionAdapterService.SELF_LINK));
-        PhotonModelUtils.checkFactoryAvailability(this, startPost, serviceURLS, onSuccess);
+                    "Successfully started up all the services related to the AWS Enumeration Adapter Service");
+        }, AWSEnumerationAndCreationAdapterService.SELF_LINK,
+                AWSEnumerationAndDeletionAdapterService.SELF_LINK);
     }
 
     /**
