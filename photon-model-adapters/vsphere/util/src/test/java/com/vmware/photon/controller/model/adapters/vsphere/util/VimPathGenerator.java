@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -53,7 +54,7 @@ public final class VimPathGenerator {
     /**
      * only generate path for these data objects
      */
-    private final Map<String, String> roots = new HashMap<>();
+    private final Map<String, String> roots = new LinkedHashMap<>();
 
     /**
      * collect enum types in advance
@@ -104,7 +105,11 @@ public final class VimPathGenerator {
         this.roots.put("vm:runtime", "VirtualMachineRuntimeInfo");
 
         this.roots.put("host:summary", "HostListSummary");
+
         this.roots.put("task:info", "TaskInfo");
+
+        this.roots.put("rp:summary", "ResourcePoolSummary");
+        this.roots.put("rp:runtime", "ResourcePoolRuntimeInfo");
     }
 
     private static class FieldType {

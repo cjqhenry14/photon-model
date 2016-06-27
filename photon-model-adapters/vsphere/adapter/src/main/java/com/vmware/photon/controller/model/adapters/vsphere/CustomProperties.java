@@ -35,6 +35,8 @@ public class CustomProperties {
 
     public static final String ENUMERATED_BY = "enumeratedBy";
 
+    public static final String ADAPTER_REFERENCE = "adapterReference";
+
     /**
      * When part of computeDescription, causes a vm to be created as a clone of the
      * compute state.

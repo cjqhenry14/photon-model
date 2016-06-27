@@ -184,4 +184,12 @@ public final class VimUtils {
 
         return VimNames.TYPE_VM.equals(obj.getType());
     }
+
+    public static boolean isResourcePool(ManagedObjectReference obj) {
+        if (obj == null) {
+            return false;
+        }
+
+        return VimNames.TYPE_RESOURCE_POOL.equals(obj.getType());
+    }
 }

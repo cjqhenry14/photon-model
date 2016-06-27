@@ -34,6 +34,8 @@ import com.vmware.photon.controller.model.adapters.vsphere.util.connection.Conne
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
+import com.vmware.photon.controller.model.resources.ResourcePoolService;
+import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.vim25.ObjectContent;
 import com.vmware.vim25.PropertyFilterSpec;
 import com.vmware.vim25.UpdateSet;
@@ -264,13 +266,81 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
             if (VimUtils.isVirtualMachine(cont.getObj())) {
                 VmOverlay vm = new VmOverlay(cont);
                 processFoundVm(request, vm);
+            } else if (VimUtils.isResourcePool(cont.getObj())) {
+                ResourcePoolOverlay rp = new ResourcePoolOverlay(cont);
+                processFoundResourcePool(request, rp);
             }
         }
     }
 
+    private void processFoundResourcePool(ComputeEnumerateResourceRequest request,
+            ResourcePoolOverlay rp) {
+        QueryTask task = createResourcePoolQueryTask(request.adapterManagementReference.toString(),
+                rp.getId().getValue());
+        withTaskResults(task, result -> {
+            if (result.documentLinks.isEmpty()) {
+                createNewResourcePool(request, rp);
+            } else {
+                updateResourcePool(result.documentLinks.get(0), request, rp);
+            }
+        });
+    }
+
+    private void updateResourcePool(String selfLink, ComputeEnumerateResourceRequest request,
+            ResourcePoolOverlay rp) {
+        ResourcePoolState state = createResourcePoolFromResults(request, rp);
+
+        Operation.createPatch(UriUtils.buildUri(getHost(), selfLink))
+                .setBody(state)
+                .sendWith(this);
+    }
+
+    private void createNewResourcePool(ComputeEnumerateResourceRequest request,
+            ResourcePoolOverlay rp) {
+        ResourcePoolState state = createResourcePoolFromResults(request, rp);
+
+        logFine("Found new ResourcePool %s", rp.getName());
+        Operation.createPost(this, ResourcePoolService.FACTORY_LINK)
+                .setBody(state)
+                .sendWith(this);
+    }
+
+    private ResourcePoolState createResourcePoolFromResults(ComputeEnumerateResourceRequest request,
+            ResourcePoolOverlay rp) {
+        ResourcePoolState state = new ResourcePoolState();
+        state.id = rp.getId().getValue();
+        state.name = rp.getName();
+        state.maxMemoryBytes = rp.getMemoryLimitBytes();
+        state.minMemoryBytes = rp.getMemoryReservationBytes();
+
+        CustomProperties.of(state)
+                .put(CustomProperties.ADAPTER_REFERENCE,
+                        request.adapterManagementReference.toString());
+
+        return state;
+    }
+
+    private QueryTask createResourcePoolQueryTask(String adapterReference,
+            String moId) {
+        QuerySpecification qs = new QuerySpecification();
+        qs.query.addBooleanClause(
+                Query.Builder.create().addFieldClause(ComputeState.FIELD_NAME_ID, moId)
+                        .build());
+
+        qs.query.addBooleanClause(Query.Builder.create()
+                .addFieldClause(
+                        QuerySpecification.buildCompositeFieldName(
+                                ResourcePoolState.FIELD_NAME_CUSTOM_PROPERTIES,
+                                CustomProperties.ADAPTER_REFERENCE),
+                        adapterReference).build());
+
+        return QueryTask
+                .create(qs)
+                .setDirect(true);
+    }
+
     private void processFoundVm(ComputeEnumerateResourceRequest request, VmOverlay vm) {
         QueryTask task = createVmQueryTask(request.parentComputeLink, vm.getInstanceUuid());
-
         withTaskResults(task, result -> {
             if (result.documentLinks.isEmpty()) {
                 createNewCompute(request, vm);

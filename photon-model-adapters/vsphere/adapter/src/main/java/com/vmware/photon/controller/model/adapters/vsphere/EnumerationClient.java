@@ -233,10 +233,19 @@ public class EnumerationClient extends BaseHelper {
                 "name"
         ));
 
+        PropertySpec rpSpec = new PropertySpec();
+        rpSpec.setType(VimNames.TYPE_RESOURCE_POOL);
+        rpSpec.getPathSet().addAll(Arrays.asList(
+                VimPath.rp_summary_config_memoryAllocation_limit,
+                VimPath.rp_summary_config_memoryAllocation_reservation,
+                "name"
+        ));
+
         PropertyFilterSpec filterSpec = new PropertyFilterSpec();
         filterSpec.getObjectSet().add(ospec);
         filterSpec.getPropSet().add(hostSpec);
         filterSpec.getPropSet().add(vmSpec);
+        filterSpec.getPropSet().add(rpSpec);
 
         return filterSpec;
     }

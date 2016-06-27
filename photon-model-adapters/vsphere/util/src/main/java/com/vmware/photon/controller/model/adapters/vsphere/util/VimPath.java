@@ -15,6 +15,336 @@ package com.vmware.photon.controller.model.adapters.vsphere.util;
 
 /** This class is generated, do not edit. */
 public class VimPath {
+    /** PropertyType: <code>VirtualMachineSummary</code> */
+    public static final String vm_summary = "summary";
+
+    /** PropertyType: <code>ArrayOfCustomFieldValue</code> */
+    public static final String vm_summary_customValue = "summary.customValue";
+
+    /** PropertyType: <code>VirtualMachineQuickStats</code> */
+    public static final String vm_summary_quickStats = "summary.quickStats";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_overallCpuUsage = "summary.quickStats.overallCpuUsage";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_staticCpuEntitlement = "summary.quickStats.staticCpuEntitlement";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_guestMemoryUsage = "summary.quickStats.guestMemoryUsage";
+
+    /** PropertyType: <code>ManagedEntityStatus</code> */
+    public static final String vm_summary_quickStats_guestHeartbeatStatus = "summary.quickStats.guestHeartbeatStatus";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_distributedCpuEntitlement = "summary.quickStats.distributedCpuEntitlement";
+
+    /** PropertyType: <code>long</code> */
+    public static final String vm_summary_quickStats_ssdSwappedMemory = "summary.quickStats.ssdSwappedMemory";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_swappedMemory = "summary.quickStats.swappedMemory";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_ftLogBandwidth = "summary.quickStats.ftLogBandwidth";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_hostMemoryUsage = "summary.quickStats.hostMemoryUsage";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_staticMemoryEntitlement = "summary.quickStats.staticMemoryEntitlement";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_privateMemory = "summary.quickStats.privateMemory";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_uptimeSeconds = "summary.quickStats.uptimeSeconds";
+
+    /** PropertyType: <code>long</code> */
+    public static final String vm_summary_quickStats_compressedMemory = "summary.quickStats.compressedMemory";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_overallCpuDemand = "summary.quickStats.overallCpuDemand";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_sharedMemory = "summary.quickStats.sharedMemory";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_balloonedMemory = "summary.quickStats.balloonedMemory";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_ftSecondaryLatency = "summary.quickStats.ftSecondaryLatency";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_distributedMemoryEntitlement = "summary.quickStats.distributedMemoryEntitlement";
+
+    /** PropertyType: <code>ManagedEntityStatus</code> */
+    public static final String vm_summary_quickStats_ftLatencyStatus = "summary.quickStats.ftLatencyStatus";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_quickStats_consumedOverheadMemory = "summary.quickStats.consumedOverheadMemory";
+
+    /** PropertyType: <code>ManagedObjectReference</code> */
+    public static final String vm_summary_vm = "summary.vm";
+
+    /** PropertyType: <code>VirtualMachineRuntimeInfo</code> */
+    public static final String vm_summary_runtime = "summary.runtime";
+
+    /** PropertyType: <code>long</code> */
+    public static final String vm_summary_runtime_suspendInterval = "summary.runtime.suspendInterval";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_runtime_paused = "summary.runtime.paused";
+
+    /** PropertyType: <code>VirtualMachineRecordReplayState</code> */
+    public static final String vm_summary_runtime_recordReplayState = "summary.runtime.recordReplayState";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_runtime_onlineStandby = "summary.runtime.onlineStandby";
+
+    /** PropertyType: <code>ArrayOfVirtualMachineFeatureRequirement</code> */
+    public static final String vm_summary_runtime_offlineFeatureRequirement = "summary.runtime.offlineFeatureRequirement";
+
+    /** PropertyType: <code>ArrayOfHostFeatureMask</code> */
+    public static final String vm_summary_runtime_featureMask = "summary.runtime.featureMask";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_runtime_cleanPowerOff = "summary.runtime.cleanPowerOff";
+
+    /** PropertyType: <code>VirtualMachinePowerState</code> */
+    public static final String vm_summary_runtime_powerState = "summary.runtime.powerState";
+
+    /** PropertyType: <code>VirtualMachineFaultToleranceState</code> */
+    public static final String vm_summary_runtime_faultToleranceState = "summary.runtime.faultToleranceState";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_runtime_minRequiredEVCModeKey = "summary.runtime.minRequiredEVCModeKey";
+
+    /** PropertyType: <code>ManagedObjectReference</code> */
+    public static final String vm_summary_runtime_host = "summary.runtime.host";
+
+    /** PropertyType: <code>ArrayOfVirtualMachineFeatureRequirement</code> */
+    public static final String vm_summary_runtime_featureRequirement = "summary.runtime.featureRequirement";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_runtime_maxMemoryUsage = "summary.runtime.maxMemoryUsage";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_runtime_snapshotInBackground = "summary.runtime.snapshotInBackground";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_runtime_needSecondaryReason = "summary.runtime.needSecondaryReason";
+
+    /** PropertyType: <code>long</code> */
+    public static final String vm_summary_runtime_vFlashCacheAllocation = "summary.runtime.vFlashCacheAllocation";
+
+    /** PropertyType: <code>dateTime</code> */
+    public static final String vm_summary_runtime_bootTime = "summary.runtime.bootTime";
+
+    /** PropertyType: <code>VirtualMachineQuestionInfo</code> */
+    public static final String vm_summary_runtime_question = "summary.runtime.question";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_runtime_question_id = "summary.runtime.question.id";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_runtime_question_text = "summary.runtime.question.text";
+
+    /** PropertyType: <code>ChoiceOption</code> */
+    public static final String vm_summary_runtime_question_choice = "summary.runtime.question.choice";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_runtime_question_choice_defaultIndex = "summary.runtime.question.choice.defaultIndex";
+
+    /** PropertyType: <code>ArrayOfElementDescription</code> */
+    public static final String vm_summary_runtime_question_choice_choiceInfo = "summary.runtime.question.choice.choiceInfo";
+
+    /** PropertyType: <code>ArrayOfVirtualMachineMessage</code> */
+    public static final String vm_summary_runtime_question_message = "summary.runtime.question.message";
+
+    /** PropertyType: <code>VirtualMachineConnectionState</code> */
+    public static final String vm_summary_runtime_connectionState = "summary.runtime.connectionState";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_runtime_maxCpuUsage = "summary.runtime.maxCpuUsage";
+
+    /** PropertyType: <code>dateTime</code> */
+    public static final String vm_summary_runtime_suspendTime = "summary.runtime.suspendTime";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_runtime_numMksConnections = "summary.runtime.numMksConnections";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_runtime_consolidationNeeded = "summary.runtime.consolidationNeeded";
+
+    /** PropertyType: <code>VirtualMachineRuntimeInfoDasProtectionState</code> */
+    public static final String vm_summary_runtime_dasVmProtection = "summary.runtime.dasVmProtection";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_runtime_dasVmProtection_dasProtected = "summary.runtime.dasVmProtection.dasProtected";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_runtime_quiescedForkParent = "summary.runtime.quiescedForkParent";
+
+    /** PropertyType: <code>long</code> */
+    public static final String vm_summary_runtime_memoryOverhead = "summary.runtime.memoryOverhead";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_runtime_toolsInstallerMounted = "summary.runtime.toolsInstallerMounted";
+
+    /** PropertyType: <code>ArrayOfVirtualMachineDeviceRuntimeInfo</code> */
+    public static final String vm_summary_runtime_device = "summary.runtime.device";
+
+    /** PropertyType: <code>VirtualMachineGuestSummary</code> */
+    public static final String vm_summary_guest = "summary.guest";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_guest_toolsVersionStatus2 = "summary.guest.toolsVersionStatus2";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_guest_toolsRunningStatus = "summary.guest.toolsRunningStatus";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_guest_hostName = "summary.guest.hostName";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_guest_guestFullName = "summary.guest.guestFullName";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_guest_toolsVersionStatus = "summary.guest.toolsVersionStatus";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_guest_ipAddress = "summary.guest.ipAddress";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_guest_guestId = "summary.guest.guestId";
+
+    /** PropertyType: <code>VirtualMachineToolsStatus</code> */
+    public static final String vm_summary_guest_toolsStatus = "summary.guest.toolsStatus";
+
+    /** PropertyType: <code>VirtualMachineStorageSummary</code> */
+    public static final String vm_summary_storage = "summary.storage";
+
+    /** PropertyType: <code>long</code> */
+    public static final String vm_summary_storage_uncommitted = "summary.storage.uncommitted";
+
+    /** PropertyType: <code>long</code> */
+    public static final String vm_summary_storage_committed = "summary.storage.committed";
+
+    /** PropertyType: <code>long</code> */
+    public static final String vm_summary_storage_unshared = "summary.storage.unshared";
+
+    /** PropertyType: <code>dateTime</code> */
+    public static final String vm_summary_storage_timestamp = "summary.storage.timestamp";
+
+    /** PropertyType: <code>VirtualMachineConfigSummary</code> */
+    public static final String vm_summary_config = "summary.config";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_config_template = "summary.config.template";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_annotation = "summary.config.annotation";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_guestFullName = "summary.config.guestFullName";
+
+    /** PropertyType: <code>VAppProductInfo</code> */
+    public static final String vm_summary_config_product = "summary.config.product";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_product_classId = "summary.config.product.classId";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_product_fullVersion = "summary.config.product.fullVersion";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_product_vendorUrl = "summary.config.product.vendorUrl";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_product_instanceId = "summary.config.product.instanceId";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_product_vendor = "summary.config.product.vendor";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_product_name = "summary.config.product.name";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_product_appUrl = "summary.config.product.appUrl";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_product_productUrl = "summary.config.product.productUrl";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_product_version = "summary.config.product.version";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_config_product_key = "summary.config.product.key";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_config_cpuReservation = "summary.config.cpuReservation";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_config_installBootRequired = "summary.config.installBootRequired";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_uuid = "summary.config.uuid";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_config_memoryReservation = "summary.config.memoryReservation";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_vmPathName = "summary.config.vmPathName";
+
+    /** PropertyType: <code>FaultToleranceConfigInfo</code> */
+    public static final String vm_summary_config_ftInfo = "summary.config.ftInfo";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_config_ftInfo_role = "summary.config.ftInfo.role";
+
+    /** PropertyType: <code>ArrayOfstring</code> */
+    public static final String vm_summary_config_ftInfo_configPaths = "summary.config.ftInfo.configPaths";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String vm_summary_config_ftInfo_orphaned = "summary.config.ftInfo.orphaned";
+
+    /** PropertyType: <code>ArrayOfstring</code> */
+    public static final String vm_summary_config_ftInfo_instanceUuids = "summary.config.ftInfo.instanceUuids";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_config_numVirtualDisks = "summary.config.numVirtualDisks";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_config_numEthernetCards = "summary.config.numEthernetCards";
+
+    /** PropertyType: <code>ManagedByInfo</code> */
+    public static final String vm_summary_config_managedBy = "summary.config.managedBy";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_managedBy_extensionKey = "summary.config.managedBy.extensionKey";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_managedBy_type = "summary.config.managedBy.type";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_name = "summary.config.name";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_instanceUuid = "summary.config.instanceUuid";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_config_numCpu = "summary.config.numCpu";
+
+    /** PropertyType: <code>int</code> */
+    public static final String vm_summary_config_memorySizeMB = "summary.config.memorySizeMB";
+
+    /** PropertyType: <code>string</code> */
+    public static final String vm_summary_config_guestId = "summary.config.guestId";
+
+    /** PropertyType: <code>ManagedEntityStatus</code> */
+    public static final String vm_summary_overallStatus = "summary.overallStatus";
+
     /** PropertyType: <code>VirtualMachineConfigInfo</code> */
     public static final String vm_config = "config";
 
@@ -645,408 +975,6 @@ public class VimPath {
     /** PropertyType: <code>ArrayOfVirtualMachineDeviceRuntimeInfo</code> */
     public static final String vm_runtime_device = "runtime.device";
 
-    /** PropertyType: <code>TaskInfo</code> */
-    public static final String task_info = "info";
-
-    /** PropertyType: <code>TaskReason</code> */
-    public static final String task_info_reason = "info.reason";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String task_info_cancelable = "info.cancelable";
-
-    /** PropertyType: <code>string</code> */
-    public static final String task_info_rootTaskKey = "info.rootTaskKey";
-
-    /** PropertyType: <code>LocalizableMessage</code> */
-    public static final String task_info_description = "info.description";
-
-    /** PropertyType: <code>dateTime</code> */
-    public static final String task_info_completeTime = "info.completeTime";
-
-    /** PropertyType: <code>string</code> */
-    public static final String task_info_parentTaskKey = "info.parentTaskKey";
-
-    /** PropertyType: <code>LocalizedMethodFault</code> */
-    public static final String task_info_error = "info.error";
-
-    /** PropertyType: <code>int</code> */
-    public static final String task_info_eventChainId = "info.eventChainId";
-
-    /** PropertyType: <code>dateTime</code> */
-    public static final String task_info_queueTime = "info.queueTime";
-
-    /** PropertyType: <code>anyType</code> */
-    public static final String task_info_result = "info.result";
-
-    /** PropertyType: <code>ManagedObjectReference</code> */
-    public static final String task_info_task = "info.task";
-
-    /** PropertyType: <code>string</code> */
-    public static final String task_info_descriptionId = "info.descriptionId";
-
-    /** PropertyType: <code>string</code> */
-    public static final String task_info_entityName = "info.entityName";
-
-    /** PropertyType: <code>string</code> */
-    public static final String task_info_changeTag = "info.changeTag";
-
-    /** PropertyType: <code>string</code> */
-    public static final String task_info_name = "info.name";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String task_info_cancelled = "info.cancelled";
-
-    /** PropertyType: <code>int</code> */
-    public static final String task_info_progress = "info.progress";
-
-    /** PropertyType: <code>dateTime</code> */
-    public static final String task_info_startTime = "info.startTime";
-
-    /** PropertyType: <code>TaskInfoState</code> */
-    public static final String task_info_state = "info.state";
-
-    /** PropertyType: <code>ArrayOfManagedObjectReference</code> */
-    public static final String task_info_locked = "info.locked";
-
-    /** PropertyType: <code>string</code> */
-    public static final String task_info_key = "info.key";
-
-    /** PropertyType: <code>ManagedObjectReference</code> */
-    public static final String task_info_entity = "info.entity";
-
-    /** PropertyType: <code>string</code> */
-    public static final String task_info_activationId = "info.activationId";
-
-    /** PropertyType: <code>VirtualMachineSummary</code> */
-    public static final String vm_summary = "summary";
-
-    /** PropertyType: <code>ArrayOfCustomFieldValue</code> */
-    public static final String vm_summary_customValue = "summary.customValue";
-
-    /** PropertyType: <code>VirtualMachineQuickStats</code> */
-    public static final String vm_summary_quickStats = "summary.quickStats";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_overallCpuUsage = "summary.quickStats.overallCpuUsage";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_staticCpuEntitlement = "summary.quickStats.staticCpuEntitlement";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_guestMemoryUsage = "summary.quickStats.guestMemoryUsage";
-
-    /** PropertyType: <code>ManagedEntityStatus</code> */
-    public static final String vm_summary_quickStats_guestHeartbeatStatus = "summary.quickStats.guestHeartbeatStatus";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_distributedCpuEntitlement = "summary.quickStats.distributedCpuEntitlement";
-
-    /** PropertyType: <code>long</code> */
-    public static final String vm_summary_quickStats_ssdSwappedMemory = "summary.quickStats.ssdSwappedMemory";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_swappedMemory = "summary.quickStats.swappedMemory";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_ftLogBandwidth = "summary.quickStats.ftLogBandwidth";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_hostMemoryUsage = "summary.quickStats.hostMemoryUsage";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_staticMemoryEntitlement = "summary.quickStats.staticMemoryEntitlement";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_privateMemory = "summary.quickStats.privateMemory";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_uptimeSeconds = "summary.quickStats.uptimeSeconds";
-
-    /** PropertyType: <code>long</code> */
-    public static final String vm_summary_quickStats_compressedMemory = "summary.quickStats.compressedMemory";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_overallCpuDemand = "summary.quickStats.overallCpuDemand";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_sharedMemory = "summary.quickStats.sharedMemory";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_balloonedMemory = "summary.quickStats.balloonedMemory";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_ftSecondaryLatency = "summary.quickStats.ftSecondaryLatency";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_distributedMemoryEntitlement = "summary.quickStats.distributedMemoryEntitlement";
-
-    /** PropertyType: <code>ManagedEntityStatus</code> */
-    public static final String vm_summary_quickStats_ftLatencyStatus = "summary.quickStats.ftLatencyStatus";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_quickStats_consumedOverheadMemory = "summary.quickStats.consumedOverheadMemory";
-
-    /** PropertyType: <code>ManagedObjectReference</code> */
-    public static final String vm_summary_vm = "summary.vm";
-
-    /** PropertyType: <code>VirtualMachineRuntimeInfo</code> */
-    public static final String vm_summary_runtime = "summary.runtime";
-
-    /** PropertyType: <code>long</code> */
-    public static final String vm_summary_runtime_suspendInterval = "summary.runtime.suspendInterval";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_runtime_paused = "summary.runtime.paused";
-
-    /** PropertyType: <code>VirtualMachineRecordReplayState</code> */
-    public static final String vm_summary_runtime_recordReplayState = "summary.runtime.recordReplayState";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_runtime_onlineStandby = "summary.runtime.onlineStandby";
-
-    /** PropertyType: <code>ArrayOfVirtualMachineFeatureRequirement</code> */
-    public static final String vm_summary_runtime_offlineFeatureRequirement = "summary.runtime.offlineFeatureRequirement";
-
-    /** PropertyType: <code>ArrayOfHostFeatureMask</code> */
-    public static final String vm_summary_runtime_featureMask = "summary.runtime.featureMask";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_runtime_cleanPowerOff = "summary.runtime.cleanPowerOff";
-
-    /** PropertyType: <code>VirtualMachinePowerState</code> */
-    public static final String vm_summary_runtime_powerState = "summary.runtime.powerState";
-
-    /** PropertyType: <code>VirtualMachineFaultToleranceState</code> */
-    public static final String vm_summary_runtime_faultToleranceState = "summary.runtime.faultToleranceState";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_runtime_minRequiredEVCModeKey = "summary.runtime.minRequiredEVCModeKey";
-
-    /** PropertyType: <code>ManagedObjectReference</code> */
-    public static final String vm_summary_runtime_host = "summary.runtime.host";
-
-    /** PropertyType: <code>ArrayOfVirtualMachineFeatureRequirement</code> */
-    public static final String vm_summary_runtime_featureRequirement = "summary.runtime.featureRequirement";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_runtime_maxMemoryUsage = "summary.runtime.maxMemoryUsage";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_runtime_snapshotInBackground = "summary.runtime.snapshotInBackground";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_runtime_needSecondaryReason = "summary.runtime.needSecondaryReason";
-
-    /** PropertyType: <code>long</code> */
-    public static final String vm_summary_runtime_vFlashCacheAllocation = "summary.runtime.vFlashCacheAllocation";
-
-    /** PropertyType: <code>dateTime</code> */
-    public static final String vm_summary_runtime_bootTime = "summary.runtime.bootTime";
-
-    /** PropertyType: <code>VirtualMachineQuestionInfo</code> */
-    public static final String vm_summary_runtime_question = "summary.runtime.question";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_runtime_question_id = "summary.runtime.question.id";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_runtime_question_text = "summary.runtime.question.text";
-
-    /** PropertyType: <code>ChoiceOption</code> */
-    public static final String vm_summary_runtime_question_choice = "summary.runtime.question.choice";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_runtime_question_choice_defaultIndex = "summary.runtime.question.choice.defaultIndex";
-
-    /** PropertyType: <code>ArrayOfElementDescription</code> */
-    public static final String vm_summary_runtime_question_choice_choiceInfo = "summary.runtime.question.choice.choiceInfo";
-
-    /** PropertyType: <code>ArrayOfVirtualMachineMessage</code> */
-    public static final String vm_summary_runtime_question_message = "summary.runtime.question.message";
-
-    /** PropertyType: <code>VirtualMachineConnectionState</code> */
-    public static final String vm_summary_runtime_connectionState = "summary.runtime.connectionState";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_runtime_maxCpuUsage = "summary.runtime.maxCpuUsage";
-
-    /** PropertyType: <code>dateTime</code> */
-    public static final String vm_summary_runtime_suspendTime = "summary.runtime.suspendTime";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_runtime_numMksConnections = "summary.runtime.numMksConnections";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_runtime_consolidationNeeded = "summary.runtime.consolidationNeeded";
-
-    /** PropertyType: <code>VirtualMachineRuntimeInfoDasProtectionState</code> */
-    public static final String vm_summary_runtime_dasVmProtection = "summary.runtime.dasVmProtection";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_runtime_dasVmProtection_dasProtected = "summary.runtime.dasVmProtection.dasProtected";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_runtime_quiescedForkParent = "summary.runtime.quiescedForkParent";
-
-    /** PropertyType: <code>long</code> */
-    public static final String vm_summary_runtime_memoryOverhead = "summary.runtime.memoryOverhead";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_runtime_toolsInstallerMounted = "summary.runtime.toolsInstallerMounted";
-
-    /** PropertyType: <code>ArrayOfVirtualMachineDeviceRuntimeInfo</code> */
-    public static final String vm_summary_runtime_device = "summary.runtime.device";
-
-    /** PropertyType: <code>VirtualMachineGuestSummary</code> */
-    public static final String vm_summary_guest = "summary.guest";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_guest_toolsVersionStatus2 = "summary.guest.toolsVersionStatus2";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_guest_toolsRunningStatus = "summary.guest.toolsRunningStatus";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_guest_hostName = "summary.guest.hostName";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_guest_guestFullName = "summary.guest.guestFullName";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_guest_toolsVersionStatus = "summary.guest.toolsVersionStatus";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_guest_ipAddress = "summary.guest.ipAddress";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_guest_guestId = "summary.guest.guestId";
-
-    /** PropertyType: <code>VirtualMachineToolsStatus</code> */
-    public static final String vm_summary_guest_toolsStatus = "summary.guest.toolsStatus";
-
-    /** PropertyType: <code>VirtualMachineStorageSummary</code> */
-    public static final String vm_summary_storage = "summary.storage";
-
-    /** PropertyType: <code>long</code> */
-    public static final String vm_summary_storage_uncommitted = "summary.storage.uncommitted";
-
-    /** PropertyType: <code>long</code> */
-    public static final String vm_summary_storage_committed = "summary.storage.committed";
-
-    /** PropertyType: <code>long</code> */
-    public static final String vm_summary_storage_unshared = "summary.storage.unshared";
-
-    /** PropertyType: <code>dateTime</code> */
-    public static final String vm_summary_storage_timestamp = "summary.storage.timestamp";
-
-    /** PropertyType: <code>VirtualMachineConfigSummary</code> */
-    public static final String vm_summary_config = "summary.config";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_config_template = "summary.config.template";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_annotation = "summary.config.annotation";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_guestFullName = "summary.config.guestFullName";
-
-    /** PropertyType: <code>VAppProductInfo</code> */
-    public static final String vm_summary_config_product = "summary.config.product";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_product_classId = "summary.config.product.classId";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_product_fullVersion = "summary.config.product.fullVersion";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_product_vendorUrl = "summary.config.product.vendorUrl";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_product_instanceId = "summary.config.product.instanceId";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_product_vendor = "summary.config.product.vendor";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_product_name = "summary.config.product.name";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_product_appUrl = "summary.config.product.appUrl";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_product_productUrl = "summary.config.product.productUrl";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_product_version = "summary.config.product.version";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_config_product_key = "summary.config.product.key";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_config_cpuReservation = "summary.config.cpuReservation";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_config_installBootRequired = "summary.config.installBootRequired";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_uuid = "summary.config.uuid";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_config_memoryReservation = "summary.config.memoryReservation";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_vmPathName = "summary.config.vmPathName";
-
-    /** PropertyType: <code>FaultToleranceConfigInfo</code> */
-    public static final String vm_summary_config_ftInfo = "summary.config.ftInfo";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_config_ftInfo_role = "summary.config.ftInfo.role";
-
-    /** PropertyType: <code>ArrayOfstring</code> */
-    public static final String vm_summary_config_ftInfo_configPaths = "summary.config.ftInfo.configPaths";
-
-    /** PropertyType: <code>boolean</code> */
-    public static final String vm_summary_config_ftInfo_orphaned = "summary.config.ftInfo.orphaned";
-
-    /** PropertyType: <code>ArrayOfstring</code> */
-    public static final String vm_summary_config_ftInfo_instanceUuids = "summary.config.ftInfo.instanceUuids";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_config_numVirtualDisks = "summary.config.numVirtualDisks";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_config_numEthernetCards = "summary.config.numEthernetCards";
-
-    /** PropertyType: <code>ManagedByInfo</code> */
-    public static final String vm_summary_config_managedBy = "summary.config.managedBy";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_managedBy_extensionKey = "summary.config.managedBy.extensionKey";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_managedBy_type = "summary.config.managedBy.type";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_name = "summary.config.name";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_instanceUuid = "summary.config.instanceUuid";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_config_numCpu = "summary.config.numCpu";
-
-    /** PropertyType: <code>int</code> */
-    public static final String vm_summary_config_memorySizeMB = "summary.config.memorySizeMB";
-
-    /** PropertyType: <code>string</code> */
-    public static final String vm_summary_config_guestId = "summary.config.guestId";
-
-    /** PropertyType: <code>ManagedEntityStatus</code> */
-    public static final String vm_summary_overallStatus = "summary.overallStatus";
-
     /** PropertyType: <code>HostListSummary</code> */
     public static final String host_summary = "summary";
 
@@ -1304,5 +1232,290 @@ public class VimPath {
 
     /** PropertyType: <code>short</code> */
     public static final String host_summary_hardware_numCpuThreads = "summary.hardware.numCpuThreads";
+
+    /** PropertyType: <code>TaskInfo</code> */
+    public static final String task_info = "info";
+
+    /** PropertyType: <code>TaskReason</code> */
+    public static final String task_info_reason = "info.reason";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String task_info_cancelable = "info.cancelable";
+
+    /** PropertyType: <code>string</code> */
+    public static final String task_info_rootTaskKey = "info.rootTaskKey";
+
+    /** PropertyType: <code>LocalizableMessage</code> */
+    public static final String task_info_description = "info.description";
+
+    /** PropertyType: <code>dateTime</code> */
+    public static final String task_info_completeTime = "info.completeTime";
+
+    /** PropertyType: <code>string</code> */
+    public static final String task_info_parentTaskKey = "info.parentTaskKey";
+
+    /** PropertyType: <code>LocalizedMethodFault</code> */
+    public static final String task_info_error = "info.error";
+
+    /** PropertyType: <code>int</code> */
+    public static final String task_info_eventChainId = "info.eventChainId";
+
+    /** PropertyType: <code>dateTime</code> */
+    public static final String task_info_queueTime = "info.queueTime";
+
+    /** PropertyType: <code>anyType</code> */
+    public static final String task_info_result = "info.result";
+
+    /** PropertyType: <code>ManagedObjectReference</code> */
+    public static final String task_info_task = "info.task";
+
+    /** PropertyType: <code>string</code> */
+    public static final String task_info_descriptionId = "info.descriptionId";
+
+    /** PropertyType: <code>string</code> */
+    public static final String task_info_entityName = "info.entityName";
+
+    /** PropertyType: <code>string</code> */
+    public static final String task_info_changeTag = "info.changeTag";
+
+    /** PropertyType: <code>string</code> */
+    public static final String task_info_name = "info.name";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String task_info_cancelled = "info.cancelled";
+
+    /** PropertyType: <code>int</code> */
+    public static final String task_info_progress = "info.progress";
+
+    /** PropertyType: <code>dateTime</code> */
+    public static final String task_info_startTime = "info.startTime";
+
+    /** PropertyType: <code>TaskInfoState</code> */
+    public static final String task_info_state = "info.state";
+
+    /** PropertyType: <code>ArrayOfManagedObjectReference</code> */
+    public static final String task_info_locked = "info.locked";
+
+    /** PropertyType: <code>string</code> */
+    public static final String task_info_key = "info.key";
+
+    /** PropertyType: <code>ManagedObjectReference</code> */
+    public static final String task_info_entity = "info.entity";
+
+    /** PropertyType: <code>string</code> */
+    public static final String task_info_activationId = "info.activationId";
+
+    /** PropertyType: <code>ResourcePoolSummary</code> */
+    public static final String rp_summary = "summary";
+
+    /** PropertyType: <code>ResourcePoolQuickStats</code> */
+    public static final String rp_summary_quickStats = "summary.quickStats";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_overallCpuUsage = "summary.quickStats.overallCpuUsage";
+
+    /** PropertyType: <code>int</code> */
+    public static final String rp_summary_quickStats_staticCpuEntitlement = "summary.quickStats.staticCpuEntitlement";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_guestMemoryUsage = "summary.quickStats.guestMemoryUsage";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_distributedCpuEntitlement = "summary.quickStats.distributedCpuEntitlement";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_swappedMemory = "summary.quickStats.swappedMemory";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_hostMemoryUsage = "summary.quickStats.hostMemoryUsage";
+
+    /** PropertyType: <code>int</code> */
+    public static final String rp_summary_quickStats_staticMemoryEntitlement = "summary.quickStats.staticMemoryEntitlement";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_privateMemory = "summary.quickStats.privateMemory";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_overheadMemory = "summary.quickStats.overheadMemory";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_compressedMemory = "summary.quickStats.compressedMemory";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_overallCpuDemand = "summary.quickStats.overallCpuDemand";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_sharedMemory = "summary.quickStats.sharedMemory";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_balloonedMemory = "summary.quickStats.balloonedMemory";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_distributedMemoryEntitlement = "summary.quickStats.distributedMemoryEntitlement";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_quickStats_consumedOverheadMemory = "summary.quickStats.consumedOverheadMemory";
+
+    /** PropertyType: <code>string</code> */
+    public static final String rp_summary_name = "summary.name";
+
+    /** PropertyType: <code>ResourcePoolRuntimeInfo</code> */
+    public static final String rp_summary_runtime = "summary.runtime";
+
+    /** PropertyType: <code>ResourcePoolResourceUsage</code> */
+    public static final String rp_summary_runtime_memory = "summary.runtime.memory";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_memory_overallUsage = "summary.runtime.memory.overallUsage";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_memory_reservationUsedForVm = "summary.runtime.memory.reservationUsedForVm";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_memory_reservationUsed = "summary.runtime.memory.reservationUsed";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_memory_maxUsage = "summary.runtime.memory.maxUsage";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_memory_unreservedForVm = "summary.runtime.memory.unreservedForVm";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_memory_unreservedForPool = "summary.runtime.memory.unreservedForPool";
+
+    /** PropertyType: <code>ResourcePoolResourceUsage</code> */
+    public static final String rp_summary_runtime_cpu = "summary.runtime.cpu";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_cpu_overallUsage = "summary.runtime.cpu.overallUsage";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_cpu_reservationUsedForVm = "summary.runtime.cpu.reservationUsedForVm";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_cpu_reservationUsed = "summary.runtime.cpu.reservationUsed";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_cpu_maxUsage = "summary.runtime.cpu.maxUsage";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_cpu_unreservedForVm = "summary.runtime.cpu.unreservedForVm";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_runtime_cpu_unreservedForPool = "summary.runtime.cpu.unreservedForPool";
+
+    /** PropertyType: <code>ManagedEntityStatus</code> */
+    public static final String rp_summary_runtime_overallStatus = "summary.runtime.overallStatus";
+
+    /** PropertyType: <code>ResourceConfigSpec</code> */
+    public static final String rp_summary_config = "summary.config";
+
+    /** PropertyType: <code>string</code> */
+    public static final String rp_summary_config_changeVersion = "summary.config.changeVersion";
+
+    /** PropertyType: <code>ResourceAllocationInfo</code> */
+    public static final String rp_summary_config_memoryAllocation = "summary.config.memoryAllocation";
+
+    /** PropertyType: <code>SharesInfo</code> */
+    public static final String rp_summary_config_memoryAllocation_shares = "summary.config.memoryAllocation.shares";
+
+    /** PropertyType: <code>int</code> */
+    public static final String rp_summary_config_memoryAllocation_shares_shares = "summary.config.memoryAllocation.shares.shares";
+
+    /** PropertyType: <code>SharesLevel</code> */
+    public static final String rp_summary_config_memoryAllocation_shares_level = "summary.config.memoryAllocation.shares.level";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_config_memoryAllocation_overheadLimit = "summary.config.memoryAllocation.overheadLimit";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_config_memoryAllocation_limit = "summary.config.memoryAllocation.limit";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_config_memoryAllocation_reservation = "summary.config.memoryAllocation.reservation";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String rp_summary_config_memoryAllocation_expandableReservation = "summary.config.memoryAllocation.expandableReservation";
+
+    /** PropertyType: <code>ResourceAllocationInfo</code> */
+    public static final String rp_summary_config_cpuAllocation = "summary.config.cpuAllocation";
+
+    /** PropertyType: <code>SharesInfo</code> */
+    public static final String rp_summary_config_cpuAllocation_shares = "summary.config.cpuAllocation.shares";
+
+    /** PropertyType: <code>int</code> */
+    public static final String rp_summary_config_cpuAllocation_shares_shares = "summary.config.cpuAllocation.shares.shares";
+
+    /** PropertyType: <code>SharesLevel</code> */
+    public static final String rp_summary_config_cpuAllocation_shares_level = "summary.config.cpuAllocation.shares.level";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_config_cpuAllocation_overheadLimit = "summary.config.cpuAllocation.overheadLimit";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_config_cpuAllocation_limit = "summary.config.cpuAllocation.limit";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_summary_config_cpuAllocation_reservation = "summary.config.cpuAllocation.reservation";
+
+    /** PropertyType: <code>boolean</code> */
+    public static final String rp_summary_config_cpuAllocation_expandableReservation = "summary.config.cpuAllocation.expandableReservation";
+
+    /** PropertyType: <code>dateTime</code> */
+    public static final String rp_summary_config_lastModified = "summary.config.lastModified";
+
+    /** PropertyType: <code>ManagedObjectReference</code> */
+    public static final String rp_summary_config_entity = "summary.config.entity";
+
+    /** PropertyType: <code>int</code> */
+    public static final String rp_summary_configuredMemoryMB = "summary.configuredMemoryMB";
+
+    /** PropertyType: <code>ResourcePoolRuntimeInfo</code> */
+    public static final String rp_runtime = "runtime";
+
+    /** PropertyType: <code>ResourcePoolResourceUsage</code> */
+    public static final String rp_runtime_memory = "runtime.memory";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_memory_overallUsage = "runtime.memory.overallUsage";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_memory_reservationUsedForVm = "runtime.memory.reservationUsedForVm";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_memory_reservationUsed = "runtime.memory.reservationUsed";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_memory_maxUsage = "runtime.memory.maxUsage";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_memory_unreservedForVm = "runtime.memory.unreservedForVm";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_memory_unreservedForPool = "runtime.memory.unreservedForPool";
+
+    /** PropertyType: <code>ResourcePoolResourceUsage</code> */
+    public static final String rp_runtime_cpu = "runtime.cpu";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_cpu_overallUsage = "runtime.cpu.overallUsage";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_cpu_reservationUsedForVm = "runtime.cpu.reservationUsedForVm";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_cpu_reservationUsed = "runtime.cpu.reservationUsed";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_cpu_maxUsage = "runtime.cpu.maxUsage";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_cpu_unreservedForVm = "runtime.cpu.unreservedForVm";
+
+    /** PropertyType: <code>long</code> */
+    public static final String rp_runtime_cpu_unreservedForPool = "runtime.cpu.unreservedForPool";
+
+    /** PropertyType: <code>ManagedEntityStatus</code> */
+    public static final String rp_runtime_overallStatus = "runtime.overallStatus";
 
 }
