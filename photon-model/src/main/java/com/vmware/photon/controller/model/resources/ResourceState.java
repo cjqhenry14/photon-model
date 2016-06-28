@@ -19,6 +19,7 @@ import java.util.Set;
 
 import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyIndexingOption;
+import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 
 /**
  * Base PODO for all photon model resource services
@@ -33,6 +34,7 @@ public class ResourceState extends ServiceDocument {
      * Custom property bag that can be used to store disk specific
      * properties.
      */
+    @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
     @PropertyOptions(indexing = { PropertyIndexingOption.EXPAND })
     public Map<String, String> customProperties;
 

@@ -13,8 +13,6 @@
 
 package com.vmware.photon.controller.model.resources;
 
-import java.util.Map;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentDescription;
 import com.vmware.xenon.common.Utils;
@@ -44,19 +42,6 @@ public class ResourceUtils {
     public static boolean mergeWithState(ServiceDocumentDescription description,
             ResourceState source, ResourceState patch) {
         boolean isChanged = Utils.mergeWithState(description, source, patch);
-        if (patch.customProperties != null
-                && !patch.customProperties.isEmpty()) {
-            if (source.customProperties == null
-                    || source.customProperties.isEmpty()) {
-                source.customProperties = patch.customProperties;
-            } else {
-                for (Map.Entry<String, String> e : patch.customProperties
-                        .entrySet()) {
-                    source.customProperties.put(e.getKey(), e.getValue());
-                }
-            }
-            isChanged = true;
-        }
 
         if (patch.tenantLinks != null
                 && !patch.tenantLinks.isEmpty()) {
