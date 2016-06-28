@@ -60,6 +60,6 @@ public class PhotonModelServices {
         host.startFactory(new NetworkService());
         host.startFactory(new FirewallService());
         host.startFactory(new StorageDescriptionService());
-        host.startFactory(new ResourceMetricService());
+        host.startFactory(ResourceMetricService.class, ResourceMetricService::createFactory);
     }
 }

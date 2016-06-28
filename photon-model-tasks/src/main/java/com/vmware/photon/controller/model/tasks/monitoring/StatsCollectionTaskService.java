@@ -208,7 +208,7 @@ public class StatsCollectionTaskService extends TaskService<StatsCollectionTaskS
                             }
                             QueryTask page = getOp.getBody(QueryTask.class);
                             if (page.results.nextPageLink == null
-                                    || page.results.documentLinks.size() == 0) {
+                                    && page.results.documentLinks.size() == 0) {
                                 StatsCollectionTaskState patchBody = new StatsCollectionTaskState();
                                 patchBody.taskInfo = TaskUtils.createTaskState(TaskStage.FINISHED);
                                 TaskUtils.sendPatch(this, patchBody);

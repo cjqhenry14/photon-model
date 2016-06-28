@@ -454,7 +454,7 @@ public class AWSStatsService extends StatelessService {
         service.getHost()
                 .sendRequest(Operation
                         .createPost(statsData.persistStatsUri)
-                        .setReferer(ResourceMetricService.FACTORY_LINK)
+                        .setReferer(AWSStatsService.SELF_LINK)
                         .setBodyNoCloning(stat));
     }
 

@@ -15,8 +15,10 @@ package com.vmware.photon.controller.model.monitoring;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.net.URI;
 import java.util.EnumSet;
 import java.util.concurrent.TimeUnit;
 
@@ -31,7 +33,9 @@ import org.junit.runners.model.RunnerBuilder;
 import com.vmware.photon.controller.model.helpers.BaseModelTest;
 import com.vmware.photon.controller.model.monitoring.ResourceMetricService;
 
+import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.Service;
+import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.Utils;
 
 /**
@@ -133,6 +137,52 @@ public class ResourceMetricServiceTest extends Suite {
             postServiceSynchronously(ResourceMetricService.FACTORY_LINK,
                     startState, ResourceMetricService.ResourceMetric.class,
                     IllegalArgumentException.class);
+        }
+
+        @Test
+        public void testIdempotentPostService() throws Throwable {
+            URI factoryUri = UriUtils.buildFactoryUri(host, ResourceMetricService.class);
+            this.host.startFactory(new ResourceMetricService());
+            this.host.waitForServiceAvailable(ResourceMetricService.FACTORY_LINK);
+
+            ResourceMetricService.ResourceMetric metric = new ResourceMetricService.ResourceMetric();
+            metric.documentSelfLink = "default";
+            metric.value = new Double(1000);
+            metric.timestampMicrosUtc = Utils.getNowMicrosUtc();
+
+            this.host.testStart(1);
+            this.host.send(Operation.createPost(factoryUri)
+                    .setBody(metric)
+                    .setCompletion(
+                            (o, e) -> {
+                                if (e != null) {
+                                    this.host.failIteration(e);
+                                    return;
+                                }
+
+                                this.host.send(Operation.createPost(factoryUri)
+                                        .setBody(metric)
+                                        .setCompletion(
+                                                (o2, e2) -> {
+                                                    if (e2 != null) {
+                                                        this.host.failIteration(e2);
+                                                        return;
+                                                    }
+
+                                                    ResourceMetricService.ResourceMetric metric2 = o2
+                                                            .getBody(
+                                                                    ResourceMetricService.ResourceMetric.class);
+                                                    try {
+                                                        assertNotNull(metric2);
+                                                        assertEquals(new Double(1000),
+                                                                metric2.value);
+                                                        this.host.completeIteration();
+                                                    } catch (AssertionError e3) {
+                                                        this.host.failIteration(e3);
+                                                    }
+                                                }));
+                            }));
+            this.host.testWait();
         }
     }
 }
