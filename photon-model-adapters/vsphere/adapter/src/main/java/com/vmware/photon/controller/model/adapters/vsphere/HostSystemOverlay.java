@@ -17,30 +17,29 @@ import com.vmware.photon.controller.model.adapters.vsphere.util.VimNames;
 import com.vmware.photon.controller.model.adapters.vsphere.util.VimPath;
 import com.vmware.vim25.ObjectContent;
 
-public class ResourcePoolOverlay extends AbstractOverlay {
-
-    public ResourcePoolOverlay(ObjectContent cont) {
+public class HostSystemOverlay extends AbstractOverlay {
+    protected HostSystemOverlay(ObjectContent cont) {
         super(cont);
-        ensureType(VimNames.TYPE_RESOURCE_POOL);
+        ensureType(VimNames.TYPE_HOST);
     }
 
     public String getName() {
         return (String) getOrFail("name");
     }
 
-    public long getMemoryLimitBytes() {
-        long value = (Long) getOrFail(VimPath.rp_summary_config_memoryAllocation_limit);
-        if (value < 0) {
-            return value;
-        }
-        return value * MB_to_bytes;
+    public int getCoreCount() {
+        return (short) getOrFail(VimPath.host_summary_hardware_numCpuCores);
     }
 
-    public long getMemoryReservationBytes() {
-        long value = (Long) getOrFail(VimPath.rp_summary_config_memoryAllocation_reservation);
-        if (value < 0) {
-            return value;
-        }
-        return value * MB_to_bytes;
+    public int getCpuMhz() {
+        return (int) getOrFail(VimPath.host_summary_hardware_cpuMhz);
+    }
+
+    public long getTotalMemoryBytes() {
+        return (long) getOrFail(VimPath.host_summary_hardware_memorySize);
+    }
+
+    public String getHardwareUuid() {
+        return (String) getOrFail(VimPath.host_summary_hardware_uuid);
     }
 }

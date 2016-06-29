@@ -26,6 +26,9 @@ import com.vmware.vim25.ObjectContent;
  * per-need basis.
  */
 public abstract class AbstractOverlay {
+
+    public static final int MB_to_bytes = 1024 * 1024;
+
     private final ManagedObjectReference ref;
 
     private final Map<String, Object> props;

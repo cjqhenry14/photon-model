@@ -192,4 +192,12 @@ public final class VimUtils {
 
         return VimNames.TYPE_RESOURCE_POOL.equals(obj.getType());
     }
+
+    public static boolean isHost(ManagedObjectReference obj) {
+        if (obj == null) {
+            return false;
+        }
+
+        return VimNames.TYPE_HOST.equals(obj.getType());
+    }
 }

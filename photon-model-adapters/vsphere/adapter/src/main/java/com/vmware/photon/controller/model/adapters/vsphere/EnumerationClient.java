@@ -230,6 +230,7 @@ public class EnumerationClient extends BaseHelper {
                 VimPath.host_summary_hardware_memorySize,
                 VimPath.host_summary_hardware_cpuMhz,
                 VimPath.host_summary_hardware_numCpuCores,
+                VimPath.host_summary_hardware_uuid,
                 "name"
         ));
 
