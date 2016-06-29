@@ -75,10 +75,18 @@ public class TestVSphereCloneTask extends BaseVSphereAdapterTest {
 
         // create state & desc of the clone
         ComputeDescription cloneDescription = createCloneDescription(vm.documentSelfLink);
-        ComputeState cloneVm = createVmState(cloneDescription);
+        ComputeState clonedVm = createVmState(cloneDescription);
 
-        provisionTask = createProvisionTask(cloneVm);
+        provisionTask = createProvisionTask(clonedVm);
         awaitTaskEnd(provisionTask);
+
+        clonedVm = getComputeState(clonedVm);
+
+
+        if (!isMock()) {
+            deleteVmAndWait(vm);
+            deleteVmAndWait(clonedVm);
+        }
     }
 
     private ComputeDescription createCloneDescription(String templateComputeLink) throws Throwable {

@@ -21,6 +21,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest;
+import com.vmware.photon.controller.model.adapterapi.ComputeInstanceRequest.InstanceRequestType;
 import com.vmware.photon.controller.model.adapterapi.ComputePowerRequest;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
@@ -54,12 +55,16 @@ public class ProvisionContext {
     public VSphereIOThreadPool pool;
     public Consumer<Throwable> errorHandler;
 
+    private final InstanceRequestType instanceRequestType;
+
     public ProvisionContext(ComputeInstanceRequest req) {
+        this.instanceRequestType = req.requestType;
         this.computeReference = req.computeReference;
         this.provisioningTaskReference = req.provisioningTaskReference;
     }
 
     public ProvisionContext(ComputePowerRequest req) {
+        this.instanceRequestType = null;
         this.computeReference = req.computeReference;
         this.provisioningTaskReference = req.provisioningTaskReference;
     }
@@ -90,7 +95,9 @@ public class ProvisionContext {
                 CustomProperties.of(ctx.child.description).getString(CustomProperties.TEMPLATE_LINK)
         );
 
-        if (templateLink != null && ctx.templateMoRef == null) {
+        // if it is create request and there is template link, fetch the template
+        // in all other cases ignore the presence of the template
+        if (templateLink != null && ctx.templateMoRef == null && ctx.instanceRequestType == InstanceRequestType.CREATE) {
             URI computeUri = UriUtils.buildUri(service.getHost(), templateLink);
 
             AdapterUtils.getServiceState(service, computeUri, op -> {

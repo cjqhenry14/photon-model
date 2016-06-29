@@ -40,17 +40,12 @@ import com.vmware.photon.controller.model.resources.SnapshotService;
 import com.vmware.photon.controller.model.resources.SnapshotService.SnapshotState;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
-import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
-import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
 import com.vmware.photon.controller.model.tasks.SnapshotTaskService;
 import com.vmware.photon.controller.model.tasks.SnapshotTaskService.SnapshotTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
 import com.vmware.vim25.ManagedObjectReference;
-import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
-import com.vmware.xenon.services.common.QueryTask;
-import com.vmware.xenon.services.common.QueryTask.QuerySpecification;
 
 public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
 
@@ -83,24 +78,7 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
 
         createSnapshot(vm);
 
-        ResourceRemovalTaskState deletionState = new ResourceRemovalTaskState();
-        QuerySpecification resourceQuerySpec = new QueryTask.QuerySpecification();
-        // query all ComputeState resources for the cluster
-        resourceQuerySpec.query
-                .setTermPropertyName(ServiceDocument.FIELD_NAME_SELF_LINK)
-                .setTermMatchValue(vm.documentSelfLink);
-
-        deletionState.resourceQuerySpec = resourceQuerySpec;
-        deletionState.isMockRequest = isMock();
-        ResourceRemovalTaskState outDelete = TestUtils.doPost(this.host,
-                deletionState,
-                ResourceRemovalTaskState.class,
-                UriUtils.buildUri(this.host,
-                        ResourceRemovalTaskService.FACTORY_LINK));
-
-        ArrayList<URI> uris = new ArrayList<>();
-        uris.add(UriUtils.buildUri(this.host, outDelete.documentSelfLink));
-        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ResourceRemovalTaskState.class);
+        deleteVmAndWait(vm);
 
         if (!isMock()) {
             BasicConnection connection = createConnection();
@@ -177,7 +155,8 @@ public class TestVSphereProvisionTask extends BaseVSphereAdapterTest {
 
         computeState.diskLinks.add(createDisk("movies", DiskType.HDD, null).documentSelfLink);
         computeState.diskLinks.add(createDisk("A", DiskType.FLOPPY, null).documentSelfLink);
-        computeState.diskLinks.add(createDisk("cd", DiskType.CDROM, this.cdromUri).documentSelfLink);
+        computeState.diskLinks
+                .add(createDisk("cd", DiskType.CDROM, this.cdromUri).documentSelfLink);
 
         CustomProperties.of(computeState)
                 .put(ComputeProperties.RESOURCE_GROUP_NAME, this.vcFolder)

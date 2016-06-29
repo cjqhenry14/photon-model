@@ -30,12 +30,17 @@ import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService;
 import com.vmware.photon.controller.model.tasks.ProvisionComputeTaskService.ProvisionComputeTaskState;
 import com.vmware.photon.controller.model.tasks.ProvisioningUtils;
+import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService;
+import com.vmware.photon.controller.model.tasks.ResourceRemovalTaskService.ResourceRemovalTaskState;
 import com.vmware.photon.controller.model.tasks.TestUtils;
+import com.vmware.xenon.common.ServiceDocument;
 import com.vmware.xenon.common.UriUtils;
 import com.vmware.xenon.common.test.VerificationHost;
 import com.vmware.xenon.services.common.AuthCredentialsService;
 import com.vmware.xenon.services.common.AuthCredentialsService.AuthCredentialsServiceState;
 import com.vmware.xenon.services.common.ExampleService;
+import com.vmware.xenon.services.common.QueryTask.QuerySpecification;
+import com.vmware.xenon.services.common.TaskService.TaskServiceState;
 
 public class BaseVSphereAdapterTest {
 
@@ -147,10 +152,10 @@ public class BaseVSphereAdapterTest {
         return returnPool;
     }
 
-    protected void awaitTaskEnd(ProvisionComputeTaskState outTask) throws Throwable {
+    protected void awaitTaskEnd(TaskServiceState outTask) throws Throwable {
         List<URI> uris = new ArrayList<>();
         uris.add(UriUtils.buildUri(this.host, outTask.documentSelfLink));
-        ProvisioningUtils.waitForTaskCompletion(this.host, uris, ProvisionComputeTaskState.class);
+        ProvisioningUtils.waitForTaskCompletion(this.host, uris, outTask.getClass());
     }
 
     protected AuthCredentialsServiceState createAuth() throws Throwable {
@@ -164,5 +169,25 @@ public class BaseVSphereAdapterTest {
                 .doPost(this.host, auth, AuthCredentialsServiceState.class,
                         UriUtils.buildUri(this.host, AuthCredentialsService.FACTORY_LINK));
         return result;
+    }
+
+    protected void deleteVmAndWait(ComputeState vm) throws Throwable {
+        // now delete the clone
+        ResourceRemovalTaskState deletionState = new ResourceRemovalTaskState();
+        deletionState.isMockRequest = isMock();
+        QuerySpecification resourceQuerySpec = new QuerySpecification();
+        resourceQuerySpec.query
+                .setTermPropertyName(ServiceDocument.FIELD_NAME_SELF_LINK)
+                .setTermMatchValue(vm.documentSelfLink);
+
+        deletionState.resourceQuerySpec = resourceQuerySpec;
+        deletionState.isMockRequest = isMock();
+        ResourceRemovalTaskState outDelete = TestUtils.doPost(this.host,
+                deletionState,
+                ResourceRemovalTaskState.class,
+                UriUtils.buildUri(this.host,
+                        ResourceRemovalTaskService.FACTORY_LINK));
+
+        awaitTaskEnd(outDelete);
     }
 }
