@@ -35,7 +35,8 @@ public class ResourceState extends ServiceDocument {
      * properties.
      */
     @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
-    @PropertyOptions(indexing = { PropertyIndexingOption.EXPAND })
+    @PropertyOptions(indexing = { PropertyIndexingOption.EXPAND,
+            PropertyIndexingOption.FIXED_ITEM_NAME })
     public Map<String, String> customProperties;
 
     /**
