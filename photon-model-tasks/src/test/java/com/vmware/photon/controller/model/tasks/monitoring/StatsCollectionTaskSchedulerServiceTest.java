@@ -60,6 +60,7 @@ public class StatsCollectionTaskSchedulerServiceTest extends BaseModelTest {
     public void testStatsCollectorCreation() throws Throwable {
         // create a resource pool
         ResourcePoolState rpState = new ResourcePoolState();
+        rpState.name = "testName";
         ResourcePoolState rpReturnState = postServiceSynchronously(
                 ResourcePoolService.FACTORY_LINK, rpState,
                 ResourcePoolState.class);

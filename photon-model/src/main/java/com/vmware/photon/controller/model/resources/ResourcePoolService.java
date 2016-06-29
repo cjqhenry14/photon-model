@@ -56,6 +56,7 @@ public class ResourcePoolService extends StatefulService {
          * Name of this resource pool.
          */
         @UsageOption(option = PropertyUsageOption.AUTO_MERGE_IF_NOT_NULL)
+        @UsageOption(option = PropertyUsageOption.REQUIRED)
         public String name;
 
         /**
