@@ -49,7 +49,7 @@ public class VSphereAdapterPowerService extends StatelessService {
 
         ProvisionContext.populateContextThen(this, createInitialContext(request), ctx -> {
             if (request.isMockRequest) {
-                handleMockRequest(mgr, request, ctx);
+                patchComputeAndCompleteRequest(mgr, request, ctx);
                 return;
             }
 
@@ -106,17 +106,7 @@ public class VSphereAdapterPowerService extends StatelessService {
                         return;
                     }
 
-                    // update just the power state
-                    ctx.child.powerState = request.powerState;
-                    Operation patchState = patchComputeResource(ctx.child, ctx.computeReference);
-
-                    // finish task
-                    Operation patchTask = mgr.createTaskPatch(TaskStage.FINISHED);
-
-                    OperationSequence.create(patchState)
-                            .next(patchTask)
-                            .setCompletion(ctx.failOnError())
-                            .sendWith(this);
+                    patchComputeAndCompleteRequest(mgr, request, ctx);
                 });
     }
 
@@ -142,10 +132,19 @@ public class VSphereAdapterPowerService extends StatelessService {
                 .getMoRef(CustomProperties.MOREF);
     }
 
-    private void handleMockRequest(TaskManager mgr, ComputePowerRequest request,
+    private void patchComputeAndCompleteRequest(TaskManager mgr, ComputePowerRequest request,
             ProvisionContext ctx) {
-        // Simply PATCH task to completion and short-circuit the workflow.
-        mgr.patchTask(TaskStage.FINISHED);
+        // update just the power state
+        ctx.child.powerState = request.powerState;
+        Operation patchState = patchComputeResource(ctx.child, ctx.computeReference);
+
+        // finish task
+        Operation patchTask = mgr.createTaskPatch(TaskStage.FINISHED);
+
+        OperationSequence.create(patchState)
+                .next(patchTask)
+                .setCompletion(ctx.failOnError())
+                .sendWith(this);
     }
 
     private ProvisionContext createInitialContext(ComputePowerRequest request) {
