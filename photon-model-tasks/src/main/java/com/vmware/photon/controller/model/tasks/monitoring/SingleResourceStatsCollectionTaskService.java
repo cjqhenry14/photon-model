@@ -160,7 +160,7 @@ public class SingleResourceStatsCollectionTaskService extends TaskService<Single
 
     private void validateState(SingleResourceStatsCollectionTaskState state) {
         if (state.computeLink == null) {
-            throw new IllegalStateException("computeLink should not be null");
+            throw new IllegalStateException("computeReference should not be null");
         }
         if (state.parentLink == null) {
             throw new IllegalStateException("parentLink should not be null");
@@ -212,8 +212,8 @@ public class SingleResourceStatsCollectionTaskService extends TaskService<Single
                             if (computeStateWithDesc.description != null &&
                                     computeStateWithDesc.description.statsAdapterReference != null) {
                                 statsRequest.nextStage = SingleResourceTaskCollectionStage.UPDATE_STATS;
-                                statsRequest.computeLink = computeStateWithDesc.documentSelfLink;
-                                statsRequest.parentTaskLink = getUri().getPath();
+                                statsRequest.computeReference = UriUtils.buildUri(getHost(),computeStateWithDesc.documentSelfLink);
+                                statsRequest.parentTaskReference = getUri();
                                 patchUri = computeStateWithDesc.description.statsAdapterReference;
                                 patchBody = statsRequest;
                             } else {

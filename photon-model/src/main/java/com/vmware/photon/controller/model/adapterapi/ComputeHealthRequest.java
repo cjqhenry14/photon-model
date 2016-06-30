@@ -23,4 +23,9 @@ public class ComputeHealthRequest {
      * URI reference to compute instance.
      */
     public URI computeReference;
+
+    /**
+     * URI reference to calling task.
+     */
+    public URI parentTaskReference;
 }

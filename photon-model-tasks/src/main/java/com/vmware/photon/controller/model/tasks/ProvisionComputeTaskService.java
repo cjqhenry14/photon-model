@@ -56,7 +56,7 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
 
         public static final long DEFAULT_EXPIRATION_MICROS = TimeUnit.HOURS
                 .toMicros(1);
-        public static final String FIELD_NAME_PARENT_TASK_LINK = "parentTaskLink";
+        public static final String FIELD_NAME_PARENT_TASK_LINK = "parentTaskReference";
 
         /**
          * SubStage.
@@ -281,7 +281,7 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
 
             // the first reboot needs to be from the network, and the bare metal
             // services
-            // will provide the image reference (retrieved from the computeLink)
+            // will provide the image reference (retrieved from the computeReference)
             doSubStageCreateHost(updatedState, nextStageOnSuccess);
             return;
         case BOOTING_FROM_NETWORK:
@@ -324,7 +324,7 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
             cr.requestType = InstanceRequestType.CREATE;
             // the first reboot needs to be from the network, and the bare metal
             // services
-            // will provide the image reference (retrieved from the computeLink)
+            // will provide the image reference (retrieved from the computeReference)
 
             cr.provisioningTaskReference = o.getUri();
             cr.isMockRequest = updatedState.isMockRequest;
@@ -505,7 +505,7 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
 
     public void validateState(ProvisionComputeTaskState state) {
         if (state.computeLink == null) {
-            throw new IllegalArgumentException("computeLink is required");
+            throw new IllegalArgumentException("computeReference is required");
         }
 
         state.taskInfo = new TaskState();

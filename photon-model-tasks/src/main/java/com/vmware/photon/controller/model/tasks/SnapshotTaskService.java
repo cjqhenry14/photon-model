@@ -135,7 +135,7 @@ public class SnapshotTaskService extends TaskService<SnapshotTaskService.Snapsho
         }
         if (snapshotState.computeLink == null
                 || snapshotState.computeLink.isEmpty()) {
-            failTask(new IllegalArgumentException("Invalid computeLink"));
+            failTask(new IllegalArgumentException("Invalid computeReference"));
             return;
         }
 

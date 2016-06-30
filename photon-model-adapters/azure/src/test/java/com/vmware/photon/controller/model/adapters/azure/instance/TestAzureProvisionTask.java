@@ -167,7 +167,7 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
                         }
                         if (!resp.statsList.get(0).computeLink.equals(vm.documentSelfLink)) {
                             TestAzureProvisionTask.this.host.failIteration(
-                                    new IllegalStateException("Incorrect computeLink returned."));
+                                    new IllegalStateException("Incorrect computeReference returned."));
                             return;
                         }
                     }
@@ -179,9 +179,9 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         Operation startOp = Operation.createPost(UriUtils.buildUri(this.host, servicePath));
         this.host.startService(startOp, parentService);
         ComputeStatsRequest statsRequest = new ComputeStatsRequest();
-        statsRequest.computeLink = vm.documentSelfLink;
+        statsRequest.computeReference = UriUtils.buildUri(this.host, vm.documentSelfLink);
         statsRequest.isMockRequest = this.isMock;
-        statsRequest.parentTaskLink = servicePath;
+        statsRequest.parentTaskReference = UriUtils.buildUri(this.host, servicePath);
         this.host.sendAndWait(Operation.createPatch(UriUtils.buildUri(
                 this.host, AzureUriPaths.AZURE_STATS_ADAPTER))
                 .setBody(statsRequest)

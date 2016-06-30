@@ -13,6 +13,8 @@
 
 package com.vmware.photon.controller.model.adapterapi;
 
+import java.net.URI;
+
 /**
  * Defines the request body for getting statistics from a Compute instance.
  */
@@ -20,12 +22,12 @@ public class ComputeStatsRequest {
     /**
      * The compute instance in whose context this request is initiated
      */
-    public String computeLink;
+    public URI computeReference;
 
     /**
      * task to patch back to
      */
-    public String parentTaskLink;
+    public URI parentTaskReference;
 
     /**
      * The return stage to patch back

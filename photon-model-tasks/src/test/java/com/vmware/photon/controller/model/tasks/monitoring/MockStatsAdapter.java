@@ -20,11 +20,9 @@ import java.util.Map;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsRequest;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse;
 import com.vmware.photon.controller.model.adapterapi.ComputeStatsResponse.ComputeStats;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceStats.ServiceStat;
 import com.vmware.xenon.common.StatelessService;
-import com.vmware.xenon.common.UriUtils;
 
 public class MockStatsAdapter extends StatelessService {
 
@@ -59,11 +57,11 @@ public class MockStatsAdapter extends StatelessService {
             statValues.put(KEY_2, key2);
             ComputeStats cStat = new ComputeStats();
             cStat.statValues = statValues;
-            cStat.computeLink = statsRequest.computeLink;
+            cStat.computeLink = statsRequest.computeReference.getPath();
             statsResponse.statsList = new ArrayList<ComputeStats>();
             statsResponse.statsList.add(cStat);
             statsResponse.taskStage = statsRequest.nextStage;
-            this.sendRequest(Operation.createPatch(UriUtils.buildUri(getHost(), statsRequest.parentTaskLink))
+            this.sendRequest(Operation.createPatch(statsRequest.parentTaskReference)
                     .setBody(statsResponse));
             break;
         default:

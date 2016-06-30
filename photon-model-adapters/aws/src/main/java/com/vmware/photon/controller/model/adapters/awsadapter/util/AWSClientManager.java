@@ -77,7 +77,7 @@ public class AWSClientManager {
      * @param credentials The auth credentials to be used for the client creation
      * @param regionId The region of the AWS client
      * @param service The stateless service making the request and for which the executor pool needs to be allocated.
-     * @param parentTaskLink The parentTaskLink where the error (if any) needs to be reported.
+     * @param parentTaskReference The parentTaskReference where the error (if any) needs to be reported.
      * @return The AWSClient
      */
     public synchronized AmazonEC2AsyncClient getOrCreateEC2Client(
@@ -114,7 +114,7 @@ public class AWSClientManager {
      * @param credentials The auth credentials to be used for the client creation
      * @param regionId The region of the AWS client
      * @param service The stateless service for which the operation is being performed.
-     * @param parentTaskLink The parentTaskLink where the error (if any) needs to be reported.
+     * @param parentTaskReference The parentTaskReference where the error (if any) needs to be reported.
      * @param isMock Indicates if this a mock request
      * @return
      */

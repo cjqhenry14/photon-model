@@ -44,7 +44,6 @@ import com.vmware.photon.controller.model.monitoring.ResourceMetricService;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription.ComputeType;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeStateWithDescription;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.ServiceStats.ServiceStat;
@@ -137,8 +136,7 @@ public class AWSStatsService extends StatelessService {
         ComputeStatsRequest statsRequest = op.getBody(ComputeStatsRequest.class);
         if (statsRequest.isMockRequest) {
             // patch status to parent task
-            AdapterUtils.sendPatchToProvisioningTask(this,
-                    UriUtils.buildUri(getHost(), statsRequest.parentTaskLink));
+            AdapterUtils.sendPatchToProvisioningTask(this, statsRequest.parentTaskReference);
             return;
         }
         AWSStatsDataHolder statsData = new AWSStatsDataHolder();
@@ -158,8 +156,7 @@ public class AWSStatsService extends StatelessService {
                 getParentVMDescription(statsData);
             }
         };
-        URI computeUri = UriUtils.extendUriWithQuery(
-                UriUtils.buildUri(getHost(), statsData.statsRequest.computeLink),
+        URI computeUri = UriUtils.extendUriWithQuery(statsData.statsRequest.computeReference,
                 UriUtils.URI_PARAM_ODATA_EXPAND,
                 Boolean.TRUE.toString());
         AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(statsData));
@@ -193,8 +190,8 @@ public class AWSStatsService extends StatelessService {
 
     private Consumer<Throwable> getFailureConsumer(AWSStatsDataHolder statsData) {
         return ((t) -> {
-            AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
-                    statsData.statsRequest.parentTaskLink, t);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this,
+                    statsData.statsRequest.parentTaskReference, t);
         });
     }
 
@@ -277,14 +274,14 @@ public class AWSStatsService extends StatelessService {
     }
 
     private void getAWSAsyncStatsClient(AWSStatsDataHolder statsData) {
-        URI parentURI = UriUtils.buildUri(this.getHost(), statsData.statsRequest.parentTaskLink);
+        URI parentURI = statsData.statsRequest.parentTaskReference;
         statsData.statsClient = this.clientManager.getOrCreateCloudWatchClient(statsData.parentAuth,
                 statsData.computeDesc.description.zoneId, this, parentURI,
                 statsData.statsRequest.isMockRequest);
     }
 
     private void getAWSAsyncBillingClient(AWSStatsDataHolder statsData) {
-        URI parentURI = UriUtils.buildUri(this.getHost(), statsData.statsRequest.parentTaskLink);
+        URI parentURI = statsData.statsRequest.parentTaskReference;
         statsData.billingClient = this.clientManager.getOrCreateCloudWatchClient(
                 statsData.parentAuth,
                 COST_ZONE_ID, this, parentURI,
@@ -310,8 +307,8 @@ public class AWSStatsService extends StatelessService {
         @Override
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(this.opContext);
-            AdapterUtils.sendFailurePatchToProvisioningTask(this.service, this.service.getHost(),
-                    this.statsData.statsRequest.parentTaskLink, exception);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
+                    this.statsData.statsRequest.parentTaskReference, exception);
         }
 
         @Override
@@ -390,8 +387,8 @@ public class AWSStatsService extends StatelessService {
         @Override
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(this.opContext);
-            AdapterUtils.sendFailurePatchToProvisioningTask(this.service, this.service.getHost(),
-                    this.statsData.statsRequest.parentTaskLink, exception);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
+                    this.statsData.statsRequest.parentTaskReference, exception);
         }
 
         @Override
@@ -435,8 +432,8 @@ public class AWSStatsService extends StatelessService {
                 respBody.taskStage = this.statsData.statsRequest.nextStage;
                 respBody.statsList = new ArrayList<>();
                 respBody.statsList.add(this.statsData.statsResponse);
-                this.service.sendRequest(Operation.createPatch(
-                        UriUtils.buildUri(this.service.getHost(), this.statsData.statsRequest.parentTaskLink))
+                this.service.sendRequest(
+                        Operation.createPatch(this.statsData.statsRequest.parentTaskReference)
                         .setBody(respBody));
             }
         }

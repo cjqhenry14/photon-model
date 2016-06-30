@@ -146,8 +146,7 @@ public class AzureStatsService extends StatelessService {
 
             if (statsRequest.isMockRequest) {
                 // patch status to parent task
-                AdapterUtils.sendPatchToProvisioningTask(this,
-                        UriUtils.buildUri(getHost(), statsRequest.parentTaskLink));
+                AdapterUtils.sendPatchToProvisioningTask(this, statsRequest.parentTaskReference);
                 return;
             }
 
@@ -165,8 +164,7 @@ public class AzureStatsService extends StatelessService {
             statsData.computeDesc = op.getBody(ComputeStateWithDescription.class);
             getParentVMDescription(statsData);
         };
-        URI computeUri = UriUtils.extendUriWithQuery(
-                UriUtils.buildUri(getHost(), statsData.statsRequest.computeLink),
+        URI computeUri = UriUtils.extendUriWithQuery(statsData.statsRequest.computeReference,
                 UriUtils.URI_PARAM_ODATA_EXPAND, Boolean.TRUE.toString());
         AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(statsData));
     }
@@ -203,8 +201,8 @@ public class AzureStatsService extends StatelessService {
          */
         if (statsData.computeDesc.diskLinks == null ||
                 statsData.computeDesc.diskLinks.isEmpty()) {
-            AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
-                    statsData.statsRequest.parentTaskLink,
+            AdapterUtils.sendFailurePatchToProvisioningTask(this,
+                    statsData.statsRequest.parentTaskReference,
                     new IllegalStateException("No disks found"));
         }
         AdapterUtils.getServiceState(this, statsData.computeDesc.diskLinks.get(0), onSuccess,
@@ -222,8 +220,8 @@ public class AzureStatsService extends StatelessService {
 
     private Consumer<Throwable> getFailureConsumer(AzureStatsDataHolder statsData) {
         return ((throwable) -> {
-            AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
-                    statsData.statsRequest.parentTaskLink, throwable);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this,
+                    statsData.statsRequest.parentTaskReference, throwable);
         });
     }
 
@@ -256,8 +254,8 @@ public class AzureStatsService extends StatelessService {
         try {
             getMetricDefinitions(statsData);
         } catch (Exception e) {
-            AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
-                    statsData.statsRequest.parentTaskLink, e);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this,
+                    statsData.statsRequest.parentTaskReference, e);
         }
     }
 
@@ -289,8 +287,8 @@ public class AzureStatsService extends StatelessService {
                 AzureConstants.AUTH_HEADER_BEARER_PREFIX + statsData.credentials.getToken());
         operation.setCompletion((op, ex) -> {
             if (ex != null) {
-                AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
-                        statsData.statsRequest.parentTaskLink, ex);
+                AdapterUtils.sendFailurePatchToProvisioningTask(this,
+                        statsData.statsRequest.parentTaskReference, ex);
             }
             MetricDefinitions metricDefinitions = op.getBody(MetricDefinitions.class);
             DateTimeFormatter dateTimeFormatter = DateTimeFormat
@@ -319,8 +317,8 @@ public class AzureStatsService extends StatelessService {
                 try {
                     getMetrics(statsData);
                 } catch (Exception e) {
-                    AdapterUtils.sendFailurePatchToProvisioningTask(this, getHost(),
-                            statsData.statsRequest.parentTaskLink, e);
+                    AdapterUtils.sendFailurePatchToProvisioningTask(this,
+                            statsData.statsRequest.parentTaskReference, e);
                 }
             } else {
                 // Patch back to the Parent with empty response
@@ -328,8 +326,7 @@ public class AzureStatsService extends StatelessService {
                 statsData.statsResponse.computeLink = statsData.computeDesc.documentSelfLink;
                 respBody.taskStage = statsData.statsRequest.nextStage;
                 respBody.statsList = new ArrayList<>();
-                this.sendRequest(Operation.createPatch(
-                        UriUtils.buildUri(this.getHost(), statsData.statsRequest.parentTaskLink))
+                this.sendRequest(Operation.createPatch(statsData.statsRequest.parentTaskReference)
                         .setBody(respBody));
             }
         });
@@ -374,8 +371,8 @@ public class AzureStatsService extends StatelessService {
         @Override
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(this.opContext);
-            AdapterUtils.sendFailurePatchToProvisioningTask(this.service, this.service.getHost(),
-                    this.statsData.statsRequest.parentTaskLink, exception);
+            AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
+                    this.statsData.statsRequest.parentTaskReference, exception);
         }
 
         @Override
@@ -402,8 +399,8 @@ public class AzureStatsService extends StatelessService {
                 respBody.taskStage = this.statsData.statsRequest.nextStage;
                 respBody.statsList = new ArrayList<>();
                 respBody.statsList.add(this.statsData.statsResponse);
-                this.service.sendRequest(Operation.createPatch(
-                        UriUtils.buildUri(this.service.getHost(), this.statsData.statsRequest.parentTaskLink))
+                this.service.sendRequest(
+                        Operation.createPatch(this.statsData.statsRequest.parentTaskReference)
                         .setBody(respBody));
             }
         }
