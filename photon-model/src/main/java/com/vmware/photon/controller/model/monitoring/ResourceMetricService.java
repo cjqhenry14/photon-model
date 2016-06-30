@@ -40,6 +40,8 @@ public class ResourceMetricService extends StatefulService {
         public static final int VERSION_RETENTION_LIMIT = Integer.getInteger(
                 UriPaths.PROPERTY_PREFIX + ResourceMetric.class.getSimpleName()
                 + ".VERSION_RETENTION_LIMIT", 50000);
+        public static final String FIELD_NAME_VALUE = "value";
+        public static final String FIELD_NAME_TIMESTAMP = "timestampMicrosUtc";
 
         @Documentation(description = "The average value returned by the cloud provider")
         @UsageOption(option = PropertyUsageOption.REQUIRED)
