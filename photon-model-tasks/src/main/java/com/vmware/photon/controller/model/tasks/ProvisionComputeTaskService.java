@@ -169,10 +169,10 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
         // update state
         startPost.complete();
 
-        if (state.bootAdapterReference == null
-                ^ state.powerAdapterReference == null) {
+        if (state.bootAdapterReference != null
+                && state.powerAdapterReference == null) {
             failTask(new IllegalArgumentException(
-                    "computeHost power and boot need to both be set or empty"));
+                    "computeHost power adapter is mandatory when boot adapter is configured"));
             return;
         }
 
