@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeoutException;
 
-import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
@@ -72,31 +71,21 @@ public class ProvisioningUtils {
                 + desiredCount + "Found " + res.documents.size());
     }
 
-    public static ServiceDocumentQueryResult queryComputeDescriptions(VerificationHost host,
-            int desiredCount) throws Throwable {
+    public static ServiceDocumentQueryResult queryDocumentsAndAssertExpectedCount(
+            VerificationHost host,
+            int desiredCount, String factoryLink) throws Throwable {
         ServiceDocumentQueryResult res;
         res = host.getFactoryState(UriUtils
                 .buildExpandLinksQueryUri(UriUtils.buildUri(host.getUri(),
-                        ComputeDescriptionService.FACTORY_LINK)));
+                        factoryLink)));
         if (res.documents.size() == desiredCount) {
             return res;
         }
-        throw new Exception("Desired number of compute descriptions not found. Expected "
+        throw new Exception("Desired number of documents not found in " + factoryLink
+                + " factory states. Expected "
                 + desiredCount + "Found " + res.documents.size());
     }
 
-    public static ServiceDocumentQueryResult queryNetworkStates(VerificationHost host,
-            int desiredCount) throws Throwable {
-        ServiceDocumentQueryResult res;
-        res = host.getFactoryState(UriUtils
-                .buildExpandLinksQueryUri(UriUtils.buildUri(host.getUri(),
-                        NetworkService.FACTORY_LINK)));
-        if (res.documents.size() == desiredCount) {
-            return res;
-        }
-        throw new Exception("Desired number of network states not found. Expected "
-                + desiredCount + "Found " + res.documents.size());
-    }
 
     public static Map<String, NetworkState> getNetworkStates(VerificationHost host)
             throws Throwable {

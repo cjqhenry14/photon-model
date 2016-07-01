@@ -16,6 +16,7 @@ package com.vmware.photon.controller.model.resources;
 import org.apache.commons.validator.routines.InetAddressValidator;
 
 import com.vmware.photon.controller.model.UriPaths;
+
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.ServiceDocumentDescription.PropertyUsageOption;
 import com.vmware.xenon.common.StatefulService;
@@ -26,8 +27,7 @@ import com.vmware.xenon.common.Utils;
  */
 public class NetworkInterfaceService extends StatefulService {
 
-    public static final String FACTORY_LINK = UriPaths.RESOURCES_NETWORKS
-            + "/interfaces";
+    public static final String FACTORY_LINK = UriPaths.RESOURCES_NETWORK_INTERFACES;
 
     /**
      * Represents the state of a network interface.

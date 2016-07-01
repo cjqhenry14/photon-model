@@ -42,9 +42,8 @@ import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetu
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.zoneId;
 import static com.vmware.photon.controller.model.adapters.awsadapter.TestUtils.getExecutor;
 import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.getNetworkStates;
-import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryComputeDescriptions;
 import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryComputeInstances;
-import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryNetworkStates;
+import static com.vmware.photon.controller.model.tasks.ProvisioningUtils.queryDocumentsAndAssertExpectedCount;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -63,9 +62,12 @@ import org.junit.Test;
 import com.vmware.photon.controller.model.PhotonModelServices;
 import com.vmware.photon.controller.model.adapters.awsadapter.TestAWSSetupUtils.BaseLineState;
 import com.vmware.photon.controller.model.adapters.awsadapter.enumeration.AWSComputeStateCreationAdapterService.AWSTags;
+import com.vmware.photon.controller.model.resources.ComputeDescriptionService;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
+import com.vmware.photon.controller.model.resources.NetworkInterfaceService;
 import com.vmware.photon.controller.model.resources.NetworkInterfaceService.NetworkInterfaceState;
+import com.vmware.photon.controller.model.resources.NetworkService;
 import com.vmware.photon.controller.model.resources.NetworkService.NetworkState;
 import com.vmware.photon.controller.model.resources.ResourcePoolService.ResourcePoolState;
 import com.vmware.photon.controller.model.tasks.PhotonModelTaskServices;
@@ -196,7 +198,8 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // Provision a single VM . Check initial state.
             provisionMachine(this.host, this.vmState, this.isMock, instancesToCleanUp);
             queryComputeInstances(this.host, count2);
-            queryComputeDescriptions(this.host, count2);
+            queryDocumentsAndAssertExpectedCount(this.host, count2,
+                    ComputeDescriptionService.FACTORY_LINK);
 
             // CREATION directly on AWS
             this.instanceIdsToDeleteFirstTime = provisionAWSVMWithEC2Client(this.client, this.host,
@@ -221,18 +224,22 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // service and the one directly provisioned on EC2, there is no Compute description
             // linking of discovered resources to user defined compute descriptions. So a new system
             // generated compute description will be created for "t2.micro"
-            queryComputeDescriptions(this.host,
-                    count4 + this.baseLineState.baselineComputeDescriptionCount);
+            queryDocumentsAndAssertExpectedCount(this.host,
+                    count4 + this.baseLineState.baselineComputeDescriptionCount,
+                    ComputeDescriptionService.FACTORY_LINK);
             queryComputeInstances(this.host,
                     count7 + this.baseLineState.baselineVMCount);
 
             // Update Scenario : Check that the tag information is present for the VM tagged above.
             String vpCId = validateTagAndNetworkAndComputeDescriptionInformation();
             validateVPCInformation(vpCId);
-            // Total network states is a combination of NICs and network state
-            // Count should be 2 NICs per discovered VM + 1 Network State for the VPC
-            int totalNetworkStateCount = (count6 + this.baseLineState.baselineVMCount) * 2 + 1;
-            queryNetworkStates(this.host, totalNetworkStateCount);
+            // Count should be 2 NICs per discovered VM
+            int totalNetworkInterfaceStateCount = (count6 + this.baseLineState.baselineVMCount) * 2;
+            queryDocumentsAndAssertExpectedCount(this.host, totalNetworkInterfaceStateCount,
+                    NetworkInterfaceService.FACTORY_LINK);
+            // One VPC should be discovered in the test.
+            queryDocumentsAndAssertExpectedCount(this.host, count1,
+                    NetworkService.FACTORY_LINK);
 
             // Pure UPDATE scenario with no new resources to discover
             // Update the tag on the VM already known to the system
@@ -254,8 +261,9 @@ public class TestAWSEnumerationTask extends BasicReusableHostTestCase {
             // One additional compute state and and one additional compute description should be
             // created. 1) compute host CD 2) t2.nano-system generated 3) t2.micro-system generated
             // 4) t2.micro-created from test code.
-            queryComputeDescriptions(this.host,
-                    count4 + this.baseLineState.baselineComputeDescriptionCount);
+            queryDocumentsAndAssertExpectedCount(this.host,
+                    count4 + this.baseLineState.baselineComputeDescriptionCount,
+                    ComputeDescriptionService.FACTORY_LINK);
             queryComputeInstances(this.host,
                     count8 + this.baseLineState.baselineVMCount);
 
