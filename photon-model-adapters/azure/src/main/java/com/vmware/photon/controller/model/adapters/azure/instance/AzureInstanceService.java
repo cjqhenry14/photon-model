@@ -178,16 +178,16 @@ public class AzureInstanceService extends StatelessService {
             if (ctx.computeRequest.isMockRequest
                     && ctx.computeRequest.requestType == ComputeInstanceRequest.InstanceRequestType.CREATE) {
                 AdapterUtils.sendPatchToProvisioningTask(this,
-                        ctx.computeRequest.provisioningTaskReference);
+                        ctx.computeRequest.taskReference);
                 return;
             }
             try {
                 handleAllocation(ctx);
             } catch (Exception e) {
                 logSevere(e);
-                if (ctx.computeRequest.provisioningTaskReference != null) {
+                if (ctx.computeRequest.taskReference != null) {
                     AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                            ctx.computeRequest.provisioningTaskReference, e);
+                            ctx.computeRequest.taskReference, e);
                 }
             }
         }
@@ -290,16 +290,16 @@ public class AzureInstanceService extends StatelessService {
         case FINISHED:
             AdapterUtils.sendPatchToProvisioningTask(
                     AzureInstanceService.this,
-                    ctx.computeRequest.provisioningTaskReference);
+                    ctx.computeRequest.taskReference);
             cleanUpHttpClient(this, ctx.httpClient);
             break;
         case DELETE:
             deleteVM(ctx);
             break;
         case ERROR:
-            if (ctx.computeRequest.provisioningTaskReference != null) {
+            if (ctx.computeRequest.taskReference != null) {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                        ctx.computeRequest.provisioningTaskReference, ctx.error);
+                        ctx.computeRequest.taskReference, ctx.error);
             }
             cleanUpHttpClient(this, ctx.httpClient);
             break;
@@ -396,7 +396,7 @@ public class AzureInstanceService extends StatelessService {
             }
             if (deleteCallbackCount.incrementAndGet() == resourcesToDelete.size()) {
                 AdapterUtils
-                        .sendPatchToProvisioningTask(this, computeReq.provisioningTaskReference);
+                        .sendPatchToProvisioningTask(this, computeReq.taskReference);
                 ctx.stage = AzureStages.FINISHED;
                 handleAllocation(ctx);
             }
@@ -764,7 +764,7 @@ public class AzureInstanceService extends StatelessService {
                         };
 
                         sendRequest(
-                                Operation.createPatch(ctx.computeRequest.computeReference)
+                                Operation.createPatch(ctx.computeRequest.resourceReference)
                                         .setBody(resultDesc).setCompletion(completionHandler)
                                         .setReferer(getHost().getUri()));
                     }
@@ -1018,7 +1018,7 @@ public class AzureInstanceService extends StatelessService {
             handleAllocation(ctx);
         };
         URI computeUri = UriUtils.extendUriWithQuery(
-                ctx.computeRequest.computeReference, UriUtils.URI_PARAM_ODATA_EXPAND,
+                ctx.computeRequest.resourceReference, UriUtils.URI_PARAM_ODATA_EXPAND,
                 Boolean.TRUE.toString());
         AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(ctx));
     }

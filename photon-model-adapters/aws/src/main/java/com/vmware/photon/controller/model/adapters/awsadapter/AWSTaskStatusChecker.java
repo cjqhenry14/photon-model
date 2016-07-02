@@ -78,7 +78,7 @@ public class AWSTaskStatusChecker {
             this.service.logSevere(msg);
             Throwable t = new RuntimeException(msg);
             AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
-                    this.computeRequest.provisioningTaskReference, t);
+                    this.computeRequest.taskReference, t);
             return;
         }
         DescribeInstancesRequest descRequest = new DescribeInstancesRequest();
@@ -104,7 +104,7 @@ public class AWSTaskStatusChecker {
                     return;
                 }
                 AdapterUtils.sendFailurePatchToProvisioningTask(AWSTaskStatusChecker.this.service,
-                        AWSTaskStatusChecker.this.computeRequest.provisioningTaskReference, exception);
+                        AWSTaskStatusChecker.this.computeRequest.taskReference, exception);
                 return;
             }
 

@@ -152,7 +152,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         if (awsEnumerationContext.computeEnumerationRequest.isMockRequest) {
             // patch status to parent task
             AdapterUtils.sendPatchToEnumerationTask(this,
-                    awsEnumerationContext.computeEnumerationRequest.enumerationTaskReference);
+                    awsEnumerationContext.computeEnumerationRequest.taskReference);
             return;
         }
         handleEnumerationRequest(awsEnumerationContext);
@@ -246,13 +246,13 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             break;
         case ERROR:
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
-                    aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
+                    aws.computeEnumerationRequest.taskReference, aws.error);
             break;
         default:
             logSevere("Unknown AWS enumeration stage %s ", aws.stage.toString());
             aws.error = new Exception("Unknown AWS enumeration stage %s");
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
-                    aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
+                    aws.computeEnumerationRequest.taskReference, aws.error);
             break;
         }
     }
@@ -265,7 +265,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             AWSEnumerationCreationStages next) {
         aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
                 aws.computeHostDescription.zoneId, this,
-                aws.computeEnumerationRequest.enumerationTaskReference, true);
+                aws.computeEnumerationRequest.taskReference, true);
         aws.stage = next;
         handleEnumerationRequest(aws);
     }
@@ -320,7 +320,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(this.opContext);
             AdapterUtils.sendFailurePatchToEnumerationTask(this.service,
-                    this.aws.computeEnumerationRequest.enumerationTaskReference,
+                    this.aws.computeEnumerationRequest.taskReference,
                     exception);
 
         }
@@ -510,7 +510,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
         private void createComputeDescriptions(AWSEnumerationCreationSubStage next) {
             AWSComputeDescriptionCreationState cd = new AWSComputeDescriptionCreationState();
             cd.instancesToBeCreated = this.aws.instancesToBeCreated;
-            cd.parentTaskLink = this.aws.computeEnumerationRequest.enumerationTaskReference;
+            cd.parentTaskLink = this.aws.computeEnumerationRequest.taskReference;
             cd.authCredentiaslLink = this.aws.parentAuth.documentSelfLink;
             cd.tenantLinks = this.aws.computeHostDescription.tenantLinks;
             cd.regionId = this.aws.computeHostDescription.zoneId;
@@ -546,7 +546,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             awsComputeState.computeStatesToBeUpdated = this.aws.computeStatesToBeUpdated;
             awsComputeState.parentComputeLink = this.aws.computeEnumerationRequest.parentComputeLink;
             awsComputeState.resourcePoolLink = this.aws.computeEnumerationRequest.resourcePoolLink;
-            awsComputeState.parentTaskLink = this.aws.computeEnumerationRequest.enumerationTaskReference;
+            awsComputeState.parentTaskLink = this.aws.computeEnumerationRequest.taskReference;
             awsComputeState.tenantLinks = this.aws.computeHostDescription.tenantLinks;
             awsComputeState.parentAuth = this.aws.parentAuth;
             awsComputeState.regionId = this.aws.computeHostDescription.zoneId;

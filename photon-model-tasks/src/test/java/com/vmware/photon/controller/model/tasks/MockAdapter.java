@@ -80,7 +80,7 @@ public class MockAdapter {
                 computeSubTaskState.taskInfo = new TaskState();
                 computeSubTaskState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                 sendRequest(Operation.createPatch(
-                        request.provisioningTaskReference).setBody(
+                        request.taskReference).setBody(
                                 computeSubTaskState));
                 break;
             default:
@@ -109,7 +109,7 @@ public class MockAdapter {
                 ComputeSubTaskService.ComputeSubTaskState computeSubTaskState = new ComputeSubTaskService.ComputeSubTaskState();
                 computeSubTaskState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation.createPatch(
-                        request.provisioningTaskReference).setBody(
+                        request.taskReference).setBody(
                                 computeSubTaskState));
                 break;
             default:
@@ -139,7 +139,7 @@ public class MockAdapter {
                 computeSubTaskState.taskInfo = new TaskState();
                 computeSubTaskState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                 sendRequest(Operation.createPatch(
-                        request.provisioningTaskReference).setBody(
+                        request.taskReference).setBody(
                                 computeSubTaskState));
                 break;
             default:
@@ -169,7 +169,7 @@ public class MockAdapter {
                 computeSubTaskState.taskInfo = new TaskState();
                 computeSubTaskState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation.createPatch(
-                        request.provisioningTaskReference).setBody(
+                        request.taskReference).setBody(
                                 computeSubTaskState));
                 break;
             default:
@@ -199,7 +199,7 @@ public class MockAdapter {
                 patchState.taskInfo = new TaskState();
                 patchState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                 sendRequest(Operation.createPatch(
-                        request.enumerationTaskReference).setBody(patchState));
+                        request.taskReference).setBody(patchState));
                 break;
             default:
                 super.handleRequest(op);
@@ -227,7 +227,7 @@ public class MockAdapter {
                 ResourceEnumerationTaskService.ResourceEnumerationTaskState patchState = new ResourceEnumerationTaskService.ResourceEnumerationTaskState();
                 patchState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation.createPatch(
-                        request.enumerationTaskReference).setBody(patchState));
+                        request.taskReference).setBody(patchState));
                 break;
             default:
                 super.handleRequest(op);
@@ -256,7 +256,7 @@ public class MockAdapter {
                 computeSubTaskState.taskInfo = new TaskState();
                 computeSubTaskState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                 sendRequest(Operation
-                        .createPatch(request.snapshotTaskReference).setBody(
+                        .createPatch(request.taskReference).setBody(
                                 computeSubTaskState));
                 op.complete();
                 break;
@@ -285,7 +285,7 @@ public class MockAdapter {
                 ComputeSubTaskService.ComputeSubTaskState computeSubTaskState = new ComputeSubTaskService.ComputeSubTaskState();
                 computeSubTaskState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation
-                        .createPatch(request.snapshotTaskReference).setBody(
+                        .createPatch(request.taskReference).setBody(
                                 computeSubTaskState));
                 op.complete();
                 break;
@@ -317,7 +317,7 @@ public class MockAdapter {
                 provisionNetworkTaskState.taskInfo = new TaskState();
                 provisionNetworkTaskState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                 sendRequest(Operation.createPatch(
-                        request.provisioningTaskReference).setBody(
+                        request.taskReference).setBody(
                                 provisionNetworkTaskState));
                 op.complete();
                 break;
@@ -348,7 +348,7 @@ public class MockAdapter {
                 ProvisionNetworkTaskService.ProvisionNetworkTaskState provisionNetworkTaskState = new ProvisionNetworkTaskService.ProvisionNetworkTaskState();
                 provisionNetworkTaskState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation.createPatch(
-                        request.provisioningTaskReference).setBody(
+                        request.taskReference).setBody(
                                 provisionNetworkTaskState));
                 op.complete();
                 break;
@@ -380,7 +380,7 @@ public class MockAdapter {
                 provisionFirewallTaskState.taskInfo = new TaskState();
                 provisionFirewallTaskState.taskInfo.stage = TaskState.TaskStage.FINISHED;
                 sendRequest(Operation.createPatch(
-                        request.provisioningTaskReference).setBody(
+                        request.taskReference).setBody(
                                 provisionFirewallTaskState));
                 op.complete();
                 break;
@@ -411,7 +411,7 @@ public class MockAdapter {
                 ProvisionFirewallTaskService.ProvisionFirewallTaskState provisionFirewallTaskState = new ProvisionFirewallTaskService.ProvisionFirewallTaskState();
                 provisionFirewallTaskState.taskInfo = createFailedTaskInfo();
                 sendRequest(Operation.createPatch(
-                        request.provisioningTaskReference).setBody(
+                        request.taskReference).setBody(
                                 provisionFirewallTaskState));
                 op.complete();
                 break;

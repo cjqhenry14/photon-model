@@ -212,8 +212,8 @@ public class SingleResourceStatsCollectionTaskService extends TaskService<Single
                             if (computeStateWithDesc.description != null &&
                                     computeStateWithDesc.description.statsAdapterReference != null) {
                                 statsRequest.nextStage = SingleResourceTaskCollectionStage.UPDATE_STATS;
-                                statsRequest.computeReference = UriUtils.buildUri(getHost(),computeStateWithDesc.documentSelfLink);
-                                statsRequest.parentTaskReference = getUri();
+                                statsRequest.resourceReference = UriUtils.buildUri(getHost(),computeStateWithDesc.documentSelfLink);
+                                statsRequest.taskReference = getUri();
                                 patchUri = computeStateWithDesc.description.statsAdapterReference;
                                 patchBody = statsRequest;
                             } else {

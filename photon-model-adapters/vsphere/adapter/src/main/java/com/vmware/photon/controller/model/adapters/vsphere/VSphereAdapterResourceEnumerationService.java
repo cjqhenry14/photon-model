@@ -97,7 +97,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
 
         validate(request);
 
-        TaskManager mgr = new TaskManager(this, request.enumerationTaskReference);
+        TaskManager mgr = new TaskManager(this, request.taskReference);
         mgr.patchTask(TaskStage.STARTED);
 
         op.setStatusCode(Operation.STATUS_CODE_CREATED);

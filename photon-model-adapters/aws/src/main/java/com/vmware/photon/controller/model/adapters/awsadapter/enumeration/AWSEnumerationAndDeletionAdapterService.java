@@ -139,7 +139,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
         if (awsEnumerationContext.computeEnumerationRequest.isMockRequest) {
             // patch status to parent task
             AdapterUtils.sendPatchToEnumerationTask(this,
-                    awsEnumerationContext.computeEnumerationRequest.enumerationTaskReference);
+                    awsEnumerationContext.computeEnumerationRequest.taskReference);
             return;
         }
         handleEnumerationRequestForDeletion(awsEnumerationContext);
@@ -194,7 +194,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
             break;
         case ERROR:
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
-                    aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
+                    aws.computeEnumerationRequest.taskReference, aws.error);
             break;
         default:
             logSevere("Unknown AWS enumeration stage %s ", aws.stage.toString());
@@ -353,7 +353,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
                 this, aws, next);
         aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
                 aws.computeHostDescription.zoneId, this,
-                aws.computeEnumerationRequest.enumerationTaskReference, true);
+                aws.computeEnumerationRequest.taskReference, true);
         aws.amazonEC2Client.describeInstancesAsync(request,
                 resultHandler);
     }
@@ -383,7 +383,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
             OperationContext.restoreOperationContext(this.opContext);
             this.service.logSevere(exception);
             AdapterUtils.sendFailurePatchToEnumerationTask(this.service,
-                    this.aws.computeEnumerationRequest.enumerationTaskReference,
+                    this.aws.computeEnumerationRequest.taskReference,
                     exception);
 
         }

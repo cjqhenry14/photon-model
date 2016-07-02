@@ -57,11 +57,11 @@ public class MockStatsAdapter extends StatelessService {
             statValues.put(KEY_2, key2);
             ComputeStats cStat = new ComputeStats();
             cStat.statValues = statValues;
-            cStat.computeLink = statsRequest.computeReference.getPath();
+            cStat.computeLink = statsRequest.resourceReference.getPath();
             statsResponse.statsList = new ArrayList<ComputeStats>();
             statsResponse.statsList.add(cStat);
             statsResponse.taskStage = statsRequest.nextStage;
-            this.sendRequest(Operation.createPatch(statsRequest.parentTaskReference)
+            this.sendRequest(Operation.createPatch(statsRequest.taskReference)
                     .setBody(statsResponse));
             break;
         default:

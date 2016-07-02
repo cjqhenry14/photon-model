@@ -125,7 +125,7 @@ public class AWSFirewallService extends StatelessService {
         case AWS_CLIENT:
             requestState.client = this.clientManager.getOrCreateEC2Client(requestState.credentials,
                     requestState.firewall.regionID, this,
-                    requestState.firewallRequest.provisioningTaskReference, false);
+                    requestState.firewallRequest.taskReference, false);
             if (requestState.firewallRequest.requestType == FirewallInstanceRequest.InstanceRequestType.CREATE) {
                 requestState.stage = FirewallStage.PROVISION_SECURITY_GROUP;
             } else {
@@ -157,9 +157,9 @@ public class AWSFirewallService extends StatelessService {
                     requestState, FirewallStage.FINISHED);
             break;
         case FAILED:
-            if (requestState.firewallRequest.provisioningTaskReference != null) {
+            if (requestState.firewallRequest.taskReference != null) {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                        requestState.firewallRequest.provisioningTaskReference,
+                        requestState.firewallRequest.taskReference,
                         requestState.error);
             } else {
                 requestState.fwOperation.fail(requestState.error);
@@ -168,7 +168,7 @@ public class AWSFirewallService extends StatelessService {
         case FINISHED:
             requestState.fwOperation.complete();
             AdapterUtils.sendNetworkFinishPatch(this,
-                    requestState.firewallRequest.provisioningTaskReference);
+                    requestState.firewallRequest.taskReference);
             return;
         default:
             break;
@@ -208,7 +208,7 @@ public class AWSFirewallService extends StatelessService {
     private void getFirewallTaskState(AWSFirewallRequestState requestState,
             FirewallStage next) {
         sendRequest(Operation.createGet(
-                requestState.firewallRequest.provisioningTaskReference)
+                requestState.firewallRequest.taskReference)
                 .setCompletion(
                         (o, e) -> {
                             if (e != null) {
@@ -247,7 +247,7 @@ public class AWSFirewallService extends StatelessService {
     private void getFirewallState(AWSFirewallRequestState requestState,
             FirewallStage next) {
         sendRequest(Operation.createGet(
-                requestState.firewallRequest.firewallReference).setCompletion(
+                requestState.firewallRequest.resourceReference).setCompletion(
                         (o, e) -> {
                             if (e != null) {
                                 requestState.stage = FirewallStage.FAILED;

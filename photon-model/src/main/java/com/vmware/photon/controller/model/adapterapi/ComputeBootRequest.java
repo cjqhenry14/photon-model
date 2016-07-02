@@ -13,7 +13,6 @@
 
 package com.vmware.photon.controller.model.adapterapi;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,26 +22,10 @@ import com.vmware.photon.controller.model.resources.ComputeService;
  * Request to the boot service, to configure the boot state of the host and
  * initiate boot.
  */
-public class ComputeBootRequest {
-    /**
-     * URI reference to compute.
-     */
-    public URI computeReference;
-
-    /**
-     * URI reference to provisioning task.
-     */
-    public URI provisioningTaskReference;
+public class ComputeBootRequest extends ResourceRequest {
 
     /**
      * Boot device order.
      */
     public List<ComputeService.BootDevice> bootDeviceOrder = new ArrayList<>();
-
-    /**
-     * Value indicating whether the service should treat this as a mock request
-     * and complete the work flow without involving the underlying compute host
-     * infrastructure.
-     */
-    public boolean isMockRequest;
 }

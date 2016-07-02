@@ -13,24 +13,14 @@
 
 package com.vmware.photon.controller.model.adapterapi;
 
-import java.net.URI;
-
 import com.vmware.photon.controller.model.resources.ComputeService.PowerState;
 import com.vmware.photon.controller.model.resources.ComputeService.PowerTransition;
 
 /**
  * Request to the power service, to change the power state of the host.
  */
-public class ComputePowerRequest {
-    public URI computeReference;
-    public URI provisioningTaskReference;
+public class ComputePowerRequest extends ResourceRequest {
+
     public PowerState powerState;
     public PowerTransition powerTransition;
-
-    /**
-     * Value indicating whether the service should treat this as a mock request.
-     * If set to true, the request completes the work flow without involving the
-     * underlying compute host infrastructure.
-     */
-    public boolean isMockRequest;
 }

@@ -13,19 +13,8 @@
 
 package com.vmware.photon.controller.model.adapterapi;
 
-import java.net.URI;
-
 /**
  * Defines the request body for getting health status of a Compute instance.
  */
-public class ComputeHealthRequest {
-    /**
-     * URI reference to compute instance.
-     */
-    public URI computeReference;
-
-    /**
-     * URI reference to calling task.
-     */
-    public URI parentTaskReference;
+public class ComputeHealthRequest extends ResourceRequest {
 }

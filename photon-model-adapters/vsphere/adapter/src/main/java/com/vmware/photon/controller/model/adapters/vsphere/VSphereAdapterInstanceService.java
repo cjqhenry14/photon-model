@@ -48,7 +48,7 @@ public class VSphereAdapterInstanceService extends StatelessService {
 
         ComputeInstanceRequest request = op.getBody(ComputeInstanceRequest.class);
 
-        TaskManager mgr = new TaskManager(this, request.provisioningTaskReference);
+        TaskManager mgr = new TaskManager(this, request.taskReference);
 
         // mark task as started
         mgr.patchTask(TaskStage.STARTED);
@@ -79,7 +79,7 @@ public class VSphereAdapterInstanceService extends StatelessService {
 
         // global error handler: it marks the task as failed
         initialContext.errorHandler = failure -> {
-            TaskManager mgr = new TaskManager(this, request.provisioningTaskReference);
+            TaskManager mgr = new TaskManager(this, request.taskReference);
             mgr.patchTaskToFailure(failure);
         };
 

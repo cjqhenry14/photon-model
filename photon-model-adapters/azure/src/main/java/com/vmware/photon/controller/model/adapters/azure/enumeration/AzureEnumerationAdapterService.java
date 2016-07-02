@@ -141,7 +141,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
         validateState(ctx);
         if (ctx.enumRequest.isMockRequest) {
             // patch status to parent task
-            AdapterUtils.sendPatchToEnumerationTask(this, ctx.enumRequest.enumerationTaskReference);
+            AdapterUtils.sendPatchToEnumerationTask(this, ctx.enumRequest.taskReference);
             return;
         }
         handleEnumerationRequest(ctx);
@@ -209,19 +209,19 @@ public class AzureEnumerationAdapterService extends StatelessService {
         case FINISHED:
             logInfo("Enumeration finished for %s", getEnumKey(ctx));
             this.ongoingEnumerations.remove(getEnumKey(ctx));
-            AdapterUtils.sendPatchToEnumerationTask(this, ctx.enumRequest.enumerationTaskReference);
+            AdapterUtils.sendPatchToEnumerationTask(this, ctx.enumRequest.taskReference);
             break;
         case ERROR:
             logWarning("Enumeration error for %s", getEnumKey(ctx));
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
-                    ctx.enumRequest.enumerationTaskReference, ctx.error);
+                    ctx.enumRequest.taskReference, ctx.error);
             break;
         default:
             String msg = String.format("Unknown Azure enumeration stage %s ", ctx.stage.toString());
             logSevere(msg);
             ctx.error = new IllegalStateException(msg);
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
-                    ctx.enumRequest.enumerationTaskReference, ctx.error);
+                    ctx.enumRequest.taskReference, ctx.error);
         }
     }
 

@@ -137,7 +137,7 @@ public class AWSNetworkService extends StatelessService {
         case AWS_CLIENT:
             awsNet.client = this.clientManager.getOrCreateEC2Client(
                     awsNet.credentials, awsNet.network.regionID,
-                    this, awsNet.networkRequest.provisioningTaskReference, false);
+                    this, awsNet.networkRequest.taskReference, false);
             if (awsNet.networkRequest.requestType == NetworkInstanceRequest.InstanceRequestType.CREATE) {
                 awsNet.stage = NetworkStage.PROVISION_VPC;
             } else {
@@ -196,9 +196,9 @@ public class AWSNetworkService extends StatelessService {
                     NetworkStage.FINISHED);
             break;
         case FAILED:
-            if (awsNet.networkRequest.provisioningTaskReference != null) {
+            if (awsNet.networkRequest.taskReference != null) {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                        awsNet.networkRequest.provisioningTaskReference,
+                        awsNet.networkRequest.taskReference,
                         awsNet.error);
             } else {
                 awsNet.netOps.fail(awsNet.error);
@@ -207,7 +207,7 @@ public class AWSNetworkService extends StatelessService {
         case FINISHED:
             awsNet.netOps.complete();
             AdapterUtils.sendNetworkFinishPatch(this,
-                    awsNet.networkRequest.provisioningTaskReference);
+                    awsNet.networkRequest.taskReference);
             return;
         default:
             break;
@@ -287,7 +287,7 @@ public class AWSNetworkService extends StatelessService {
     private void getNetworkTaskState(AWSNetworkRequestState aws,
             NetworkStage next) {
         sendRequest(Operation.createGet(
-                aws.networkRequest.provisioningTaskReference).setCompletion(
+                aws.networkRequest.taskReference).setCompletion(
                         (o, e) -> {
                             if (e != null) {
                                 aws.stage = NetworkStage.FAILED;

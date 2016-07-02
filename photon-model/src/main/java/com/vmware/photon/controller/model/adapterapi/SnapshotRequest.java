@@ -13,27 +13,8 @@
 
 package com.vmware.photon.controller.model.adapterapi;
 
-import java.net.URI;
-
 /**
  * Request to the snapshot service.
  */
-public class SnapshotRequest {
-
-    /**
-     * URI reference to the snapshot service instance.
-     */
-    public URI snapshotReference;
-
-    /**
-     * URI reference to the snapshot task service instance.
-     */
-    public URI snapshotTaskReference;
-
-    /**
-     * Value indicating whether the service should treat this as a mock request
-     * and complete the work flow without involving the underlying compute host
-     * infrastructure.
-     */
-    public boolean isMockRequest;
+public class SnapshotRequest extends ResourceRequest {
 }

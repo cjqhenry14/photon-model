@@ -44,7 +44,7 @@ public class VSphereAdapterPowerService extends StatelessService {
         op.complete();
 
         // mark task as started
-        TaskManager mgr = new TaskManager(this, request.provisioningTaskReference);
+        TaskManager mgr = new TaskManager(this, request.taskReference);
         mgr.patchTask(TaskStage.STARTED);
 
         ProvisionContext.populateContextThen(this, createInitialContext(request), ctx -> {
@@ -152,7 +152,7 @@ public class VSphereAdapterPowerService extends StatelessService {
 
         // global error handler: it marks the task as failed
         initialContext.errorHandler = failure -> {
-            TaskManager mgr = new TaskManager(this, request.provisioningTaskReference);
+            TaskManager mgr = new TaskManager(this, request.taskReference);
             mgr.patchTaskToFailure(failure);
         };
 

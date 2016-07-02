@@ -2,6 +2,13 @@
 
 ## 0.4.1-SNAPSHOT
 
+* Unify the field names for calling task reference and target resource in all Request object.
+  The new names are `taskReference` and `resourceReference`.
+  This change is **breaking change** for existing Providers implementations.
+
+* Unify in all Provider's Request object to use URIs as a reference to calling
+  task and target resource
+
 ## 0.4.0
 
 * Add ResourceState as a base class for all photon model resource states

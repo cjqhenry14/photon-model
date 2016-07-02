@@ -18,7 +18,7 @@ import java.net.URI;
 /**
  * Request to enumerate instantiated resources.
  */
-public class ComputeEnumerateResourceRequest {
+public class ComputeEnumerateResourceRequest extends ResourceRequest {
 
     /**
      * Uri reference of the resource pool.
@@ -45,16 +45,4 @@ public class ComputeEnumerateResourceRequest {
      * URI reference to resource pool management site.
      */
     public URI adapterManagementReference;
-
-    /**
-     * URI reference to the enumeration task, making the enumeration request.
-     */
-    public URI enumerationTaskReference;
-
-    /**
-     * Value indicating whether the service should treat this as a mock request
-     * and complete the work flow without involving the underlying compute host
-     * infrastructure.
-     */
-    public boolean isMockRequest;
 }

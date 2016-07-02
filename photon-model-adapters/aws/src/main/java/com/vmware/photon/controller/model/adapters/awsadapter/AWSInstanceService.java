@@ -110,7 +110,7 @@ public class AWSInstanceService extends StatelessService {
             if (aws.computeRequest.isMockRequest
                     && aws.computeRequest.requestType == ComputeInstanceRequest.InstanceRequestType.CREATE) {
                 AdapterUtils.sendPatchToProvisioningTask(this,
-                        aws.computeRequest.provisioningTaskReference);
+                        aws.computeRequest.taskReference);
                 return;
             }
             handleAllocation(aws);
@@ -141,7 +141,7 @@ public class AWSInstanceService extends StatelessService {
         case CLIENT:
             aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
                     getRequestRegionId(aws), this,
-                    aws.computeRequest.provisioningTaskReference, false);
+                    aws.computeRequest.taskReference, false);
             // now that we have a client lets move onto the next step
             switch (aws.computeRequest.requestType) {
             case CREATE:
@@ -179,9 +179,9 @@ public class AWSInstanceService extends StatelessService {
             createInstance(aws);
             break;
         case ERROR:
-            if (aws.computeRequest.provisioningTaskReference != null) {
+            if (aws.computeRequest.taskReference != null) {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                        aws.computeRequest.provisioningTaskReference, aws.error);
+                        aws.computeRequest.taskReference, aws.error);
             } else {
                 aws.awsOperation.fail(aws.error);
             }
@@ -205,7 +205,7 @@ public class AWSInstanceService extends StatelessService {
             handleAllocation(aws);
         };
         URI computeUri = UriUtils.extendUriWithQuery(
-                aws.computeRequest.computeReference, UriUtils.URI_PARAM_ODATA_EXPAND,
+                aws.computeRequest.resourceReference, UriUtils.URI_PARAM_ODATA_EXPAND,
                 Boolean.TRUE.toString());
         AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(aws));
     }
@@ -222,7 +222,7 @@ public class AWSInstanceService extends StatelessService {
             aws.stage = next;
             handleAllocation(aws);
         };
-        AdapterUtils.getServiceState(this, aws.computeRequest.provisioningTaskReference, onSuccess,
+        AdapterUtils.getServiceState(this, aws.computeRequest.taskReference, onSuccess,
                 getFailureConsumer(aws));
     }
 
@@ -306,21 +306,21 @@ public class AWSInstanceService extends StatelessService {
     private void createInstance(AWSAllocation aws) {
         if (aws.computeRequest.isMockRequest) {
             AdapterUtils.sendPatchToProvisioningTask(this,
-                    aws.computeRequest.provisioningTaskReference);
+                    aws.computeRequest.taskReference);
             return;
         }
 
         DiskState bootDisk = aws.childDisks.get(DiskType.HDD);
         if (bootDisk == null) {
             AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                    aws.computeRequest.provisioningTaskReference,
+                    aws.computeRequest.taskReference,
                     new IllegalStateException("AWS bootDisk not specified"));
             return;
         }
 
         if (bootDisk.bootConfig != null && bootDisk.bootConfig.files.length > 1) {
             AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                    aws.computeRequest.provisioningTaskReference,
+                    aws.computeRequest.taskReference,
                     new IllegalStateException("Only 1 configuration file allowed"));
             return;
         }
@@ -427,7 +427,7 @@ public class AWSInstanceService extends StatelessService {
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(this.opContext);
             AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
-                    this.computeReq.provisioningTaskReference, exception);
+                    this.computeReq.taskReference, exception);
         }
 
         @Override
@@ -439,7 +439,7 @@ public class AWSInstanceService extends StatelessService {
                 OperationContext.restoreOperationContext(this.opContext);
                 if (instance == null) {
                     AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
-                            this.computeReq.provisioningTaskReference,
+                            this.computeReq.taskReference,
                             new IllegalStateException("Error getting instance EC2 instance"));
                     return;
                 }
@@ -463,7 +463,7 @@ public class AWSInstanceService extends StatelessService {
                     createOperations.addAll(networkOperations);
                 }
                 Operation patchState = Operation
-                        .createPatch(this.computeReq.computeReference)
+                        .createPatch(this.computeReq.resourceReference)
                         .setBody(resultDesc)
                         .setReferer(this.service.getHost().getUri());
                 createOperations.add(patchState);
@@ -473,12 +473,12 @@ public class AWSInstanceService extends StatelessService {
                     if (exc != null) {
                         this.service.logSevere("Error updating VM state. %s", Utils.toString(exc));
                         AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
-                                this.computeReq.provisioningTaskReference,
+                                this.computeReq.taskReference,
                                 new IllegalStateException("Error updating VM state"));
                         return;
                     }
                     AdapterUtils.sendPatchToProvisioningTask(this.service,
-                            this.computeReq.provisioningTaskReference);
+                            this.computeReq.taskReference);
                 };
                 OperationJoin joinOp = OperationJoin.create(createOperations);
                 joinOp.setCompletion(joinCompletion);
@@ -561,7 +561,7 @@ public class AWSInstanceService extends StatelessService {
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(this.opContext);
             AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
-                    this.computeReq.provisioningTaskReference, exception);
+                    this.computeReq.taskReference, exception);
         }
 
         @Override
@@ -575,7 +575,7 @@ public class AWSInstanceService extends StatelessService {
                     if (instance == null) {
                         AdapterUtils.sendFailurePatchToProvisioningTask(
                                 AWSTerminateHandler.this.service,
-                                AWSTerminateHandler.this.computeReq.provisioningTaskReference,
+                                AWSTerminateHandler.this.computeReq.taskReference,
                                 new IllegalStateException("Error getting instance"));
                         return;
                     }
@@ -613,13 +613,13 @@ public class AWSInstanceService extends StatelessService {
                 sendDeleteEx) -> {
             if (sendDeleteEx != null) {
                 AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                        computeReq.provisioningTaskReference, sendDeleteEx);
+                        computeReq.taskReference, sendDeleteEx);
                 return;
             }
             if (deleteCallbackCount.incrementAndGet() == resourcesToDelete
                     .size()) {
                 AdapterUtils.sendPatchToProvisioningTask(this,
-                        computeReq.provisioningTaskReference);
+                        computeReq.taskReference);
             }
         };
         for (String resourcetoDelete : resourcesToDelete) {
@@ -668,7 +668,7 @@ public class AWSInstanceService extends StatelessService {
 
         aws.amazonEC2Client = this.clientManager.getOrCreateEC2Client(aws.parentAuth,
                 getRequestRegionId(aws), this,
-                aws.computeRequest.provisioningTaskReference, false);
+                aws.computeRequest.taskReference, false);
 
         // make a call to validate credentials
         aws.amazonEC2Client.describeAvailabilityZonesAsync(new DescribeAvailabilityZonesRequest(),

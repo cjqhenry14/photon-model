@@ -59,14 +59,14 @@ public class ProvisionContext {
 
     public ProvisionContext(ComputeInstanceRequest req) {
         this.instanceRequestType = req.requestType;
-        this.computeReference = req.computeReference;
-        this.provisioningTaskReference = req.provisioningTaskReference;
+        this.computeReference = req.resourceReference;
+        this.provisioningTaskReference = req.taskReference;
     }
 
     public ProvisionContext(ComputePowerRequest req) {
         this.instanceRequestType = null;
-        this.computeReference = req.computeReference;
-        this.provisioningTaskReference = req.provisioningTaskReference;
+        this.computeReference = req.resourceReference;
+        this.provisioningTaskReference = req.taskReference;
     }
 
     /**

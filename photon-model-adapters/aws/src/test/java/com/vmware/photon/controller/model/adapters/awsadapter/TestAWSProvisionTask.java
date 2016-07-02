@@ -227,7 +227,7 @@ public class TestAWSProvisionTask {
                             return;
                         }
                         if (!resp.statsList.get(0).computeLink.equals(vm.documentSelfLink)) {
-                            TestAWSProvisionTask.this.host.failIteration(new IllegalStateException("Incorrect computeReference returned."));
+                            TestAWSProvisionTask.this.host.failIteration(new IllegalStateException("Incorrect resourceReference returned."));
                             return;
                         }
                         verifyCollectedStats(resp);
@@ -240,9 +240,9 @@ public class TestAWSProvisionTask {
         Operation startOp = Operation.createPost(UriUtils.buildUri(this.host, servicePath));
         this.host.startService(startOp, parentService);
         ComputeStatsRequest statsRequest = new ComputeStatsRequest();
-        statsRequest.computeReference = UriUtils.buildUri(this.host, vm.documentSelfLink);
+        statsRequest.resourceReference = UriUtils.buildUri(this.host, vm.documentSelfLink);
         statsRequest.isMockRequest = this.isMock;
-        statsRequest.parentTaskReference = UriUtils.buildUri(this.host, servicePath);
+        statsRequest.taskReference = UriUtils.buildUri(this.host, servicePath);
         this.host.sendAndWait(Operation.createPatch(UriUtils.buildUri(
                 this.host, AWSUriPaths.AWS_STATS_ADAPTER))
                 .setBody(statsRequest)

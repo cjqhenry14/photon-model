@@ -319,14 +319,14 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
             }
 
             ComputeInstanceRequest cr = new ComputeInstanceRequest();
-            cr.computeReference = UriUtils.buildUri(getHost(),
+            cr.resourceReference = UriUtils.buildUri(getHost(),
                     updatedState.computeLink);
             cr.requestType = InstanceRequestType.CREATE;
             // the first reboot needs to be from the network, and the bare metal
             // services
             // will provide the image reference (retrieved from the computeReference)
 
-            cr.provisioningTaskReference = o.getUri();
+            cr.taskReference = o.getUri();
             cr.isMockRequest = updatedState.isMockRequest;
             sendHostServiceRequest(cr, updatedState.instanceAdapterReference);
         };
@@ -360,12 +360,12 @@ public class ProvisionComputeTaskService extends TaskService<ProvisionComputeTas
             }
 
             ComputeBootRequest br = new ComputeBootRequest();
-            br.computeReference = UriUtils.buildUri(getHost(),
+            br.resourceReference = UriUtils.buildUri(getHost(),
                     updatedState.computeLink);
             for (BootDevice bootDevice : bootDevices) {
                 br.bootDeviceOrder.add(bootDevice);
             }
-            br.provisioningTaskReference = o.getUri();
+            br.taskReference = o.getUri();
             br.isMockRequest = updatedState.isMockRequest;
             sendHostServiceRequest(br, updatedState.bootAdapterReference);
         };

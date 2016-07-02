@@ -203,9 +203,9 @@ public class ProvisionNetworkTaskService extends TaskService<ProvisionNetworkTas
         req.requestType = taskState.requestType;
         req.authCredentialsLink = networkState.authCredentialsLink;
         req.resourcePoolLink = networkState.resourcePoolLink;
-        req.networkReference = UriUtils.buildUri(this.getHost(),
+        req.resourceReference = UriUtils.buildUri(this.getHost(),
                 taskState.networkDescriptionLink);
-        req.provisioningTaskReference = this.getUri();
+        req.taskReference = this.getUri();
         req.isMockRequest = taskState.isMockRequest;
 
         return req;

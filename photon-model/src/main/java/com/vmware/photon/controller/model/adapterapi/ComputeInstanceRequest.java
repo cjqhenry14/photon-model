@@ -13,13 +13,11 @@
 
 package com.vmware.photon.controller.model.adapterapi;
 
-import java.net.URI;
-
 /**
  * Request to create a compute host. The host reference provides detailed
  * information on the host type and required services to complete the request.
  */
-public class ComputeInstanceRequest {
+public class ComputeInstanceRequest extends ResourceRequest {
 
     /**
      * Instance request type.
@@ -27,16 +25,6 @@ public class ComputeInstanceRequest {
     public enum InstanceRequestType {
         CREATE, DELETE, VALIDATE_CREDENTIALS, DELETE_DOCUMENTS_ONLY
     }
-
-    /**
-     * URI reference to compute.
-     */
-    public URI computeReference;
-
-    /**
-     * URI reference to provisioning task.
-     */
-    public URI provisioningTaskReference;
 
     /**
      * Request type.
@@ -52,11 +40,4 @@ public class ComputeInstanceRequest {
      * Region Id.
      */
     public String regionId;
-
-    /**
-     * Value indicating whether the service should treat this as a mock request
-     * and complete the work flow without involving the underlying compute host
-     * infrastructure.
-     */
-    public boolean isMockRequest;
 }

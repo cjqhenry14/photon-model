@@ -136,7 +136,7 @@ public class AWSStatsService extends StatelessService {
         ComputeStatsRequest statsRequest = op.getBody(ComputeStatsRequest.class);
         if (statsRequest.isMockRequest) {
             // patch status to parent task
-            AdapterUtils.sendPatchToProvisioningTask(this, statsRequest.parentTaskReference);
+            AdapterUtils.sendPatchToProvisioningTask(this, statsRequest.taskReference);
             return;
         }
         AWSStatsDataHolder statsData = new AWSStatsDataHolder();
@@ -156,7 +156,7 @@ public class AWSStatsService extends StatelessService {
                 getParentVMDescription(statsData);
             }
         };
-        URI computeUri = UriUtils.extendUriWithQuery(statsData.statsRequest.computeReference,
+        URI computeUri = UriUtils.extendUriWithQuery(statsData.statsRequest.resourceReference,
                 UriUtils.URI_PARAM_ODATA_EXPAND,
                 Boolean.TRUE.toString());
         AdapterUtils.getServiceState(this, computeUri, onSuccess, getFailureConsumer(statsData));
@@ -191,7 +191,7 @@ public class AWSStatsService extends StatelessService {
     private Consumer<Throwable> getFailureConsumer(AWSStatsDataHolder statsData) {
         return ((t) -> {
             AdapterUtils.sendFailurePatchToProvisioningTask(this,
-                    statsData.statsRequest.parentTaskReference, t);
+                    statsData.statsRequest.taskReference, t);
         });
     }
 
@@ -274,14 +274,14 @@ public class AWSStatsService extends StatelessService {
     }
 
     private void getAWSAsyncStatsClient(AWSStatsDataHolder statsData) {
-        URI parentURI = statsData.statsRequest.parentTaskReference;
+        URI parentURI = statsData.statsRequest.taskReference;
         statsData.statsClient = this.clientManager.getOrCreateCloudWatchClient(statsData.parentAuth,
                 statsData.computeDesc.description.zoneId, this, parentURI,
                 statsData.statsRequest.isMockRequest);
     }
 
     private void getAWSAsyncBillingClient(AWSStatsDataHolder statsData) {
-        URI parentURI = statsData.statsRequest.parentTaskReference;
+        URI parentURI = statsData.statsRequest.taskReference;
         statsData.billingClient = this.clientManager.getOrCreateCloudWatchClient(
                 statsData.parentAuth,
                 COST_ZONE_ID, this, parentURI,
@@ -308,7 +308,7 @@ public class AWSStatsService extends StatelessService {
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(this.opContext);
             AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
-                    this.statsData.statsRequest.parentTaskReference, exception);
+                    this.statsData.statsRequest.taskReference, exception);
         }
 
         @Override
@@ -388,7 +388,7 @@ public class AWSStatsService extends StatelessService {
         public void onError(Exception exception) {
             OperationContext.restoreOperationContext(this.opContext);
             AdapterUtils.sendFailurePatchToProvisioningTask(this.service,
-                    this.statsData.statsRequest.parentTaskReference, exception);
+                    this.statsData.statsRequest.taskReference, exception);
         }
 
         @Override
@@ -433,7 +433,7 @@ public class AWSStatsService extends StatelessService {
                 respBody.statsList = new ArrayList<>();
                 respBody.statsList.add(this.statsData.statsResponse);
                 this.service.sendRequest(
-                        Operation.createPatch(this.statsData.statsRequest.parentTaskReference)
+                        Operation.createPatch(this.statsData.statsRequest.taskReference)
                         .setBody(respBody));
             }
         }

@@ -179,9 +179,9 @@ public class TestAzureProvisionTask extends BasicReusableHostTestCase {
         Operation startOp = Operation.createPost(UriUtils.buildUri(this.host, servicePath));
         this.host.startService(startOp, parentService);
         ComputeStatsRequest statsRequest = new ComputeStatsRequest();
-        statsRequest.computeReference = UriUtils.buildUri(this.host, vm.documentSelfLink);
+        statsRequest.resourceReference = UriUtils.buildUri(this.host, vm.documentSelfLink);
         statsRequest.isMockRequest = this.isMock;
-        statsRequest.parentTaskReference = UriUtils.buildUri(this.host, servicePath);
+        statsRequest.taskReference = UriUtils.buildUri(this.host, servicePath);
         this.host.sendAndWait(Operation.createPatch(UriUtils.buildUri(
                 this.host, AzureUriPaths.AZURE_STATS_ADAPTER))
                 .setBody(statsRequest)

@@ -109,7 +109,7 @@ public class AWSEnumerationAdapterService extends StatelessService {
         if (awsEnumerationContext.computeEnumerationRequest.isMockRequest) {
             // patch status to parent task
             AdapterUtils.sendPatchToEnumerationTask(this,
-                    awsEnumerationContext.computeEnumerationRequest.enumerationTaskReference);
+                    awsEnumerationContext.computeEnumerationRequest.taskReference);
             return;
         }
         handleEnumerationRequest(awsEnumerationContext);
@@ -164,17 +164,17 @@ public class AWSEnumerationAdapterService extends StatelessService {
         case PATCH_COMPLETION:
             setOperationDurationStat(aws.awsAdapterOperation);
             AdapterUtils.sendPatchToEnumerationTask(this,
-                    aws.computeEnumerationRequest.enumerationTaskReference);
+                    aws.computeEnumerationRequest.taskReference);
             break;
         case ERROR:
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
-                    aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
+                    aws.computeEnumerationRequest.taskReference, aws.error);
             break;
         default:
             logSevere("Unknown AWS enumeration stage %s ", aws.stage.toString());
             aws.error = new Exception("Unknown AWS enumeration stage");
             AdapterUtils.sendFailurePatchToEnumerationTask(this,
-                    aws.computeEnumerationRequest.enumerationTaskReference, aws.error);
+                    aws.computeEnumerationRequest.taskReference, aws.error);
             break;
 
         }
@@ -240,7 +240,7 @@ public class AWSEnumerationAdapterService extends StatelessService {
                         "Error kicking off the enumeration workflows for AWS. %s",
                         Utils.toString(exc));
                 AdapterUtils.sendFailurePatchToEnumerationTask(this,
-                        context.computeEnumerationRequest.enumerationTaskReference,
+                        context.computeEnumerationRequest.taskReference,
                         exc.values().iterator().next());
 
             }

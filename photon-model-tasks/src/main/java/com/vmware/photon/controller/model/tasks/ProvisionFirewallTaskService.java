@@ -199,11 +199,11 @@ public class ProvisionFirewallTaskService extends TaskService<ProvisionFirewallT
             ProvisionFirewallTaskState taskState) {
         FirewallInstanceRequest req = new FirewallInstanceRequest();
         req.requestType = taskState.requestType;
-        req.firewallReference = UriUtils.buildUri(this.getHost(),
+        req.resourceReference = UriUtils.buildUri(this.getHost(),
                 taskState.firewallDescriptionLink);
         req.authCredentialsLink = firewallState.authCredentialsLink;
         req.resourcePoolLink = firewallState.resourcePoolLink;
-        req.provisioningTaskReference = this.getUri();
+        req.taskReference = this.getUri();
         req.isMockRequest = taskState.isMockRequest;
 
         return req;

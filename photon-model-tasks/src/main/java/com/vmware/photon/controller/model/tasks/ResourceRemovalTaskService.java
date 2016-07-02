@@ -323,8 +323,8 @@ public class ResourceRemovalTaskService extends TaskService<ResourceRemovalTaskS
         ComputeService.ComputeStateWithDescription chd = o
                 .getBody(ComputeService.ComputeStateWithDescription.class);
         ComputeInstanceRequest deleteReq = new ComputeInstanceRequest();
-        deleteReq.computeReference = UriUtils.buildUri(getHost(), resourceLink);
-        deleteReq.provisioningTaskReference = UriUtils.buildUri(getHost(),
+        deleteReq.resourceReference = UriUtils.buildUri(getHost(), resourceLink);
+        deleteReq.taskReference = UriUtils.buildUri(getHost(),
                 subTaskLink);
         deleteReq.requestType =
                 (currentState.options != null && currentState.options.contains(TaskOptions.DOCUMENT_CHANGES_ONLY))

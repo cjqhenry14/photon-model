@@ -202,9 +202,9 @@ public class SnapshotTaskService extends TaskService<SnapshotTaskService.Snapsho
         logInfo("Starting to create snapshot using sub task %s", subTaskLink);
 
         SnapshotRequest sr = new SnapshotRequest();
-        sr.snapshotReference = UriUtils.buildUri(getHost(),
+        sr.resourceReference = UriUtils.buildUri(getHost(),
                 updatedState.snapshotLink);
-        sr.snapshotTaskReference = UriUtils.buildUri(getHost(), subTaskLink);
+        sr.taskReference = UriUtils.buildUri(getHost(), subTaskLink);
         sr.isMockRequest = updatedState.isMockRequest;
         sendRequest(Operation
                 .createPatch(updatedState.snapshotAdapterReference)

@@ -13,12 +13,10 @@
 
 package com.vmware.photon.controller.model.adapterapi;
 
-import java.net.URI;
-
 /**
  * Request to create/destroy a firewall instance on a given compute.
  */
-public class FirewallInstanceRequest {
+public class FirewallInstanceRequest extends ResourceRequest {
 
     /**
      * Instance Request type.
@@ -41,21 +39,4 @@ public class FirewallInstanceRequest {
      * The resource pool the network exists in.
      */
     public String resourcePoolLink;
-
-    /**
-     * The firewall instance being realized.
-     */
-    public URI firewallReference;
-
-    /**
-     * Task tracking the state of this request. Set by run-time.
-     */
-    public URI provisioningTaskReference;
-
-    /**
-     * Value indicating whether the service should treat this as a mock request
-     * and complete the work flow without involving the underlying compute host
-     * infrastructure.
-     */
-    public boolean isMockRequest;
 }
