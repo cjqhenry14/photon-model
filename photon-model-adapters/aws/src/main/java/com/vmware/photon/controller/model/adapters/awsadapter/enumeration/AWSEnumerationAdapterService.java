@@ -23,7 +23,6 @@ import com.vmware.photon.controller.model.adapterapi.EnumerationAction;
 import com.vmware.photon.controller.model.adapters.awsadapter.AWSUriPaths;
 import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationJoin;
 import com.vmware.xenon.common.StatelessService;
@@ -195,9 +194,9 @@ public class AWSEnumerationAdapterService extends StatelessService {
             throw new IllegalArgumentException(
                     "adapterManagementReference is required.");
         }
-        if (AWSstate.computeEnumerationRequest.parentComputeLink == null) {
+        if (AWSstate.computeEnumerationRequest.resourceReference == null) {
             throw new IllegalArgumentException(
-                    "parentComputeLink is required.");
+                    "parentCompute URI is required.");
         }
         if (AWSstate.computeEnumerationRequest.enumerationAction == null) {
             AWSstate.computeEnumerationRequest.enumerationAction = EnumerationAction.START;

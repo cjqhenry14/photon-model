@@ -42,7 +42,6 @@ import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.StatelessService;
@@ -424,7 +423,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             q.querySpec.query = Query.Builder.create()
                     .addKindFieldClause(ComputeService.ComputeState.class)
                     .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,
-                            this.aws.computeEnumerationRequest.parentComputeLink)
+                            this.aws.computeEnumerationRequest.resourceLink())
                     .addFieldClause(ComputeState.FIELD_NAME_RESOURCE_POOL_LINK,
                             this.aws.computeEnumerationRequest.resourcePoolLink)
                     .build();
@@ -544,7 +543,7 @@ public class AWSEnumerationAndCreationAdapterService extends StatelessService {
             awsComputeState.instancesToBeCreated = this.aws.instancesToBeCreated;
             awsComputeState.instancesToBeUpdated = this.aws.instancesToBeUpdated;
             awsComputeState.computeStatesToBeUpdated = this.aws.computeStatesToBeUpdated;
-            awsComputeState.parentComputeLink = this.aws.computeEnumerationRequest.parentComputeLink;
+            awsComputeState.parentComputeLink = this.aws.computeEnumerationRequest.resourceLink();
             awsComputeState.resourcePoolLink = this.aws.computeEnumerationRequest.resourcePoolLink;
             awsComputeState.parentTaskLink = this.aws.computeEnumerationRequest.taskReference;
             awsComputeState.tenantLinks = this.aws.computeHostDescription.tenantLinks;

@@ -48,4 +48,11 @@ public abstract class ResourceRequest {
     public URI buildUri(String resourceLink) {
         return UriUtils.buildUri(this.resourceReference, resourceLink);
     }
+
+    /**
+     * Returns the link to the resourceReference.
+     */
+    public String resourceLink() {
+        return this.resourceReference.getPath();
+    }
 }

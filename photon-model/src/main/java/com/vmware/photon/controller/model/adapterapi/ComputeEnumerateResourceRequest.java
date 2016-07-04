@@ -16,7 +16,8 @@ package com.vmware.photon.controller.model.adapterapi;
 import java.net.URI;
 
 /**
- * Request to enumerate instantiated resources.
+ * Request to enumerate instantiated resources. The {@code resourceReference} value is the URI to
+ * the parent compute host.
  */
 public class ComputeEnumerateResourceRequest extends ResourceRequest {
 
@@ -30,11 +31,6 @@ public class ComputeEnumerateResourceRequest extends ResourceRequest {
      * compute instances created by the adapter.
      */
     public String computeDescriptionLink;
-
-    /**
-     * URI reference to the parent compute host.
-     */
-    public String parentComputeLink;
 
     /**
      * Enumeration Action Start, stop, refresh.

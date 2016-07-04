@@ -41,7 +41,6 @@ import com.vmware.photon.controller.model.adapters.util.AdapterUtils;
 import com.vmware.photon.controller.model.resources.ComputeDescriptionService.ComputeDescription;
 import com.vmware.photon.controller.model.resources.ComputeService;
 import com.vmware.photon.controller.model.resources.ComputeService.ComputeState;
-
 import com.vmware.xenon.common.Operation;
 import com.vmware.xenon.common.OperationContext;
 import com.vmware.xenon.common.OperationJoin;
@@ -280,7 +279,7 @@ public class AWSEnumerationAndDeletionAdapterService extends StatelessService {
         Query query = Query.Builder.create()
                 .addKindFieldClause(ComputeService.ComputeState.class)
                 .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,
-                        aws.computeEnumerationRequest.parentComputeLink)
+                        aws.computeEnumerationRequest.resourceLink())
                 .addFieldClause(ComputeState.FIELD_NAME_RESOURCE_POOL_LINK,
                         aws.computeEnumerationRequest.resourcePoolLink)
                 .build();

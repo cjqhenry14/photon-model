@@ -300,7 +300,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
         Query query = Builder.create()
                 .addKindFieldClause(ComputeState.class)
                 .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,
-                        ctx.enumRequest.parentComputeLink)
+                        ctx.enumRequest.resourceLink())
                 .addRangeClause(ComputeState.FIELD_NAME_UPDATE_TIME_MICROS,
                         NumericRange.createLessThanRange(ctx.enumerationStartTimeInMicros))
                 .build();
@@ -502,7 +502,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
         q.querySpec.query = Query.Builder.create()
                 .addKindFieldClause(ComputeState.class)
                 .addFieldClause(ComputeState.FIELD_NAME_PARENT_LINK,
-                        ctx.enumRequest.parentComputeLink)
+                        ctx.enumRequest.resourceLink())
                 .build();
 
         Query.Builder instanceIdFilterParentQuery = Query.Builder.create(Occurance.MUST_OCCUR);
@@ -710,7 +710,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
         ComputeState resource = new ComputeState();
         resource.id = UUID.randomUUID().toString();
         resource.documentSelfLink = resource.id;
-        resource.parentLink = ctx.enumRequest.parentComputeLink;
+        resource.parentLink = ctx.enumRequest.resourceLink();
         resource.descriptionLink = UriUtils.buildUriPath(
                 ComputeDescriptionService.FACTORY_LINK, computeDescription.id);
         resource.resourcePoolLink = ctx.enumRequest.resourcePoolLink;
@@ -764,9 +764,9 @@ public class AzureEnumerationAdapterService extends StatelessService {
             throw new IllegalArgumentException(
                     "adapterManagementReference is required.");
         }
-        if (ctx.enumRequest.parentComputeLink == null) {
+        if (ctx.enumRequest.resourceReference == null) {
             throw new IllegalArgumentException(
-                    "parentComputeLink is required.");
+                    "parentCompute URI is required.");
         }
         if (ctx.enumRequest.enumerationAction == null) {
             ctx.enumRequest.enumerationAction = EnumerationAction.START;
@@ -786,7 +786,7 @@ public class AzureEnumerationAdapterService extends StatelessService {
      */
     private String getEnumKey(EnumerationContext ctx) {
         StringBuilder sb = new StringBuilder();
-        sb.append("hostLink:").append(ctx.enumRequest.parentComputeLink);
+        sb.append("hostLink:").append(ctx.enumRequest.resourceLink());
         sb.append("-enumerationAdapterReference:")
                 .append(ctx.computeHostDesc.enumerationAdapterReference);
         return sb.toString();

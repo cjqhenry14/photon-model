@@ -108,8 +108,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
             return;
         }
 
-        URI parentUri = ComputeStateWithDescription
-                .buildUri(UriUtils.buildUri(getHost(), request.parentComputeLink));
+        URI parentUri = ComputeStateWithDescription.buildUri(request.resourceReference);
 
         Operation.createGet(parentUri)
                 .setCompletion(o -> {
@@ -289,7 +288,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
 
     private void processFoundHostSystem(ComputeEnumerateResourceRequest request,
             HostSystemOverlay hs) {
-        QueryTask task = createHostSystemQueryTask(request.parentComputeLink.toString(),
+        QueryTask task = createHostSystemQueryTask(request.resourceLink(),
                 hs.getHardwareUuid());
         withTaskResults(task, result -> {
             if (result.documentLinks.isEmpty()) {
@@ -353,7 +352,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
         ComputeState state = new ComputeState();
         state.id = hs.getHardwareUuid();
         state.adapterManagementReference = request.adapterManagementReference;
-        state.parentLink = request.parentComputeLink;
+        state.parentLink = request.resourceLink();
         CustomProperties.of(state)
                 .put(CustomProperties.MOREF, hs.getId())
                 .put(ComputeProperties.CUSTOM_DISPLAY_NAME, hs.getName());
@@ -428,7 +427,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
     }
 
     private void processFoundVm(ComputeEnumerateResourceRequest request, VmOverlay vm) {
-        QueryTask task = createVmQueryTask(request.parentComputeLink, vm.getInstanceUuid());
+        QueryTask task = createVmQueryTask(request.resourceLink(), vm.getInstanceUuid());
         withTaskResults(task, result -> {
             if (result.documentLinks.isEmpty()) {
                 createNewCompute(request, vm);
@@ -470,7 +469,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
             VmOverlay vm) {
         ComputeState state = new ComputeState();
         state.adapterManagementReference = request.adapterManagementReference;
-        state.parentLink = request.parentComputeLink;
+        state.parentLink = request.resourceLink();
         state.descriptionLink = request.computeDescriptionLink;
         state.resourcePoolLink = request.resourcePoolLink;
 
