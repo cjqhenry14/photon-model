@@ -221,6 +221,7 @@ public class EnumerationClient extends BaseHelper {
                 VimPath.vm_config_extraConfig,
                 VimPath.vm_runtime_powerState,
                 VimPath.vm_runtime_maxCpuUsage,
+                VimPath.vm_config_template,
                 VimPath.vm_runtime_maxMemoryUsage
         ));
 

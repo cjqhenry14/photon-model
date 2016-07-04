@@ -41,17 +41,25 @@ public class CustomPropertiesTest {
                 .put("12", 12)
                 .put("s", "s")
                 .put("4", 4L)
+                .put("bt", true)
+                .put("bf", false)
                 .put("ref", ref);
 
         assertEquals("12", state.customProperties.get("12"));
         assertEquals("4", state.customProperties.get("4"));
         assertEquals("s", state.customProperties.get("s"));
+        assertEquals("true", state.customProperties.get("bt"));
+        assertEquals("false", state.customProperties.get("bf"));
+        assertEquals(null, state.customProperties.get("not_found"));
         assertEquals(VimUtils.convertMoRefToString(ref), state.customProperties.get("ref"));
 
         CustomProperties access = CustomProperties.of(state);
 
         assertEquals((Integer) 12, access.getInt("12", null));
         assertEquals("s", access.getString("s"));
+
+        assertEquals(true, access.getBoolean("bt", null));
+        assertEquals(false, access.getBoolean("bf", null));
 
         assertEquals(Long.valueOf(4), access.getLong("4", null));
         assertMoFefEquals(ref, access.getMoRef("ref"));

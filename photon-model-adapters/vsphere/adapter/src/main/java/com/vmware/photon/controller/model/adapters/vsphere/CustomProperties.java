@@ -43,6 +43,11 @@ public class CustomProperties {
      */
     public static final String TEMPLATE_LINK = "templateComputeLink";
 
+    /**
+     * If true, the ComputeState represents a VM template.
+     */
+    public static final String TEMPLATE = "isTemplate";
+
     private final Supplier<Map<String, String>> getPropsForRead;
     private final Supplier<Map<String, String>> getPropsForWrite;
     private final Consumer<String> remove;
@@ -122,6 +127,19 @@ public class CustomProperties {
         }
     }
 
+    public Boolean getBoolean(String key, Boolean defaultValue) {
+        String s = getString(key);
+        if (s == null) {
+            return defaultValue;
+        }
+
+        try {
+            return Boolean.parseBoolean(s);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
     public CustomProperties put(String key, ManagedObjectReference moref) {
         return put(key, VimUtils.convertMoRefToString(moref));
     }
@@ -151,6 +169,16 @@ public class CustomProperties {
             this.remove.accept(key);
         } else {
             put(key, Long.toString(i));
+        }
+
+        return this;
+    }
+
+    public CustomProperties put(String key, Boolean value) {
+        if (value == null) {
+            this.remove.accept(key);
+        } else {
+            put(key, value.toString());
         }
 
         return this;

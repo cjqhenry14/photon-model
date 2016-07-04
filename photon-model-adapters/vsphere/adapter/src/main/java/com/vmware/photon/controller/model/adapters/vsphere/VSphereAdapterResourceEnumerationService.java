@@ -273,6 +273,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
     private void processFoundObjects(ComputeEnumerateResourceRequest request,
             List<ObjectContent> objects) {
         for (ObjectContent cont : objects) {
+            System.out.println(VimUtils.convertMoRefToString(cont.getObj()));
             if (VimUtils.isVirtualMachine(cont.getObj())) {
                 VmOverlay vm = new VmOverlay(cont);
                 processFoundVm(request, vm);
@@ -479,6 +480,7 @@ public class VSphereAdapterResourceEnumerationService extends StatelessService {
 
         CustomProperties.of(state)
                 .put(CustomProperties.MOREF, vm.getId())
+                .put(CustomProperties.TEMPLATE, vm.isTempalte())
                 .put(ComputeProperties.CUSTOM_DISPLAY_NAME, vm.getName());
         return state;
     }

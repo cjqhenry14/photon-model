@@ -67,6 +67,10 @@ public class VmOverlay extends AbstractOverlay {
         return null;
     }
 
+    public boolean isTempalte() {
+        return (boolean) getOrFail(VimPath.vm_config_template);
+    }
+
     public String getDescriptionLink() {
         ArrayOfOptionValue arr = (ArrayOfOptionValue) getOrFail(VimPath.vm_config_extraConfig);
         for (OptionValue ov : arr.getOptionValue()) {
@@ -79,7 +83,8 @@ public class VmOverlay extends AbstractOverlay {
     }
 
     public String getPrimaryMac() {
-        ArrayOfVirtualDevice devices = (ArrayOfVirtualDevice) getOrFail(VimPath.vm_config_hardware_device);
+        ArrayOfVirtualDevice devices = (ArrayOfVirtualDevice) getOrFail(
+                VimPath.vm_config_hardware_device);
         for (VirtualDevice dev : devices.getVirtualDevice()) {
             if (dev instanceof VirtualEthernetCard) {
                 return ((VirtualEthernetCard) dev).getMacAddress();
